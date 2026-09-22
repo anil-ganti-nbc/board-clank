@@ -1,8 +1,13 @@
-"""Normalized taxonomies. UNKNOWN stays UNKNOWN."""
+"""Normalized taxonomies. UNKNOWN stays UNKNOWN. Multi-label editorial context is allowed."""
+
 from __future__ import annotations
+
 from enum import StrEnum
 
+
 class BoardType(StrEnum):
+    """Physical / product type. Separate from editorial use-case context."""
+
     SBC = "SBC"
     COMPUTE_MODULE = "COMPUTE_MODULE"
     DEVKIT = "DEVKIT"
@@ -14,6 +19,7 @@ class BoardType(StrEnum):
     OTHER = "OTHER"
     UNKNOWN = "UNKNOWN"
 
+
 class Architecture(StrEnum):
     ARM = "ARM"
     X86 = "X86"
@@ -21,6 +27,7 @@ class Architecture(StrEnum):
     LOONGARCH = "LOONGARCH"
     OTHER = "OTHER"
     UNKNOWN = "UNKNOWN"
+
 
 class SourcePlane(StrEnum):
     PRODUCT = "PRODUCT"
@@ -31,6 +38,7 @@ class SourcePlane(StrEnum):
     REGULATORY = "REGULATORY"
     DISCOVERY_ONLY = "DISCOVERY_ONLY"
 
+
 class SourceAuthority(StrEnum):
     FIRST_PARTY_CANONICAL = "FIRST_PARTY_CANONICAL"
     FIRST_PARTY_SUPPORTING = "FIRST_PARTY_SUPPORTING"
@@ -38,12 +46,14 @@ class SourceAuthority(StrEnum):
     THIRD_PARTY_DISCOVERY = "THIRD_PARTY_DISCOVERY"
     UNVERIFIED = "UNVERIFIED"
 
+
 class PromotionState(StrEnum):
     REGISTERED = "REGISTERED"
     EXPERIMENTAL = "EXPERIMENTAL"
     SOAKING = "SOAKING"
     PROMOTED = "PROMOTED"
     MOTHBALLED = "MOTHBALLED"
+
 
 class EventType(StrEnum):
     NEW_BOARD = "NEW_BOARD"
@@ -65,6 +75,7 @@ class EventType(StrEnum):
     CLASSIFICATION_CHANGED = "CLASSIFICATION_CHANGED"
     SOURCE_DEGRADED = "SOURCE_DEGRADED"
 
+
 class NoveltyStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
     HISTORICAL = "HISTORICAL"
@@ -73,6 +84,7 @@ class NoveltyStatus(StrEnum):
     EXISTING_PRODUCT = "EXISTING_PRODUCT"
     REVISION = "REVISION"
     VARIANT = "VARIANT"
+
 
 class Availability(StrEnum):
     ANNOUNCED = "ANNOUNCED"
@@ -83,13 +95,17 @@ class Availability(StrEnum):
     EOL = "EOL"
     UNKNOWN = "UNKNOWN"
 
+
 class RevisionKind(StrEnum):
     MARKETING = "MARKETING"
     PCB = "PCB"
     SILENT = "SILENT"
     UNKNOWN = "UNKNOWN"
 
+
 class EditorialContext(StrEnum):
+    """Descriptive context only. Not a quality ranking. Multi-label is allowed."""
+
     RPI_ZERO_CLASS = "RPI_ZERO_CLASS"
     RPI_5_CLASS = "RPI_5_CLASS"
     CM4_COMPATIBLE = "CM4_COMPATIBLE"
@@ -101,10 +117,12 @@ class EditorialContext(StrEnum):
     AI_ORIENTED = "AI_ORIENTED"
     INDUSTRIAL = "INDUSTRIAL"
 
+
 class DeliveryDisposition(StrEnum):
     PUSH = "PUSH"
     REVIEW = "REVIEW"
     SUPPRESSED = "SUPPRESSED"
+
 
 class EntityKind(StrEnum):
     VENDOR = "VENDOR"
@@ -113,6 +131,7 @@ class EntityKind(StrEnum):
     REVISION = "REVISION"
     VARIANT = "VARIANT"
     SOC = "SOC"
+
 
 class CompatibilityState(StrEnum):
     FRESH = "FRESH"
@@ -123,8 +142,52 @@ class CompatibilityState(StrEnum):
     CORRUPT = "CORRUPT"
     UNKNOWN = "UNKNOWN"
 
-PHASE1_VENDORS = ("raspberry-pi", "orange-pi", "radxa", "banana-pi", "hardkernel-odroid", "pine64")
-PHASE2_PLACEHOLDERS = ("friendlyelec", "milk-v", "beagleboard", "libre-computer", "khadas", "up-board", "seeed-studio", "firefly", "lattepanda")
+
+PHASE1_VENDORS = (
+    "raspberry-pi",
+    "orange-pi",
+    "radxa",
+    "banana-pi",
+    "hardkernel-odroid",
+    "pine64",
+)
+
+PHASE2_PLACEHOLDERS = (
+    "friendlyelec",
+    "milk-v",
+    "beagleboard",
+    "libre-computer",
+    "khadas",
+    "up-board",
+    "seeed-studio",
+    "firefly",
+    "lattepanda",
+)
+
 OUT_OF_SCOPE_FOUNDATION_0 = ("nvidia-jetson",)
-IDENTITY_CRITICAL_SPEC_FIELDS = ("soc_key", "cpu_arch", "ports_signature", "dimensions")
-PORT_FIELDS = ("ethernet", "wifi", "bluetooth", "hdmi_out", "hdmi_in", "displayport", "mipi_csi", "mipi_dsi", "usb", "gpio_header", "m2_m_key", "m2_e_key", "pcie_lanes", "sata", "microsd", "onboard_emmc")
+
+IDENTITY_CRITICAL_SPEC_FIELDS = (
+    "soc_key",
+    "cpu_arch",
+    "ports_signature",
+    "dimensions",
+)
+
+PORT_FIELDS = (
+    "ethernet",
+    "wifi",
+    "bluetooth",
+    "hdmi_out",
+    "hdmi_in",
+    "displayport",
+    "mipi_csi",
+    "mipi_dsi",
+    "usb",
+    "gpio_header",
+    "m2_m_key",
+    "m2_e_key",
+    "pcie_lanes",
+    "sata",
+    "microsd",
+    "onboard_emmc",
+)
