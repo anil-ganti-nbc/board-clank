@@ -6,9 +6,13 @@ from pathlib import Path
 from board_clank.cli import main
 from board_clank.collectors.raspberry_pi import (
     RaspberryPiProductAdapter,
+    _board_slug,
     _family_and_type,
+    _is_in_scope_pip_category,
     collect_corpus,
     parse_product_html,
+    raw_body_hash,
+    semantic_evidence_hash,
 )
 from board_clank.pipeline import Pipeline
 from board_clank.store import Store
@@ -587,3 +591,84 @@ def test_expanded_baseline_is_silent_and_replay_stable(pipeline: Pipeline, store
     assert store.all("SELECT event_id FROM events WHERE event_type = 'FIELD_CHANGED'") == []
     assert _push_or_review(store) == []
     assert all(row["disposition"] == "SUPPRESSED" for row in store.all("SELECT disposition FROM notifications"))
+
+
+def test_plus_models_keep_distinct_board_slugs() -> None:
+    assert _board_slug("Raspberry Pi 3 Model B") == "raspberry-pi-3-model-b"
+    assert _board_slug("Raspberry Pi 3 Model B+") == "raspberry-pi-3-model-b-plus"
+    assert _board_slug("Raspberry Pi Compute Module 3+") == "raspberry-pi-compute-module-3-plus"
+
+
+def test_pip_discovery_keeps_sbc_modules_and_rejects_keyboard_paths() -> None:
+    assert _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/892-raspberry-pi-5")
+    assert _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/634-raspberry-pi-compute-module-4")
+    assert _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/1286-raspberry-pi-compute-module-zero")
+    assert not _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/561-raspberry-pi-400")
+    assert not _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/1115-raspberry-pi-500")
+    assert not _is_in_scope_pip_category("https://pip.raspberrypi.com/categories/756-raspberry-pi-compute-module-4-io-board")
+    html = Path("fixtures/rpi_product/html/pip-computers.html").read_text(encoding="utf-8")
+    _drafts, info = parse_product_html(
+        html,
+        page_url="https://pip.raspberrypi.com/categories/505-computers",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    kept = [u for u in info["lead_hrefs"] if _is_in_scope_pip_category(u)]
+    rejected = [u for u in info["lead_hrefs"] if not _is_in_scope_pip_category(u)]
+    assert any("892-raspberry-pi-5" in u for u in kept)
+    assert any("400" in u or "500" in u for u in rejected)
+
+
+def test_csrf_tokens_change_raw_hash_not_semantic_or_identity() -> None:
+    a = Path("fixtures/rpi_product/html/pip-pi5-csrf-a.html").read_text(encoding="utf-8")
+    b = Path("fixtures/rpi_product/html/pip-pi5-csrf-b.html").read_text(encoding="utf-8")
+    assert raw_body_hash(a) != raw_body_hash(b)
+    assert semantic_evidence_hash(a) == semantic_evidence_hash(b)
+    da, ia = parse_product_html(a, page_url="https://pip.raspberrypi.com/categories/892-raspberry-pi-5", observed_at="2026-09-22T00:00:00+00:00")
+    db, ib = parse_product_html(b, page_url="https://pip.raspberrypi.com/categories/892-raspberry-pi-5", observed_at="2026-09-22T00:00:00+00:00")
+    assert ia["status"] == ib["status"] == "resolved"
+    assert {d.board_slug for d in da} == {d.board_slug for d in db} == {"raspberry-pi-5"}
+    from board_clank.models import canonical_json
+
+    assert [canonical_json(d.canonical_payload()) for d in da] == [canonical_json(d.canonical_payload()) for d in db]
+
+
+def test_pip_identity_only_listing_admits_board_without_fabricating_spec() -> None:
+    html = Path("fixtures/rpi_product/html/pip-cm5-identity.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://pip.raspberrypi.com/categories/944-raspberry-pi-compute-module-5",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert info["status"] == "resolved-identity"
+    assert {d.board_slug for d in drafts} == {"raspberry-pi-compute-module-5"}
+    assert {d.family_slug for d in drafts} == {"compute-module"}
+    assert {d.soc_marketing_name for d in drafts} == {"UNKNOWN"}
+
+
+def test_pip_live_sim_baseline_silent_and_csrf_replay_has_no_field_changed(pipeline: Pipeline, store: Store) -> None:
+    first = collect_corpus("pip-live-sim", run_id="pip-base", started_at="2026-09-22T12:00:00+00:00")
+    second = collect_corpus("pip-live-sim", run_id="pip-replay", started_at="2026-09-22T13:00:00+00:00")
+    r1 = pipeline.accept_run(first)
+    boards = store.count("boards")
+    r2 = pipeline.accept_run(second)
+    assert r1.baseline is True
+    assert r2.baseline is False
+    slugs = {row["board_slug"] for row in store.all("SELECT board_slug FROM boards")}
+    assert "raspberry-pi-5" in slugs
+    assert "raspberry-pi-compute-module-5" in slugs
+    assert store.count("boards") == boards
+    assert "NEW_BOARD" not in _live_types(store)
+    assert store.all("SELECT event_id FROM events WHERE event_type = 'FIELD_CHANGED'") == []
+    assert _push_or_review(store) == []
+
+
+def test_partial_unresolved_page_does_not_mutate_existing_board(pipeline: Pipeline, store: Store) -> None:
+    pipeline.accept_run(collect_corpus("pip-live-sim", run_id="pip-base", started_at="2026-09-22T12:00:00+00:00"))
+    before = store.one("SELECT board_key FROM boards WHERE board_slug = 'raspberry-pi-5'")
+    pipeline.accept_run(collect_corpus("insufficient", run_id="pip-stub", started_at="2026-09-22T14:00:00+00:00"))
+    after = store.one("SELECT board_key FROM boards WHERE board_slug = 'raspberry-pi-5'")
+    assert before["board_key"] == after["board_key"]
+    slugs = {row["board_slug"] for row in store.all("SELECT board_slug FROM boards")}
+    assert "raspberry-pi-6" not in slugs
+    assert "NOVELTY_UNRESOLVED" in _event_types(store)
+    assert "NEW_BOARD" not in _live_types(store)

@@ -55,6 +55,9 @@ HTML corpus. Tests never require network access.
 
 `--experimental-live` is a manual human opt-in for raspberry-pi-product
 only. It does not enable the source, promote it, or open delivery.
+Foundation 1D makes PIP the primary live surface; raspberrypi.com/products/
+is supplementary and optional. CSRF tokens are excluded from semantic
+evidence hashes so transport churn is not intelligence churn.
 
 ## Semantics preserved from Foundation 0
 

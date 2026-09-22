@@ -7,6 +7,7 @@ for tests. Index/navigation pages are leads, not product evidence.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from html.parser import HTMLParser
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from board_clank.collectors.base import CollectorAdapter, CollectorError
 from board_clank.identity import UNKNOWN, VariantDimensions, slugify
@@ -140,6 +142,11 @@ class _PageParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._capture:
             self._buf += data
+
+
+def _board_slug(name: str) -> str:
+    """Keep official plus-revision markers (B+, 3+, A+) distinct from the base model."""
+    return slugify(name.replace("+", " plus "))
 
 
 def _clean_name(raw: str) -> str:
@@ -389,8 +396,10 @@ def _build_spec(blob: str, soc_name: str, ram_matrix: str, soc_vendor: str = "br
 
 def _extract_skus(html: str) -> list[str]:
     """Capture SCxxxx model identifiers. Search-placeholder examples are ignored."""
+    stripped = re.sub(r"<form[\s\S]*?</form>", " ", html, flags=re.I)
+    stripped = re.sub(r"<input[^>]*>", " ", stripped, flags=re.I)
     found: list[str] = []
-    for line in html.splitlines():
+    for line in stripped.splitlines():
         lowered = line.lower()
         if "e.g." in lowered or "placeholder" in lowered or 'name="q"' in lowered:
             continue
@@ -408,6 +417,84 @@ def _extract_pcn_titles(texts: list[str]) -> list[str]:
             if cleaned and cleaned not in titles and cleaned != "PCN":
                 titles.append(cleaned)
     return titles
+
+
+_VOLATILE_HTML = (
+    re.compile(r'<meta\s+name="csrf-token"\s+content="[^"]*"', re.I),
+    re.compile(r'content="[^"]+"\s+name="csrf-token"', re.I),
+    re.compile(r'name="authenticity_token"[^>]*value="[^"]*"', re.I),
+    re.compile(r'value="[^"]+"[^>]*name="authenticity_token"', re.I),
+    re.compile(r'_product_information_session=[^;"\s]+', re.I),
+    re.compile(r'\bnonce="[^"]+"', re.I),
+    re.compile(r'csrf-token=[^;"\s]+', re.I),
+    re.compile(r'name="csrf-param"[^>]*>', re.I),
+)
+
+
+def semantic_html(html: str) -> str:
+    """Drop known non-semantic PIP transport tokens before hashing."""
+    text = html
+    for pattern in _VOLATILE_HTML:
+        text = pattern.sub("", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def semantic_evidence_hash(html: str) -> str:
+    return hashlib.sha256(semantic_html(html).encode("utf-8")).hexdigest()
+
+
+def raw_body_hash(body: bytes | str) -> str:
+    if isinstance(body, str):
+        body = body.encode("utf-8")
+    return hashlib.sha256(body).hexdigest()
+
+
+def _is_pcn_url(url: str) -> bool:
+    path = urlparse(url).path.rstrip("/").lower()
+    return path.endswith("-pcn") or path.endswith("/pcn")
+
+
+def _is_in_scope_pip_category(url: str) -> bool:
+    """Discovery allowlist for PIP category paths. Heading checks still apply later."""
+    path = urlparse(url).path.lower()
+    if _is_pcn_url(url):
+        return False
+    blocked = (
+        "raspberry-pi-400",
+        "raspberry-pi-500",
+        "desktop-kit",
+        "io-board",
+        "io-case",
+        "programming-jig",
+        "radio-module",
+        "microcontroller",
+        "pico",
+        "mouse",
+        "monitor",
+        "keyboard",
+        "case",
+        "camera",
+        "display",
+        "hat",
+        "antenna",
+        "accessory",
+        "peripherals",
+    )
+    if any(token in path for token in blocked):
+        return False
+    return any(
+        token in path
+        for token in (
+            "raspberry-pi-zero",
+            "raspberry-pi-1",
+            "raspberry-pi-2",
+            "raspberry-pi-3",
+            "raspberry-pi-4",
+            "raspberry-pi-5",
+            "raspberry-pi-model",
+            "compute-module",
+        )
+    )
 
 
 def _classify_pip(parsed_url, parser: _PageParser) -> tuple[str, list[str], list[str]]:
@@ -490,7 +577,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     ram_source = " ".join(line for line in spec_lines if re.search(r"sdram|lpddr|\bram\b|512\s*mb", line, re.I) and "emmc" not in line.lower())
     storage_source = " ".join(line for line in spec_lines if "emmc" in line.lower() or "flash memory" in line.lower())
     family_slug, family_name, board_type = _family_and_type(name)
-    board_slug = slugify(name)
+    board_slug = _board_slug(name)
     soc_vendor, soc_name = _extract_soc(blob)
     ram_opts = _ram_options(ram_source or blob)
     storage_opts = _storage_options(storage_source or blob) or [UNKNOWN]
@@ -502,8 +589,9 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     insufficient = not spec_lines or soc_name in {UNKNOWN, "CONFLICT"} or not ram_opts and "512MB" not in blob.upper() and "SDRAM" not in blob.upper()
     if not spec_lines:
         insufficient = True
+    pip_identity = parsed_url.netloc in PIP_HOSTS and _is_computer_name(name)
 
-    if insufficient and not conflict:
+    if insufficient and not conflict and not pip_identity:
         diagnostics["status"] = "insufficient-evidence"
         draft = ObservationDraft(
             source_key=SOURCE_KEY,
@@ -569,6 +657,8 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
 
     if not ram_opts:
         ram_opts = [UNKNOWN]
+    if pip_identity and insufficient:
+        diagnostics["identity_only"] = True
 
     drafts: list[ObservationDraft] = []
     ram_matrix = ",".join(ram_opts) if ram_opts else UNKNOWN
@@ -620,7 +710,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                         historical_known=historical_known,
                     )
                 )
-    diagnostics["status"] = "resolved"
+    diagnostics["status"] = "resolved-identity" if pip_identity and insufficient else "resolved"
     diagnostics["observation_count"] = len(drafts)
     diagnostics["board_slug"] = board_slug
     return drafts, diagnostics
@@ -675,7 +765,7 @@ def collect_corpus(name: str, *, run_id: str, started_at: str, corpus_dir: Path 
         diagnostics["documents"].append({"id": doc["id"], **info})
         diagnostics["leads"].extend(info.get("lead_hrefs") or [])
         diagnostics["candidate_references"] += 1 if doc.get("role") != "lead" else len(info.get("lead_hrefs") or [])
-        if info.get("status") == "resolved":
+        if info.get("status") in {"resolved", "resolved-identity"}:
             diagnostics["resolved"] += 1
             observations.extend(drafts)
         elif info.get("status") == "insufficient-evidence":
@@ -719,6 +809,10 @@ def _assert_official_url(url: str) -> str:
 
 
 def fetch_official(url: str, *, timeout: int = 20) -> str:
+    return fetch_official_meta(url, timeout=timeout)["text"]
+
+
+def fetch_official_meta(url: str, *, timeout: int = 20) -> dict[str, Any]:
     _assert_official_url(url)
     request = Request(
         url,
@@ -726,8 +820,21 @@ def fetch_official(url: str, *, timeout: int = 20) -> str:
         method="GET",
     )
     with urlopen(request, timeout=timeout) as response:  # noqa: S310 - host allowlisted above
+        raw = response.read()
         charset = response.headers.get_content_charset() or "utf-8"
-        return response.read().decode(charset, errors="replace")
+        text = raw.decode(charset, errors="replace")
+        final = response.geturl()
+        return {
+            "requested_url": url,
+            "final_url": final,
+            "http_status": getattr(response, "status", None) or response.getcode(),
+            "content_type": response.headers.get("Content-Type"),
+            "byte_length": len(raw),
+            "raw_body_hash": raw_body_hash(raw),
+            "semantic_evidence_hash": semantic_evidence_hash(text),
+            "redirected": final.rstrip("/") != url.rstrip("/"),
+            "text": text,
+        }
 
 
 class RaspberryPiProductAdapter(CollectorAdapter):
@@ -757,33 +864,93 @@ class RaspberryPiProductAdapter(CollectorAdapter):
         return drafts
 
     def _collect_live(self, run_id: str, started_at: str) -> CollectorRunRequest:
+        """PIP-primary live path. Marketing catalogue is supplementary and optional."""
         diagnostics: dict[str, Any] = {
-            "mode": "experimental-live",
+            "mode": "experimental-live-pip",
+            "primary_surface": PIP_URL,
             "documents": [],
+            "fetches": [],
             "candidate_references": 0,
             "resolved": 0,
             "parser_errors": [],
             "leads": [],
+            "rejected": [],
+            "pcn_pages": [],
+            "marketing_catalogue": "not-required",
         }
+        observations: list[ObservationDraft] = []
+
+        def record_fetch(url: str) -> dict[str, Any]:
+            try:
+                meta = fetch_official_meta(url)
+                rec = {k: v for k, v in meta.items() if k != "text"}
+                rec["ok"] = True
+                diagnostics["fetches"].append(rec)
+                return meta
+            except (CollectorError, HTTPError, URLError, OSError) as exc:
+                diagnostics["fetches"].append({"requested_url": url, "ok": False, "error": str(exc)})
+                raise CollectorError(f"fetch failed for {url}: {exc}") from exc
+
         try:
-            index_html = fetch_official(CATALOGUE_URL)
-            _drafts, info = parse_product_html(index_html, page_url=CATALOGUE_URL, observed_at=started_at)
-            leads = [url for url in info.get("lead_hrefs") or [] if _is_likely_computer_url(url)]
+            leads: list[str] = []
+            for root in (PIP_COMPUTERS_URL, PIP_MODULES_URL):
+                meta = record_fetch(root)
+                _drafts, info = parse_product_html(meta["text"], page_url=root, observed_at=started_at)
+                info["raw_body_hash"] = meta["raw_body_hash"]
+                info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
+                diagnostics["documents"].append(info)
+                for lead in info.get("lead_hrefs") or []:
+                    if _is_pcn_url(lead):
+                        continue
+                    if _is_in_scope_pip_category(lead):
+                        leads.append(lead)
+                    else:
+                        diagnostics["rejected"].append({"url": lead, "reason": "out-of-scope-or-non-board"})
+            leads = sorted(set(leads))
             diagnostics["leads"] = leads
             diagnostics["candidate_references"] = len(leads)
-            observations: list[ObservationDraft] = []
+
             for url in leads:
                 try:
-                    html = fetch_official(url)
-                    drafts, page_info = parse_product_html(html, page_url=url, observed_at=started_at)
+                    meta = record_fetch(url)
+                    drafts, page_info = parse_product_html(meta["text"], page_url=url, observed_at=started_at)
                 except CollectorError as exc:
                     diagnostics["parser_errors"].append(str(exc))
                     diagnostics["documents"].append({"page_url": url, "status": "error"})
                     continue
+                page_info["raw_body_hash"] = meta["raw_body_hash"]
+                page_info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(page_info)
-                if page_info.get("status") == "resolved":
+                pcn_titles: list[str] = list(page_info.get("pcns") or [])
+                for href in page_info.get("lead_hrefs") or []:
+                    if not _is_pcn_url(href):
+                        continue
+                    try:
+                        pcn_meta = record_fetch(href)
+                        _pcn_drafts, pcn_info = parse_product_html(
+                            pcn_meta["text"], page_url=href, observed_at=started_at
+                        )
+                        pcn_info["raw_body_hash"] = pcn_meta["raw_body_hash"]
+                        pcn_info["semantic_evidence_hash"] = pcn_meta["semantic_evidence_hash"]
+                        diagnostics["pcn_pages"].append(pcn_info)
+                        pcn_titles.extend(pcn_info.get("pcns") or [])
+                    except CollectorError as exc:
+                        diagnostics["parser_errors"].append(str(exc))
+                if page_info.get("status") in {"resolved", "resolved-identity"}:
                     diagnostics["resolved"] += 1
+                    for draft in drafts:
+                        existing = list(draft.raw_fields.get("pcns") or [])
+                        merged = list(dict.fromkeys(existing + pcn_titles))
+                        draft.raw_fields["pcns"] = merged
                     observations.extend(drafts)
+
+            try:
+                market = fetch_official_meta(CATALOGUE_URL)
+                diagnostics["marketing_catalogue"] = "reachable"
+                diagnostics["fetches"].append({k: v for k, v in market.items() if k != "text"} | {"ok": True})
+            except (CollectorError, HTTPError, URLError, OSError):
+                diagnostics["marketing_catalogue"] = "unreachable-optional"
+
             return CollectorRunRequest(
                 run_id=run_id,
                 source_key=SOURCE_KEY,
@@ -800,9 +967,9 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                 source_key=SOURCE_KEY,
                 collector_key=COLLECTOR_KEY,
                 started_at=started_at,
-                observations=[],
-                ok=False,
-                error=f"experimental live fetch failed: {exc}",
+                observations=observations,
+                ok=bool(observations),
+                error=None if observations else f"experimental live fetch failed: {exc}",
                 diagnostics=diagnostics,
             )
 

@@ -270,6 +270,39 @@
           "observed_at": "2026-09-22T00:00:00+00:00"
         }
       ]
+    },
+    "pip-live-sim": {
+      "description": "Deterministic PIP-shaped live simulation for baseline and CSRF tests.",
+      "documents": [
+        {
+          "id": "pip-computers",
+          "file": "html/pip-computers.html",
+          "page_url": "https://pip.raspberrypi.com/categories/505-computers",
+          "role": "lead",
+          "observed_at": "2026-09-22T12:00:00+00:00"
+        },
+        {
+          "id": "pip-pi5",
+          "file": "html/pip-pi5.html",
+          "page_url": "https://pip.raspberrypi.com/categories/892-raspberry-pi-5",
+          "role": "product",
+          "observed_at": "2026-09-22T12:00:00+00:00"
+        },
+        {
+          "id": "pip-cm5-identity",
+          "file": "html/pip-cm5-identity.html",
+          "page_url": "https://pip.raspberrypi.com/categories/944-raspberry-pi-compute-module-5",
+          "role": "product",
+          "observed_at": "2026-09-22T12:00:00+00:00"
+        },
+        {
+          "id": "pip-pi4-pcn",
+          "file": "html/pip-pi4-pcn.html",
+          "page_url": "https://pip.raspberrypi.com/categories/560-pcn",
+          "role": "pcn",
+          "observed_at": "2026-09-22T12:00:00+00:00"
+        }
+      ]
     }
   }
 }
