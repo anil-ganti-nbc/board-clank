@@ -841,6 +841,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
     source_key = SOURCE_KEY
     collector_key = COLLECTOR_KEY
     live_network = False
+    supports_experimental_live = True
 
     def __init__(self, *, experimental_live: bool = False, corpus: str = "baseline") -> None:
         self.experimental_live = experimental_live

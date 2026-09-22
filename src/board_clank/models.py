@@ -32,6 +32,15 @@ def canonical_json(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
 
 
+# Spec fields that describe variant enumeration or revision echo rather than
+# the board itself. BOARD-level comparison must not churn because a source
+# enumerated commercial memory options differently on another page of the
+# same board (Foundation 2A: storefront pages split per configuration), nor
+# because a page-level revision heading appeared or disappeared. These fields
+# stay VARIANT/REVISION-visible.
+BOARD_SCOPE_EXCLUDED_SPEC_FIELDS = ("ram_options", "emmc_options", "pcb_revision")
+
+
 def content_hash(payload: Any) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
@@ -182,6 +191,11 @@ class ObservationDraft(BaseModel):
             # comparison keeps price so a product-page price edit remains a
             # board transition without requiring a variant key change.
             payload["price"] = self.price.model_dump() if self.price else None
+            payload["spec"] = {
+                key: value
+                for key, value in self.spec.model_dump().items()
+                if key not in BOARD_SCOPE_EXCLUDED_SPEC_FIELDS
+            }
         return payload
 
     def payload_hash(self, kind: EntityKind | None = None) -> str:

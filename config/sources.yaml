@@ -32,9 +32,9 @@ sources:
     enabled: false
     registered_state: REGISTERED
     promotion_state: EXPERIMENTAL
-    expected_identity_surface: family+board
-    expected_variant_surface: ram+emmc
-    notes: Official Orange Pi catalogue. Experimental adapter only.
+    expected_identity_surface: family+board+revision
+    expected_variant_surface: ram+emmc+bundle
+    notes: Official Orange Pi English catalogue (HTTP-only first party; www.orangepi.org canonical; orangepi.cn mirror, wiki and commerce stores not ingested). Foundation 2A experimental PRODUCT adapter; disabled by default; live fetch is manual --experimental-live only; not promoted.
 
   - source_key: radxa-product
     vendor: radxa

@@ -1,0 +1,274 @@
+{
+  "source_key": "orange-pi-product",
+  "vendor": "orange-pi",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "observed_at": "2026-09-22T00:00:00+00:00",
+  "official_surfaces": [
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/index.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-Pro.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-plus.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-3.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-2W.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-3B.html",
+    "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-CM4.html",
+    "http://www.orangepi.cn/ (regional mirror; documented duplicate; not ingested)",
+    "http://wiki.orangepi.org/ (documentation plane; not ingested in 2A)"
+  ],
+  "corpora": {
+    "baseline": {
+      "description": "First Orange Pi corpus: representative boards from the official English catalogue.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/index.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/index.html",
+          "role": "lead"
+        },
+        {
+          "id": "opi5-pro",
+          "file": "html/Orange-Pi-5-Pro.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-Pro.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5",
+          "file": "html/Orange-Pi-5.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5-plus",
+          "file": "html/Orange-Pi-5-plus.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-plus.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero3",
+          "file": "html/Orange-Pi-Zero-3.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-3.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero2w",
+          "file": "html/Orange-Pi-Zero-2W.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-2W.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi3b",
+          "file": "html/Orange-Pi-3B.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-3B.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm4",
+          "file": "html/Orange-Pi-CM4.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-CM4.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "second-reference": {
+      "description": "Config-storefront page for an already-baselined board (RAM-in-name page).",
+      "documents": [
+        {
+          "id": "opi5-32gb",
+          "file": "html/Orange-Pi-5-32GB.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-32GB.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "expanded": {
+      "description": "Baseline plus config-storefront and same-family pages in one run.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/index.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/index.html",
+          "role": "lead"
+        },
+        {
+          "id": "opi5-pro",
+          "file": "html/Orange-Pi-5-Pro.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-Pro.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5",
+          "file": "html/Orange-Pi-5.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5-plus",
+          "file": "html/Orange-Pi-5-plus.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-plus.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero3",
+          "file": "html/Orange-Pi-Zero-3.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-3.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero2w",
+          "file": "html/Orange-Pi-Zero-2W.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-2W.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi3b",
+          "file": "html/Orange-Pi-3B.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-3B.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm4",
+          "file": "html/Orange-Pi-CM4.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-CM4.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5-32gb",
+          "file": "html/Orange-Pi-5-32GB.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-32GB.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "opi5-max",
+          "file": "html/Orange-Pi-5-Max.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-Max.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "conflict": {
+      "description": "Product page naming two distinct application processors.",
+      "documents": [
+        {
+          "id": "opi6-plus",
+          "file": "html/Orange-Pi-6-Plus.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-6-Plus.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Board-shaped name without a specification table.",
+      "documents": [
+        {
+          "id": "opi7",
+          "file": "html/Orange-Pi-7.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-7.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "non-board": {
+      "description": "Keyboard computer, carrier boards and accessory modules.",
+      "documents": [
+        {
+          "id": "opi800",
+          "file": "html/orange-pi-800.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/orange-pi-800.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm4-base",
+          "file": "html/Orange-Pi-CM4-Base-Board.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-CM4-Base-Board.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm5-base",
+          "file": "html/OrangePi-CM5-Base-Board.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/OrangePi-CM5-Base-Board.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "emmc-module",
+          "file": "html/Orange-Pi-emmc.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-emmc.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "wifi6-module",
+          "file": "html/Orange-Pi-5-WiFi6-Module.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-WiFi6-Module.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "bundle": {
+      "description": "Same board sold with and without a metal case.",
+      "documents": [
+        {
+          "id": "r1-lts",
+          "file": "html/orange-pi-R1-Plus-LTS.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/orange-pi-R1-Plus-LTS.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "r1-lts-case",
+          "file": "html/Orange-Pi-R1-Plus-LTS-With-Metal-Case.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-R1-Plus-LTS-With-Metal-Case.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Broken HTML fragment; collector must fail observably.",
+      "documents": [
+        {
+          "id": "malformed",
+          "file": "html/malformed.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/malformed.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "revision-absent": {
+      "description": "5 Pro page without the V1.2 pin-definition heading (same canonical URL).",
+      "documents": [
+        {
+          "id": "opi5-pro-norev",
+          "file": "html/Orange-Pi-5-Pro-no-rev.html",
+          "page_url": "http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5-Pro.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

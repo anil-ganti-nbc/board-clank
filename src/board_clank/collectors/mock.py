@@ -42,7 +42,7 @@ class FixtureCollector:
 ADAPTERS = {
     vendor: InertVendorAdapter(vendor, f"{vendor}-product")
     for vendor in PHASE1_VENDORS
-    if vendor != "raspberry-pi"
+    if vendor not in {"raspberry-pi", "orange-pi"}
 }
 
 
@@ -51,6 +51,13 @@ def get_adapter(source_key: str, **kwargs):
         from board_clank.collectors.raspberry_pi import RaspberryPiProductAdapter
 
         return RaspberryPiProductAdapter(
+            experimental_live=bool(kwargs.get("experimental_live")),
+            corpus=str(kwargs.get("corpus") or "baseline"),
+        )
+    if source_key in {"orange-pi-product", "orange-pi"}:
+        from board_clank.collectors.orange_pi import OrangePiProductAdapter
+
+        return OrangePiProductAdapter(
             experimental_live=bool(kwargs.get("experimental_live")),
             corpus=str(kwargs.get("corpus") or "baseline"),
         )

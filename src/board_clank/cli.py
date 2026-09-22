@@ -168,8 +168,13 @@ def cmd_collect(args: argparse.Namespace) -> int:
         print(json.dumps({"status": "refused", "reason": "live collection is disabled in Foundation 0"}))
         return 2
     experimental_live = bool(getattr(args, "experimental_live", False))
-    if experimental_live and args.source != RPI_SOURCE_KEY:
-        print(json.dumps({"status": "refused", "reason": "experimental live is only implemented for raspberry-pi-product"}))
+    adapter = get_adapter(
+        args.source,
+        experimental_live=experimental_live,
+        corpus=getattr(args, "corpus", None) or "baseline",
+    )
+    if experimental_live and not getattr(type(adapter), "supports_experimental_live", False):
+        print(json.dumps({"status": "refused", "reason": f"experimental live is not implemented for {args.source}"}))
         return 2
     store = _open_store(args.db, migrate=True)
     sync_sources_to_store(store)
@@ -180,12 +185,14 @@ def cmd_collect(args: argparse.Namespace) -> int:
         results = [pipeline.accept_run(req).as_dict() for req in requests]
         store.close()
         return _json({"mode": "fixture", "results": results})
-    adapter = get_adapter(
-        args.source,
-        experimental_live=experimental_live,
-        corpus=getattr(args, "corpus", None) or "baseline",
-    )
-    mode = "experimental-live" if experimental_live else ("rpi-fixture" if args.source == RPI_SOURCE_KEY else "inert")
+    if experimental_live:
+        mode = "experimental-live"
+    elif args.source == RPI_SOURCE_KEY:
+        mode = "rpi-fixture"
+    elif hasattr(adapter, "corpus"):
+        mode = "corpus-fixture"
+    else:
+        mode = "inert"
     result = pipeline.accept_run(adapter.collect(args.run_id or f"{mode}-{args.source}", now))
     store.close()
     return _json({"mode": mode, "result": result.as_dict(), "delivery_eligible": False, "promoted": False})
@@ -258,7 +265,7 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument(
         "--experimental-live",
         action="store_true",
-        help="Manual opt-in network fetch for raspberry-pi-product only. Never used by tests.",
+        help="Manual opt-in network fetch for live-capable sources only. Never used by tests.",
     )
     collect.add_argument("--corpus", default="baseline", help="Offline Raspberry Pi fixture corpus name")
     intel = sub.add_parser("source-intel")

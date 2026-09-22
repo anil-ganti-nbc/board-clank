@@ -304,6 +304,12 @@ class Pipeline:
                 # revision_key = vendor:board:KIND:token
                 kind = RevisionKind(kind_token[-2]) if len(kind_token) >= 2 else RevisionKind.UNKNOWN
                 token = kind_token[-1]
+                # The resolved identity owns the revision echo from here on;
+                # a page that stopped naming the revision must not make the
+                # stored revision payload look like it changed.
+                draft.revision_kind = kind
+                draft.revision_token = token
+                draft.spec.pcb_revision = token
                 identity = BoardIdentity(
                     vendor_key=draft.vendor_key,
                     family_key=f"{draft.vendor_key}:{draft.family_slug}",
