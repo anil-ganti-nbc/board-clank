@@ -31,7 +31,7 @@ def test_transaction_rollback_on_enqueue_failure(store: Store, monkeypatch: pyte
 
 def test_unknown_and_native_fields_preserved(store: Store) -> None:
     pipeline = Pipeline(store)
-    pipeline.accept_run(scenario_to_request(load_scenario("A"))[0]
+    pipeline.accept_run(scenario_to_request(load_scenario("A"))[0])
     row = store.one("SELECT payload_json FROM canonical_observations WHERE entity_kind = 'BOARD'")
     payload = json.loads(row["payload_json"])
     assert payload["native_fields"]["vendor_sku_matrix"] == "kept"
