@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from board_clank.pipeline import Pipeline
 from board_clank.store import Store
-from tests.conftest import run_scenario
+from conftest import run_scenario
 
 
 def event_types(store: Store) -> list[str]:
