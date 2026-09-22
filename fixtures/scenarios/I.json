@@ -1,0 +1,129 @@
+{
+  "scenario": "I",
+  "title": "stock state changes only",
+  "source_key": "pine64-product",
+  "runs": [
+    {
+      "run_id": "I-baseline",
+      "source_key": "pine64-product",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "pine64-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "pine64",
+          "vendor_name": "pine64",
+          "family_slug": "pine-a64",
+          "family_name": "pine-a64",
+          "board_slug": "pine-a64-lts",
+          "marketing_name": "PINE A64-LTS",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "allwinner",
+          "soc_marketing_name": "a64",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "PINE A64-LTS"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "I-oos",
+      "source_key": "pine64-product",
+      "started_at": "2026-07-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "pine64-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-07-01T00:00:00+00:00",
+          "vendor_key": "pine64",
+          "vendor_name": "pine64",
+          "family_slug": "pine-a64",
+          "family_name": "pine-a64",
+          "board_slug": "pine-a64-lts",
+          "marketing_name": "PINE A64-LTS",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "allwinner",
+          "soc_marketing_name": "a64",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "OUT_OF_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "PINE A64-LTS"
+          }
+        }
+      ]
+    }
+  ]
+}
