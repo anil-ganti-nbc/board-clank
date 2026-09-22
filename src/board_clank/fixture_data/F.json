@@ -1,0 +1,74 @@
+{
+  "scenario": "F",
+  "title": "docs page appears before product announcement",
+  "source_key": "radxa-docs",
+  "runs": [
+    {
+      "run_id": "F-docs",
+      "source_key": "radxa-docs",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "radxa-docs",
+          "plane": "DOCUMENTATION",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "radxa",
+          "vendor_name": "radxa",
+          "family_slug": "rock-5",
+          "family_name": "rock-5",
+          "board_slug": "rock-5t",
+          "marketing_name": "Radxa ROCK 5T",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3588",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Radxa ROCK 5T"
+          },
+          "novelty": {
+            "docs_date": "2026-01-01T00:00:00+00:00",
+            "novelty_status": "UNKNOWN",
+            "novelty_basis": "documentation_is_not_launch",
+            "novelty_confidence": "low"
+          }
+        }
+      ]
+    }
+  ]
+}

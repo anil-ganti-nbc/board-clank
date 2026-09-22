@@ -1,0 +1,7 @@
+# Deterministic Foundation 0 runtime lock.
+# Generated from the Foundation 0 bootstrap environment (Python 3.12).
+annotated-types==0.7.0
+pydantic==2.13.4
+pydantic-core==2.46.4
+PyYAML==6.0.1
+typing-extensions==4.15.0

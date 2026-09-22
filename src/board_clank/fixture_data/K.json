@@ -1,0 +1,181 @@
+{
+  "scenario": "K",
+  "title": "historical content recurrence A\u2192B\u2192A",
+  "source_key": "orange-pi-product",
+  "runs": [
+    {
+      "run_id": "K-A1",
+      "source_key": "orange-pi-product",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "orange-pi-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "orange-pi",
+          "vendor_name": "orange-pi",
+          "family_slug": "zero",
+          "family_name": "zero",
+          "board_slug": "orange-pi-zero-3",
+          "marketing_name": "Orange Pi Zero 3",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "allwinner",
+          "soc_marketing_name": "h618",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 5",
+            "hdmi_out": "1x hdmi",
+            "usb": "4x usb2",
+            "gpio_header": "40-pin"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Orange Pi Zero 3"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "K-B",
+      "source_key": "orange-pi-product",
+      "started_at": "2026-02-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "orange-pi-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-02-01T00:00:00+00:00",
+          "vendor_key": "orange-pi",
+          "vendor_name": "orange-pi",
+          "family_slug": "zero",
+          "family_name": "zero",
+          "board_slug": "orange-pi-zero-3",
+          "marketing_name": "Orange Pi Zero 3",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "allwinner",
+          "soc_marketing_name": "h618",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "hdmi_out": "1x hdmi",
+            "usb": "4x usb2",
+            "gpio_header": "40-pin"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Orange Pi Zero 3"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "K-A2",
+      "source_key": "orange-pi-product",
+      "started_at": "2026-03-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "orange-pi-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-03-01T00:00:00+00:00",
+          "vendor_key": "orange-pi",
+          "vendor_name": "orange-pi",
+          "family_slug": "zero",
+          "family_name": "zero",
+          "board_slug": "orange-pi-zero-3",
+          "marketing_name": "Orange Pi Zero 3",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "allwinner",
+          "soc_marketing_name": "h618",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 5",
+            "hdmi_out": "1x hdmi",
+            "usb": "4x usb2",
+            "gpio_header": "40-pin"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Orange Pi Zero 3"
+          }
+        }
+      ]
+    }
+  ]
+}

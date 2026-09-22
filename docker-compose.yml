@@ -1,0 +1,16 @@
+# Foundation 0 local image only. No scheduler. No webhook.
+services:
+  board-clank:
+    build:
+      context: .
+      args:
+        GIT_REVISION: ${GIT_REVISION:-unknown}
+    image: board-clank:foundation-0
+    user: "10001:10001"
+    read_only: false
+    volumes:
+      - board-clank-data:/app/data
+    command: ["health"]
+
+volumes:
+  board-clank-data:

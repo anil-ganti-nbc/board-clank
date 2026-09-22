@@ -1,0 +1,143 @@
+{
+  "scenario": "H",
+  "title": "price changes only",
+  "source_key": "hardkernel-odroid-product",
+  "runs": [
+    {
+      "run_id": "H-baseline",
+      "source_key": "hardkernel-odroid-product",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "hardkernel-odroid-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "hardkernel-odroid",
+          "vendor_name": "hardkernel-odroid",
+          "family_slug": "odroid-m",
+          "family_name": "odroid-m",
+          "board_slug": "odroid-m1s",
+          "marketing_name": "ODROID-M1S",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3566",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "UNKNOWN",
+            "hdmi_out": "1x hdmi",
+            "usb": "2x usb2",
+            "gpio_header": "40-pin",
+            "price": "45.00",
+            "currency": "USD"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "ODROID-M1S"
+          },
+          "price": {
+            "amount": "45.00",
+            "currency": "USD",
+            "region": "US",
+            "variant_key": "UNKNOWN",
+            "source_key": "hardkernel-odroid-product",
+            "observed_at": "2026-01-01T00:00:00+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "H-price",
+      "source_key": "hardkernel-odroid-product",
+      "started_at": "2026-06-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "hardkernel-odroid-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-06-01T00:00:00+00:00",
+          "vendor_key": "hardkernel-odroid",
+          "vendor_name": "hardkernel-odroid",
+          "family_slug": "odroid-m",
+          "family_name": "odroid-m",
+          "board_slug": "odroid-m1s",
+          "marketing_name": "ODROID-M1S",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3566",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "UNKNOWN",
+            "hdmi_out": "1x hdmi",
+            "usb": "2x usb2",
+            "gpio_header": "40-pin",
+            "price": "39.00",
+            "currency": "USD"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "ODROID-M1S"
+          },
+          "price": {
+            "amount": "39.00",
+            "currency": "USD",
+            "region": "US",
+            "variant_key": "UNKNOWN",
+            "source_key": "hardkernel-odroid-product",
+            "observed_at": "2026-06-01T00:00:00+00:00"
+          }
+        }
+      ]
+    }
+  ]
+}

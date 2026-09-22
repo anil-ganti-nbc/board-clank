@@ -1,0 +1,8 @@
+title = "board-clank"
+
+[allowlist]
+description = "Foundation 0 contains no live secrets"
+paths = [
+  '''docs/''',
+  '''fixtures/''',
+]

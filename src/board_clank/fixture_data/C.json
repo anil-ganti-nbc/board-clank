@@ -1,0 +1,129 @@
+{
+  "scenario": "C",
+  "title": "explicit v2.1 revision",
+  "source_key": "radxa-product",
+  "runs": [
+    {
+      "run_id": "C-baseline",
+      "source_key": "radxa-product",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "radxa-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "radxa",
+          "vendor_name": "radxa",
+          "family_slug": "rock-5",
+          "family_name": "rock-5",
+          "board_slug": "rock-5b",
+          "marketing_name": "Radxa ROCK 5B",
+          "board_type": "SBC",
+          "revision_kind": "MARKETING",
+          "revision_token": "v1.0",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3588",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "HIGH_END_ARM"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Radxa ROCK 5B"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "C-v21",
+      "source_key": "radxa-product",
+      "started_at": "2026-03-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "radxa-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-03-01T00:00:00+00:00",
+          "vendor_key": "radxa",
+          "vendor_name": "radxa",
+          "family_slug": "rock-5",
+          "family_name": "rock-5",
+          "board_slug": "rock-5b",
+          "marketing_name": "Radxa ROCK 5B v2.1",
+          "board_type": "SBC",
+          "revision_kind": "MARKETING",
+          "revision_token": "v2.1",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3588",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "HIGH_END_ARM"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Radxa ROCK 5B v2.1"
+          }
+        }
+      ]
+    }
+  ]
+}

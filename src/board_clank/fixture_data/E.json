@@ -1,0 +1,78 @@
+{
+  "scenario": "E",
+  "title": "store page appears but historical evidence proves old product",
+  "source_key": "pine64-commerce",
+  "runs": [
+    {
+      "run_id": "E-store",
+      "source_key": "pine64-commerce",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "pine64-commerce",
+          "plane": "COMMERCE",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "pine64",
+          "vendor_name": "pine64",
+          "family_slug": "rock64",
+          "family_name": "rock64",
+          "board_slug": "rock64",
+          "marketing_name": "ROCK64",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "rockchip",
+          "soc_marketing_name": "rk3328",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "ROCK64"
+          },
+          "historical_known": true,
+          "novelty": {
+            "first_seen_at": "2026-01-01T00:00:00+00:00",
+            "first_seen_source": "pine64-commerce",
+            "official_announcement_at": "2017-06-01",
+            "official_sale_at": "2017-07-01",
+            "novelty_status": "HISTORICAL",
+            "novelty_basis": "announcement_date_precedes_first_seen",
+            "novelty_confidence": "high"
+          }
+        }
+      ]
+    }
+  ]
+}

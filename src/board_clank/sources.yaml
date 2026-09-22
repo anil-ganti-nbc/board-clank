@@ -1,0 +1,201 @@
+# Board Clank source roster — Foundation 0
+# Phase-1 vendors are REGISTERED / EXPERIMENTAL only.
+# No source is promoted. No source is enabled for live collection.
+# Discovery appearance is not novelty. Store appearance is not announcement.
+
+meta:
+  foundation: 0
+  promotion_freeze: true
+  live_collection: false
+  jetson_scope: out-of-scope-pending-decision
+
+sources:
+  - source_key: raspberry-pi-product
+    vendor: raspberry-pi
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - https://www.raspberrypi.com/products/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board+revision
+    expected_variant_surface: ram+wireless
+    notes: Official product catalogue. Experimental adapter only.
+
+  - source_key: orange-pi-product
+    vendor: orange-pi
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - http://www.orangepi.org/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board
+    expected_variant_surface: ram+emmc
+    notes: Official Orange Pi catalogue. Experimental adapter only.
+
+  - source_key: radxa-product
+    vendor: radxa
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - https://radxa.com/products/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board+revision
+    expected_variant_surface: ram+wireless+emmc
+    notes: Official Radxa product pages. Experimental adapter only.
+
+  - source_key: banana-pi-product
+    vendor: banana-pi
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - https://banana-pi.org/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board
+    expected_variant_surface: ram
+    notes: Official Banana Pi pages. Experimental adapter only.
+
+  - source_key: hardkernel-odroid-product
+    vendor: hardkernel-odroid
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - https://www.hardkernel.com/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board+revision
+    expected_variant_surface: ram+emmc
+    notes: Official Hardkernel / ODROID catalogue. Experimental adapter only.
+
+  - source_key: pine64-product
+    vendor: pine64
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls:
+      - https://pine64.org/
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: family+board
+    expected_variant_surface: ram+wireless
+    notes: Official PINE64 pages. Experimental adapter only.
+
+  # Phase-2 placeholders — documented, not activated.
+  - source_key: friendlyelec-placeholder
+    vendor: friendlyelec
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: milk-v-placeholder
+    vendor: milk-v
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: beagleboard-placeholder
+    vendor: beagleboard
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: libre-computer-placeholder
+    vendor: libre-computer
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: khadas-placeholder
+    vendor: khadas
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: up-board-placeholder
+    vendor: up-board
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: seeed-studio-placeholder
+    vendor: seeed-studio
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: firefly-placeholder
+    vendor: firefly
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: lattepanda-placeholder
+    vendor: lattepanda
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: true
+    notes: Phase-2 placeholder. Not activated in Foundation 0.
+
+  - source_key: nvidia-jetson-out-of-scope
+    vendor: nvidia-jetson
+    plane: PRODUCT
+    authority: UNVERIFIED
+    base_urls: []
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: MOTHBALLED
+    placeholder: true
+    out_of_scope: true
+    notes: Explicitly out of scope for Foundation 0 pending a later SOM/devkit domain decision.

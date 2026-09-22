@@ -1,0 +1,40 @@
+[project]
+name = "board-clank"
+version = "0.1.0"
+description = "Board Clank Foundation 0 — SBC intelligence contracts, identity, schema and silent baseline."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "anil-ganti-nbc" }]
+dependencies = [
+    "pydantic>=2.9,<3",
+    "PyYAML>=6.0.2,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+]
+
+[project.scripts]
+board-clank = "board_clank.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+board_clank = ["py.typed", "schema.sql", "sources.yaml", "fixture_data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

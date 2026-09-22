@@ -1,0 +1,129 @@
+{
+  "scenario": "G",
+  "title": "product switches SoC",
+  "source_key": "banana-pi-product",
+  "runs": [
+    {
+      "run_id": "G-baseline",
+      "source_key": "banana-pi-product",
+      "started_at": "2026-01-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "banana-pi-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-01-01T00:00:00+00:00",
+          "vendor_key": "banana-pi",
+          "vendor_name": "banana-pi",
+          "family_slug": "bpi-m",
+          "family_name": "bpi-m",
+          "board_slug": "bpi-m5",
+          "marketing_name": "Banana Pi BPI-M5",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "amlogic",
+          "soc_marketing_name": "s905x3",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Banana Pi BPI-M5"
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "G-soc",
+      "source_key": "banana-pi-product",
+      "started_at": "2026-05-01T00:00:00+00:00",
+      "observations": [
+        {
+          "source_key": "banana-pi-product",
+          "plane": "PRODUCT",
+          "observed_at": "2026-05-01T00:00:00+00:00",
+          "vendor_key": "banana-pi",
+          "vendor_name": "banana-pi",
+          "family_slug": "bpi-m",
+          "family_name": "bpi-m",
+          "board_slug": "bpi-m5",
+          "marketing_name": "Banana Pi BPI-M5",
+          "board_type": "SBC",
+          "revision_kind": "UNKNOWN",
+          "revision_token": "UNKNOWN",
+          "variant": {
+            "ram": "8GB",
+            "storage": "UNKNOWN",
+            "wireless": "wifi",
+            "region": "UNKNOWN",
+            "bundle": "UNKNOWN",
+            "sku": "UNKNOWN"
+          },
+          "soc_vendor": "amlogic",
+          "soc_marketing_name": "s905x4",
+          "architecture": "ARM",
+          "cpu_configuration": "4xA76",
+          "gpu": "VideoCore VII",
+          "npu": "UNKNOWN",
+          "npu_tops": "UNKNOWN",
+          "process_node": "16nm",
+          "spec": {
+            "ethernet": "1x gigabit",
+            "wifi": "wifi 6",
+            "bluetooth": "5.0",
+            "hdmi_out": "2x micro-hdmi",
+            "usb": "2x usb3 + 2x usb2",
+            "gpio_header": "40-pin",
+            "microsd": "yes",
+            "dimensions": "85x56mm"
+          },
+          "availability": "IN_STOCK",
+          "supported_os": [
+            "raspberry-pi-os"
+          ],
+          "editorial_context": [
+            "RPI_5_CLASS"
+          ],
+          "page_url": "https://example.invalid/pi5",
+          "native_fields": {
+            "vendor_sku_matrix": "kept"
+          },
+          "raw_fields": {
+            "title": "Banana Pi BPI-M5"
+          }
+        }
+      ]
+    }
+  ]
+}
