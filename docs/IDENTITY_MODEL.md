@@ -58,3 +58,16 @@ BOARD raspberry-pi-5
 ```
 
 A compute module wireless × eMMC matrix is still one board.
+
+## Raspberry Pi family assignment
+
+Family is a durable series, not a copy of the board slug.
+
+| Official heading | Family slug | Rule |
+| --- | --- | --- |
+| Raspberry Pi {N} … | `raspberry-pi-{N}` | Numeric SBC generation |
+| Raspberry Pi Zero / W / 2 W | `raspberry-pi-zero` | Official Zero series |
+| Raspberry Pi 400 / 500 | `raspberry-pi-400` / `raspberry-pi-500` | Official keyboard series names |
+| Compute Module 1/3/3+/4/5 | `compute-module` | Official Compute Module family |
+
+A corpus that happens to contain one board per series still uses these series keys. Alternate official references and exact run replay must not change `family_key`.

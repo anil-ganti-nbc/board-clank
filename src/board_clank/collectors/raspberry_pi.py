@@ -132,21 +132,31 @@ def _is_computer_name(name: str) -> bool:
 
 
 def _family_and_type(name: str) -> tuple[str, str, BoardType]:
+    """Assign a durable product-family slug from an official product name.
+
+    Rules (first-party catalogue series, not one-family-per-board):
+    - Compute Module 1/3/3+/4/5/Zero share family ``compute-module``.
+    - Zero / Zero W / Zero 2 W share family ``raspberry-pi-zero``.
+    - Keyboard computers 400 and 500 keep their official series names.
+    - Numeric SBC generations use ``raspberry-pi-{N}`` (Pi 3 Model B and
+      Pi 3 Model B+ share raspberry-pi-3; Pi 4 Model B is raspberry-pi-4).
+    Family is derived from the product heading only. Missing evidence stays
+    UNKNOWN rather than inventing a marketing taxonomy.
+    """
+
     lowered = name.lower()
     if "compute module" in lowered:
-        token = re.search(r"compute module\s*([0-9]+(?:\s*\+)?)?", lowered)
-        family = "compute-module-" + (token.group(1).replace(" ", "") if token and token.group(1) else "unknown")
-        return family, name, BoardType.COMPUTE_MODULE
+        return "compute-module", "Compute Module", BoardType.COMPUTE_MODULE
     if "zero" in lowered:
-        return "raspberry-pi-zero", name, BoardType.ZERO_CLASS
+        return "raspberry-pi-zero", "Raspberry Pi Zero", BoardType.ZERO_CLASS
     if re.search(r"raspberry pi 500", lowered):
-        return "raspberry-pi-500", name, BoardType.SBC
+        return "raspberry-pi-500", "Raspberry Pi 500", BoardType.SBC
     if re.search(r"raspberry pi 400", lowered):
-        return "raspberry-pi-400", name, BoardType.SBC
+        return "raspberry-pi-400", "Raspberry Pi 400", BoardType.SBC
     gen = re.search(r"raspberry pi\s+(\d+)", lowered)
     if gen:
-        family = f"raspberry-pi-{gen.group(1)}"
-        return family, name, BoardType.SBC
+        number = gen.group(1)
+        return f"raspberry-pi-{number}", f"Raspberry Pi {number}", BoardType.SBC
     return slugify(name), name, BoardType.UNKNOWN
 
 
@@ -267,13 +277,13 @@ def _first_match(blob: str, patterns: list[tuple[str, str]]) -> str:
     return UNKNOWN
 
 
-def _build_spec(blob: str, soc_name: str, ram: str, storage: str, wireless: str) -> NormalizedSpec:
+def _build_spec(blob: str, soc_name: str, ram_matrix: str) -> NormalizedSpec:
     return NormalizedSpec(
         soc=soc_name,
         soc_key=f"broadcom:{slugify(soc_name)}" if soc_name not in {UNKNOWN, "CONFLICT"} else UNKNOWN,
         cpu_arch=Architecture.ARM.value,
         ram_type=_first_match(blob, [("lpddr4x", "LPDDR4X"), ("lpddr4", "LPDDR4"), ("lpddr2", "LPDDR2")]),
-        ram_options=ram,
+        ram_options=ram_matrix,
         onboard_emmc="optional" if "emmc" in blob.lower() else UNKNOWN,
         emmc_options="matrix" if "emmc" in blob.lower() else UNKNOWN,
         microsd="yes" if "microsd" in blob.lower() or "micro sd" in blob.lower() else UNKNOWN,
@@ -412,10 +422,13 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         ram_opts = [UNKNOWN]
 
     drafts: list[ObservationDraft] = []
+    ram_matrix = ",".join(ram_opts) if ram_opts else UNKNOWN
+    storage_matrix = ",".join(storage_opts) if storage_opts else UNKNOWN
     for ram in ram_opts:
         for storage in storage_opts:
             for wireless in wireless_opts:
-                spec = _build_spec(blob, soc_name, ram, storage, wireless)
+                spec = _build_spec(blob, soc_name, ram_matrix)
+                spec.emmc_options = storage_matrix if "emmc" in blob.lower() else UNKNOWN
                 spec.pcb_revision = rev_token
                 drafts.append(
                     ObservationDraft(

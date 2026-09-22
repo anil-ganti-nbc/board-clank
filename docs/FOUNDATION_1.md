@@ -10,6 +10,11 @@ The adapter is REGISTERED and EXPERIMENTAL. It is disabled by default.
 There is no scheduler, no Discord, no webhook, no promotion, and no
 delivery activation.
 
+Foundation 1A keeps BOARD canonical comparison free of variant
+dimensions. Enumerating RAM / storage / wireless options in one run is
+VARIANT birth only. `FIELD_CHANGED` remains reserved for material board
+specification transitions.
+
 ## Official surfaces
 
 Parser and live path may read first-party Raspberry Pi product surfaces only:

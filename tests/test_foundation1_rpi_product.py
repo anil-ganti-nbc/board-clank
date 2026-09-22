@@ -6,6 +6,7 @@ from pathlib import Path
 from board_clank.cli import main
 from board_clank.collectors.raspberry_pi import (
     RaspberryPiProductAdapter,
+    _family_and_type,
     collect_corpus,
     parse_product_html,
 )
@@ -242,6 +243,113 @@ def test_insufficient_new_item_does_not_create_board(pipeline: Pipeline, store: 
     assert "NEW_BOARD" not in _live_types(store)
     slugs = {row["board_slug"] for row in store.all("SELECT board_slug FROM boards")}
     assert "raspberry-pi-6" not in slugs
+
+
+def test_same_run_variant_enumeration_does_not_emit_board_field_changed(
+    pipeline: Pipeline, store: Store
+) -> None:
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-base", started_at="2026-01-01T00:00:00+00:00"))
+    field_changed = store.all("SELECT entity_kind, entity_key FROM events WHERE event_type = 'FIELD_CHANGED'")
+    assert field_changed == []
+    board_hashes = store.all(
+        """
+        SELECT entity_key, COUNT(DISTINCT content_hash) AS hashes
+        FROM observation_occurrences
+        WHERE entity_kind = 'BOARD'
+        GROUP BY entity_key
+        """
+    )
+    assert all(row["hashes"] == 1 for row in board_hashes)
+    assert store.count("board_variants") == 42
+
+
+def test_real_board_spec_change_still_emits_field_or_ports(pipeline: Pipeline, store: Store) -> None:
+    from board_clank.collectors.raspberry_pi import collect_corpus
+    from board_clank.models import CollectorRunRequest
+
+    first = collect_corpus("baseline", run_id="rpi-base", started_at="2026-01-01T00:00:00+00:00")
+    pipeline.accept_run(first)
+    changed = next(obs for obs in first.observations if obs.board_slug == "raspberry-pi-5")
+    changed.spec.ethernet = "2x 2.5g"
+    changed.spec.usb = "changed-usb-matrix"
+    request = CollectorRunRequest(
+        run_id="rpi-ports-change",
+        source_key="raspberry-pi-product",
+        collector_key="raspberry-pi-product",
+        started_at="2026-08-01T00:00:00+00:00",
+        observations=[changed],
+        fixture_scenario="rpi:ports-change",
+    )
+    pipeline.accept_run(request)
+    live = _live_types(store)
+    assert "PORTS_CHANGED" in live or "FIELD_CHANGED" in live
+    assert "NEW_BOARD" not in live
+
+
+def test_family_series_are_durable_and_not_one_board_one_family() -> None:
+    pi5 = _family_and_type("Raspberry Pi 5")
+    pi4 = _family_and_type("Raspberry Pi 4 Model B")
+    pi3 = _family_and_type("Raspberry Pi 3 Model B")
+    pi3plus = _family_and_type("Raspberry Pi 3 Model B+")
+    zero = _family_and_type("Raspberry Pi Zero W")
+    zero2 = _family_and_type("Raspberry Pi Zero 2 W")
+    cm4 = _family_and_type("Raspberry Pi Compute Module 4")
+    cm5 = _family_and_type("Raspberry Pi Compute Module 5")
+    assert pi5[0] == "raspberry-pi-5"
+    assert pi4[0] == "raspberry-pi-4"
+    assert pi3[0] == pi3plus[0] == "raspberry-pi-3"
+    assert zero[0] == zero2[0] == "raspberry-pi-zero"
+    assert cm4[0] == cm5[0] == "compute-module"
+    assert {pi5[0], pi4[0], zero2[0], cm4[0]} == {
+        "raspberry-pi-5",
+        "raspberry-pi-4",
+        "raspberry-pi-zero",
+        "compute-module",
+    }
+
+
+def test_family_identity_survives_replay_and_second_reference(pipeline: Pipeline, store: Store) -> None:
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-fam-a", started_at="2026-01-01T00:00:00+00:00"))
+    first = {
+        row["board_slug"]: row["family_key"]
+        for row in store.all(
+            """
+            SELECT b.board_slug, b.family_key
+            FROM boards b
+            """
+        )
+    }
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-fam-b", started_at="2026-01-02T00:00:00+00:00"))
+    pipeline.accept_run(collect_corpus("second-reference", run_id="rpi-fam-c", started_at="2026-02-01T00:00:00+00:00"))
+    second = {
+        row["board_slug"]: row["family_key"]
+        for row in store.all("SELECT board_slug, family_key FROM boards")
+    }
+    assert first["raspberry-pi-5"] == second["raspberry-pi-5"] == "raspberry-pi:raspberry-pi-5"
+    assert first["raspberry-pi-4-model-b"] == "raspberry-pi:raspberry-pi-4"
+    assert first["raspberry-pi-zero-2-w"] == "raspberry-pi:raspberry-pi-zero"
+    assert first["raspberry-pi-compute-module-4"] == "raspberry-pi:compute-module"
+    assert store.count("board_families") == 4
+
+
+def test_baseline_new_board_is_audit_only_and_not_market_novelty(pipeline: Pipeline, store: Store) -> None:
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-base", started_at="2026-01-01T00:00:00+00:00"))
+    rows = store.all(
+        """
+        SELECT e.event_type, e.baseline_silent, e.payload_json, n.disposition
+        FROM events e
+        JOIN notifications n ON n.event_key = e.event_key
+        WHERE e.event_type IN ('NEW_BOARD', 'NEW_VARIANT')
+        """
+    )
+    assert rows
+    assert all(row["baseline_silent"] == 1 for row in rows)
+    assert all(row["disposition"] == "SUPPRESSED" for row in rows)
+    assert all("baseline-inventory" in row["payload_json"] for row in rows)
+    novelty = store.all("SELECT novelty_status FROM novelty_evidence")
+    assert {row["novelty_status"] for row in novelty} <= {"EXISTING_PRODUCT", "HISTORICAL", "UNKNOWN"}
+    assert "NEWLY_ANNOUNCED" not in {row["novelty_status"] for row in novelty}
+    assert "NEWLY_AVAILABLE" not in {row["novelty_status"] for row in novelty}
 
 
 def test_conflicting_soc_does_not_corrupt_existing_pi5(pipeline: Pipeline, store: Store) -> None:

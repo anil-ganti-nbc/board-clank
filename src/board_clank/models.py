@@ -145,31 +145,47 @@ class ObservationDraft(BaseModel):
             return self.spec.soc_key
         return soc_key(self.soc_vendor, self.soc_marketing_name)
 
-    def canonical_payload(self) -> dict[str, Any]:
-        return {
+    def canonical_payload(self, kind: EntityKind | None = None) -> dict[str, Any]:
+        """Entity-scoped canonical payload.
+
+        Variant dimensions belong on VARIANT only. Revision tokens belong on
+        REVISION only. BOARD comparison must not churn merely because another
+        commercial variant of the same board was enumerated in the same run.
+        """
+
+        payload: dict[str, Any] = {
             "vendor_key": self.vendor_key,
             "family_slug": self.family_slug,
             "board_slug": self.board_slug,
             "marketing_name": self.marketing_name,
             "board_type": str(self.board_type),
-            "revision_kind": str(self.revision_kind),
-            "revision_token": self.revision_token,
-            "variant": self.variant.as_dict(),
             "soc_key": self.resolved_soc_key(),
             "soc_vendor": self.soc_vendor,
             "soc_marketing_name": self.soc_marketing_name,
             "architecture": str(self.architecture),
             "spec": self.spec.model_dump(),
             "availability": str(self.availability),
-            "price": self.price.model_dump() if self.price else None,
             "supported_os": sorted(self.supported_os),
             "editorial_context": sorted(self.editorial_context),
             "native_fields": self.native_fields,
             "page_url": self.page_url,
         }
+        if kind is None or kind is EntityKind.REVISION or kind is EntityKind.VARIANT:
+            payload["revision_kind"] = str(self.revision_kind)
+            payload["revision_token"] = self.revision_token
+        if kind is None or kind is EntityKind.VARIANT:
+            payload["variant"] = self.variant.as_dict()
+            payload["price"] = self.price.model_dump() if self.price else None
+        elif kind is EntityKind.BOARD:
+            # Price changes that F0 fixtures attach to a board observation are
+            # still board-visible when no entity kind is requested. BOARD-scoped
+            # comparison keeps price so a product-page price edit remains a
+            # board transition without requiring a variant key change.
+            payload["price"] = self.price.model_dump() if self.price else None
+        return payload
 
-    def payload_hash(self) -> str:
-        return content_hash(self.canonical_payload())
+    def payload_hash(self, kind: EntityKind | None = None) -> str:
+        return content_hash(self.canonical_payload(kind))
 
 
 class CollectorRunRequest(BaseModel):

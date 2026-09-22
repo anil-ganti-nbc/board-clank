@@ -204,43 +204,27 @@ class Pipeline:
             return self._admit_unresolved(request, draft, baseline=baseline)
         identity = self._resolve_identity(draft)
         self._upsert_graph(draft, identity, request)
-        payload = draft.canonical_payload()
-        payload_hash = draft.payload_hash()
         events: list[EventRecord] = []
 
-        board_events = self._sync_entity(
-            request,
-            draft,
-            identity.board_key,
-            EntityKind.BOARD,
-            payload,
-            payload_hash,
-            identity,
-            baseline,
-        )
-        events.extend(board_events)
-        rev_events = self._sync_entity(
-            request,
-            draft,
-            identity.revision_key,
-            EntityKind.REVISION,
-            payload,
-            payload_hash,
-            identity,
-            baseline,
-        )
-        events.extend(rev_events)
-        var_events = self._sync_entity(
-            request,
-            draft,
-            identity.variant_key,
-            EntityKind.VARIANT,
-            payload,
-            payload_hash,
-            identity,
-            baseline,
-        )
-        events.extend(var_events)
+        for entity_key, kind in (
+            (identity.board_key, EntityKind.BOARD),
+            (identity.revision_key, EntityKind.REVISION),
+            (identity.variant_key, EntityKind.VARIANT),
+        ):
+            payload = draft.canonical_payload(kind)
+            payload_hash = draft.payload_hash(kind)
+            events.extend(
+                self._sync_entity(
+                    request,
+                    draft,
+                    entity_key,
+                    kind,
+                    payload,
+                    payload_hash,
+                    identity,
+                    baseline,
+                )
+            )
 
         self._record_novelty(draft, identity)
         self._record_classifications(draft, identity)
@@ -615,7 +599,10 @@ class Pipeline:
                     UNKNOWN,
                     payload_hash,
                     baseline,
-                    {"plane": draft.plane.value},
+                    {
+                        "plane": draft.plane.value,
+                        "audit": "baseline-inventory" if baseline else "live-admission",
+                    },
                 )
             )
         elif kind is EntityKind.REVISION and identity.revision_kind in {RevisionKind.MARKETING, RevisionKind.PCB, RevisionKind.SILENT}:
@@ -644,7 +631,7 @@ class Pipeline:
                     UNKNOWN,
                     payload_hash,
                     baseline,
-                    draft.variant.as_dict(),
+                    {**draft.variant.as_dict(), "audit": "baseline-inventory" if baseline else "live-admission"},
                 )
             )
             if draft.variant.ram != UNKNOWN:
