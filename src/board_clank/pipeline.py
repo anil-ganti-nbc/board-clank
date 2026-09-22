@@ -62,3 +62,16 @@ class RunResult:
             "notifications": self.notifications,
             "error": self.error,
         }
+
+
+class Pipeline:
+    def __init__(self, store: Store) -> None:
+        self.store = store
+
+    def accept_run(self, request: CollectorRunRequest) -> RunResult:
+        existing = self.store.one(
+            "SELECT run_id FROM processed_run_receipts WHERE run_id = ?",
+            (request.run_id,),
+        )
+        if existing:
+            return RunResult(run_id=request.run_id, status="replayed", replayed=True)
