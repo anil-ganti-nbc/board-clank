@@ -32,13 +32,17 @@ def canonical_json(payload: Any) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
 
 
-# Spec fields that describe variant enumeration or revision echo rather than
-# the board itself. BOARD-level comparison must not churn because a source
-# enumerated commercial memory options differently on another page of the
-# same board (Foundation 2A: storefront pages split per configuration), nor
-# because a page-level revision heading appeared or disappeared. These fields
-# stay VARIANT/REVISION-visible.
-BOARD_SCOPE_EXCLUDED_SPEC_FIELDS = ("ram_options", "emmc_options", "pcb_revision")
+# Spec fields that describe variant enumeration, revision echo, or
+# revision-realised silicon rather than the board itself. BOARD-level
+# comparison must not churn because a source enumerated commercial memory
+# options differently on another page of the same board (Foundation 2A:
+# storefront pages split per configuration), because a page-level revision
+# heading appeared or disappeared, or because the source ships the board in
+# hardware versions with different memory silicon (Foundation 3A: Radxa ROCK
+# 5C V1.1 LPDDR4X / V2.1 LPDDR5). A board-wide RAM-type transition is by
+# definition a hardware revision transition and surfaces at REVISION scope.
+# These fields stay VARIANT/REVISION-visible.
+BOARD_SCOPE_EXCLUDED_SPEC_FIELDS = ("ram_options", "emmc_options", "pcb_revision", "ram_type")
 
 
 def content_hash(payload: Any) -> str:

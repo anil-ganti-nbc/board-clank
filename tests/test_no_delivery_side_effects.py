@@ -16,6 +16,7 @@ def test_collectors_are_inert() -> None:
     from board_clank.collectors import (
         InertVendorAdapter,
         OrangePiProductAdapter,
+        RadxaProductAdapter,
         RaspberryPiProductAdapter,
         get_adapter,
     )
@@ -29,6 +30,9 @@ def test_collectors_are_inert() -> None:
             assert adapter.experimental_live is False
         elif vendor == "orange-pi":
             assert isinstance(adapter, OrangePiProductAdapter)
+            assert adapter.experimental_live is False
+        elif vendor == "radxa":
+            assert isinstance(adapter, RadxaProductAdapter)
             assert adapter.experimental_live is False
         else:
             assert isinstance(adapter, InertVendorAdapter)

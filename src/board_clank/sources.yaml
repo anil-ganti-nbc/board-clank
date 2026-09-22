@@ -46,8 +46,8 @@ sources:
     registered_state: REGISTERED
     promotion_state: EXPERIMENTAL
     expected_identity_surface: family+board+revision
-    expected_variant_surface: ram+wireless+emmc
-    notes: Official Radxa product pages. Experimental adapter only.
+    expected_variant_surface: ram+emmc+wireless
+    notes: Official Radxa English catalogue (radxa.com/products; Cloudflare-fronted HTTPS; volatile markup excluded from semantic hashes). Family taxonomy from first-party catalogue categories. docs.radxa.com and wiki.radxa.com are documentation-only and not ingested. Foundation 3A experimental PRODUCT adapter; disabled by default; live fetch is manual --experimental-live only; not promoted.
 
   - source_key: banana-pi-product
     vendor: banana-pi

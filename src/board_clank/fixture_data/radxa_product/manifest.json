@@ -1,0 +1,175 @@
+{
+  "source_key": "radxa-product",
+  "vendor": "radxa",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "observed_at": "2026-09-22T00:00:00+00:00",
+  "official_surfaces": [
+    "https://radxa.com/products/",
+    "https://radxa.com/products/rock5/5b/",
+    "https://radxa.com/products/rock5/5c/",
+    "https://radxa.com/products/zeros/zero3w/",
+    "https://radxa.com/products/x/x4/",
+    "https://radxa.com/products/orion/o6/",
+    "https://docs.radxa.com/en/ (DOCUMENTATION_ONLY; not ingested in 3A)",
+    "https://wiki.radxa.com/ (legacy documentation; not ingested)"
+  ],
+  "corpora": {
+    "baseline": {
+      "description": "Representative Radxa corpus across four SoC vendors.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/index.html",
+          "page_url": "https://radxa.com/products/",
+          "role": "lead",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "rock5b",
+          "file": "html/rock5_5b.html",
+          "page_url": "https://radxa.com/products/rock5/5b/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "rock5a",
+          "file": "html/rock5_5a.html",
+          "page_url": "https://radxa.com/products/rock5/5a/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "rock5c",
+          "file": "html/rock5_5c.html",
+          "page_url": "https://radxa.com/products/rock5/5c/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "rock5itx",
+          "file": "html/rock5_5itx.html",
+          "page_url": "https://radxa.com/products/rock5/5itx/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "rock3c",
+          "file": "html/rock3_3c.html",
+          "page_url": "https://radxa.com/products/rock3/3c/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero3w",
+          "file": "html/zeros_zero3w.html",
+          "page_url": "https://radxa.com/products/zeros/zero3w/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero3e",
+          "file": "html/zeros_zero3e.html",
+          "page_url": "https://radxa.com/products/zeros/zero3e/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero2pro",
+          "file": "html/zeros_zero2pro.html",
+          "page_url": "https://radxa.com/products/zeros/zero2pro/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "x4",
+          "file": "html/x_x4.html",
+          "page_url": "https://radxa.com/products/x/x4/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "orion-o6",
+          "file": "html/orion_o6.html",
+          "page_url": "https://radxa.com/products/orion/o6/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "plus-model": {
+      "description": "ROCK 5B+ is a distinct catalogue product, not a revision of ROCK 5B.",
+      "documents": [
+        {
+          "id": "rock5bp",
+          "file": "html/rock5_5bp.html",
+          "page_url": "https://radxa.com/products/rock5/5bp/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "conflict": {
+      "description": "CM5 page documents CM5 and CM5 Lite with two different SoCs.",
+      "documents": [
+        {
+          "id": "cm5",
+          "file": "html/cm_cm5.html",
+          "page_url": "https://radxa.com/products/cm/cm5/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Board-shaped teaser page without specification evidence.",
+      "documents": [
+        {
+          "id": "rock6",
+          "file": "html/rock6_teaser.html",
+          "page_url": "https://radxa.com/products/rock6/6/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "non-board": {
+      "description": "Carrier IO board and accessory modules are NON_BOARD_CATALOGUE_ITEM.",
+      "documents": [
+        {
+          "id": "cm5-io",
+          "file": "html/io-board_cm5-io-board.html",
+          "page_url": "https://radxa.com/products/io-board/cm5-io-board/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "wmod-a8",
+          "file": "html/accessories_wireless-module-a8.html",
+          "page_url": "https://radxa.com/products/accessories/wireless-module-a8/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "emmc-mod",
+          "file": "html/accessories_emmc-module.html",
+          "page_url": "https://radxa.com/products/accessories/emmc-module/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Broken HTML fragment.",
+      "documents": [
+        {
+          "id": "malformed",
+          "file": "html/malformed.html",
+          "page_url": "https://radxa.com/products/malformed/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

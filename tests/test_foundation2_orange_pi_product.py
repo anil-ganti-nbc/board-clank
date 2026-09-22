@@ -652,7 +652,7 @@ def test_cli_offline_collect_and_gates(tmp_path: Path, capsys) -> None:
                 str(db),
                 "collect",
                 "--source",
-                "radxa-product",
+                "banana-pi-product",
                 "--experimental-live",
             ]
         )
