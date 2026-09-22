@@ -1,0 +1,23 @@
+name: Fleet laws reminder
+
+on:
+  pull_request:
+  push:
+    branches: [main, foundation-0]
+
+permissions:
+  contents: read
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm domain-truth ownership docs exist
+        run: |
+          test -f docs/ARCHITECTURE.md
+          test -f docs/IDENTITY_MODEL.md
+          test -f docs/FOUNDATION_0.md
+          grep -q "SQLite is domain truth" docs/ARCHITECTURE.md || grep -q "domain truth" docs/ARCHITECTURE.md
+          grep -q "FIRST_SEEN" docs/NOVELTY_MODEL.md
+          grep -q "A new SKU is not necessarily a new board" docs/IDENTITY_MODEL.md
