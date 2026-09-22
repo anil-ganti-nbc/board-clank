@@ -67,7 +67,7 @@ Family is a durable series, not a copy of the board slug.
 | --- | --- | --- |
 | Raspberry Pi {N} … | `raspberry-pi-{N}` | Numeric SBC generation |
 | Raspberry Pi Zero / W / 2 W | `raspberry-pi-zero` | Official Zero series |
-| Raspberry Pi 400 / 500 | `raspberry-pi-400` / `raspberry-pi-500` | Official keyboard series names |
-| Compute Module 1/3/3+/4/5 | `compute-module` | Official Compute Module family |
+| Compute Module 1/3/3+/4/5/Zero | `compute-module` | Official Compute Module family |
+| Raspberry Pi 400 / 500 / 500+ | out of scope | Integrated consumer computers; `NON_BOARD_CATALOGUE_ITEM` |
 
 A corpus that happens to contain one board per series still uses these series keys. Alternate official references and exact run replay must not change `family_key`.

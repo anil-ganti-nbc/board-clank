@@ -25,6 +25,23 @@ Parser and live path may read first-party Raspberry Pi product surfaces only:
 - `https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/`
 - `https://www.raspberrypi.com/products/compute-module-4/`
 - `https://www.raspberrypi.com/products/raspberry-pi-3-model-b/`
+- `https://pip.raspberrypi.com/` (Product Information Portal)
+- `https://pip.raspberrypi.com/categories/505-computers`
+- `https://pip.raspberrypi.com/categories/616-modules`
+
+PIP is a first-party evidence surface under `raspberry-pi-product`, not a
+second vendor. Roles: DISCOVERY on category indexes; PRODUCT_IDENTITY and
+SKU/model references on product categories; CHANGE_EVIDENCE on PCN listings;
+PRODUCT_SPEC / REVISION_EVIDENCE only when the document actually names a
+processor or hardware revision.
+
+SCxxxx identifiers are references. They do not mint a new BOARD.
+A Product Change Note is not a launch announcement. Only a PCN that
+explicitly names a hardware revision may record revision evidence.
+
+Raspberry Pi 400 / 500 / 500+, desktop kits, IO boards, cases, monitors,
+mice, Pico, and accessories are `NON_BOARD_CATALOGUE_ITEM` for this
+SBC/module system. Compute Modules remain in scope.
 
 Index and navigation pages identify leads. They do not establish board
 identity or novelty by themselves.

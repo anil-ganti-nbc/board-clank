@@ -9,7 +9,10 @@
     "https://www.raspberrypi.com/products/raspberry-pi-4-model-b/",
     "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
     "https://www.raspberrypi.com/products/compute-module-4/",
-    "https://www.raspberrypi.com/products/raspberry-pi-3-model-b/"
+    "https://www.raspberrypi.com/products/raspberry-pi-3-model-b/",
+    "https://pip.raspberrypi.com/",
+    "https://pip.raspberrypi.com/categories/505-computers",
+    "https://pip.raspberrypi.com/categories/616-modules"
   ],
   "corpora": {
     "baseline": {
@@ -122,6 +125,149 @@
           "page_url": "https://www.raspberrypi.com/products/raspberry-pi-5/",
           "role": "product",
           "observed_at": "2026-07-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "expanded": {
+      "description": "Foundation 1C expanded first-party SBC/module corpus including CM5 and CM Zero.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/products-index.html",
+          "page_url": "https://www.raspberrypi.com/products/",
+          "role": "lead",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pi5",
+          "file": "html/raspberry-pi-5.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-5/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pi4",
+          "file": "html/raspberry-pi-4-model-b.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-4-model-b/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "zero2w",
+          "file": "html/raspberry-pi-zero-2-w.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm4",
+          "file": "html/compute-module-4.html",
+          "page_url": "https://www.raspberrypi.com/products/compute-module-4/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm5",
+          "file": "html/compute-module-5.html",
+          "page_url": "https://www.raspberrypi.com/products/compute-module-5/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "cm0",
+          "file": "html/compute-module-zero.html",
+          "page_url": "https://www.raspberrypi.com/products/compute-module-zero/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "pi3-wifi-controller": {
+      "description": "Pi 3 Model B with BCM43438 connectivity controller mentioned beside BCM2837.",
+      "documents": [
+        {
+          "id": "pi3-wifi",
+          "file": "html/pi3-wifi-controller.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-3-model-b/",
+          "role": "product",
+          "historical_known": true,
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "zero2w-modern": {
+      "description": "Zero 2 W first-party template without a wrapping Specification list.",
+      "documents": [
+        {
+          "id": "zero2w-modern",
+          "file": "html/zero2w-modern.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "pip-identity": {
+      "description": "PIP category and product-identity surfaces.",
+      "documents": [
+        {
+          "id": "pip-computers",
+          "file": "html/pip-computers.html",
+          "page_url": "https://pip.raspberrypi.com/categories/505-computers",
+          "role": "lead",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pip-pi5",
+          "file": "html/pip-pi5.html",
+          "page_url": "https://pip.raspberrypi.com/categories/892-raspberry-pi-5",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pip-pi4-pcn",
+          "file": "html/pip-pi4-pcn.html",
+          "page_url": "https://pip.raspberrypi.com/categories/560-pcn",
+          "role": "pcn",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "scope-keyboard": {
+      "description": "Integrated consumer computers out of SBC/module scope.",
+      "documents": [
+        {
+          "id": "pi400",
+          "file": "html/raspberry-pi-400.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-400/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pi500",
+          "file": "html/raspberry-pi-500.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-500/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "pi500plus",
+          "file": "html/raspberry-pi-500-plus.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-500-plus/",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "pi4-pcn-rev": {
+      "description": "Pi 4 first-party PCN that names Rev 11.",
+      "documents": [
+        {
+          "id": "pi4-pcn-rev11",
+          "file": "html/pi4-pcn-rev11.html",
+          "page_url": "https://pip.raspberrypi.com/categories/545-raspberry-pi-4-model-b",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
         }
       ]
     }

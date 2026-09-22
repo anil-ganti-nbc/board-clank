@@ -33,8 +33,12 @@ VENDOR_KEY = "raspberry-pi"
 VENDOR_NAME = "Raspberry Pi"
 COLLECTOR_KEY = "raspberry-pi-product"
 OFFICIAL_HOSTS = frozenset({"www.raspberrypi.com", "raspberrypi.com"})
+PIP_HOSTS = frozenset({"pip.raspberrypi.com"})
 PRODUCT_PREFIX = "/products/"
 CATALOGUE_URL = "https://www.raspberrypi.com/products/"
+PIP_URL = "https://pip.raspberrypi.com/"
+PIP_COMPUTERS_URL = "https://pip.raspberrypi.com/categories/505-computers"
+PIP_MODULES_URL = "https://pip.raspberrypi.com/categories/616-modules"
 
 _REPO_CORPUS = Path(__file__).resolve().parents[3] / "fixtures" / "rpi_product"
 _PACKAGED_CORPUS = Path(__file__).resolve().parents[1] / "fixture_data" / "rpi_product"
@@ -45,8 +49,6 @@ _BOARD_ALLOW = (
     re.compile(r"^raspberry pi zero", re.I),
     re.compile(r"^compute module", re.I),
     re.compile(r"^raspberry pi compute module", re.I),
-    re.compile(r"^raspberry pi 400", re.I),
-    re.compile(r"^raspberry pi 500", re.I),
 )
 _ACCESSORY_HINTS = (
     "case",
@@ -62,11 +64,35 @@ _ACCESSORY_HINTS = (
     "desktop kit",
     "io board",
     "debug probe",
+    "mouse",
+    "monitor",
+    "programming jig",
 )
-_SOC_RE = re.compile(r"\bBCM[0-9A-Z]+\b", re.I)
+_KEYBOARD_COMPUTER = re.compile(r"raspberry pi 400|raspberry pi 500", re.I)
+_SOC_TOKEN_RE = re.compile(r"\b(BCM[0-9A-Z]+|RP[0-9][0-9A-Z]*)\b", re.I)
+_SOC_RE = _SOC_TOKEN_RE
+_CONNECTIVITY_CHIP_RE = re.compile(
+    r"^BCM434[0-9A-Z]*$|^BCM433[0-9A-Z]*$|^BCM431[0-9A-Z]*$|^CYW[0-9]+$",
+    re.I,
+)
+_APPLICATION_SOC_RE = re.compile(
+    r"^BCM27[0-9]{2}[A-Z0-9]*$|^BCM283[0-9][A-Z0-9]*$|^RP3A0$",
+    re.I,
+)
+_IO_COMPANION = frozenset({"RP1"})
+_SKU_RE = re.compile(r"\bSC[0-9]{4,5}\b")
 _RAM_OPTION_RE = re.compile(r"(\d+)\s*GB", re.I)
 _STORAGE_OPTION_RE = re.compile(r"(\d+)\s*GB", re.I)
-_REV_RE = re.compile(r"(?:pcb\s+revision|board\s+revision|hardware\s+revision|revision)\s+([0-9]+(?:\.[0-9]+)?)", re.I)
+_REV_RE = re.compile(
+    r"(?:pcb\s+revision|board\s+revision|hardware\s+revision|revision|rev)\s+([0-9]+(?:\.[0-9]+)?)",
+    re.I,
+)
+_PROCESSOR_HINTS = ("processor", "soc", "system-in-package", "sip", "application processor", "quad-core", "cortex")
+_CONNECTIVITY_HINTS = ("wi-fi", "wifi", "wireless", "bluetooth", "wlan", "radio module")
+_SPEC_FIELD_RE = re.compile(
+    r"^(specification|processor|memory|connectivity|wireless|storage|form factor)\b[:\s]?",
+    re.I,
+)
 
 
 class _PageParser(HTMLParser):
@@ -124,9 +150,18 @@ def _clean_name(raw: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _is_keyboard_computer(name: str) -> bool:
+    """Pi 400 / 500 / 500+ are integrated consumer PCs, not SBC/module inventory."""
+    return bool(_KEYBOARD_COMPUTER.search(name))
+
+
 def _is_computer_name(name: str) -> bool:
     lowered = name.lower()
-    if any(hint in lowered for hint in _ACCESSORY_HINTS) and not re.search(r"raspberry pi (400|500)", lowered):
+    if _is_keyboard_computer(name):
+        return False
+    if "pico" in lowered:
+        return False
+    if any(hint in lowered for hint in _ACCESSORY_HINTS):
         return False
     return any(pat.search(name) for pat in _BOARD_ALLOW)
 
@@ -137,9 +172,10 @@ def _family_and_type(name: str) -> tuple[str, str, BoardType]:
     Rules (first-party catalogue series, not one-family-per-board):
     - Compute Module 1/3/3+/4/5/Zero share family ``compute-module``.
     - Zero / Zero W / Zero 2 W share family ``raspberry-pi-zero``.
-    - Keyboard computers 400 and 500 keep their official series names.
     - Numeric SBC generations use ``raspberry-pi-{N}`` (Pi 3 Model B and
       Pi 3 Model B+ share raspberry-pi-3; Pi 4 Model B is raspberry-pi-4).
+    - Raspberry Pi 400 / 500 / 500+ are out of SBC/module scope and must
+      not mint families merely because a catalogue URL exists.
     Family is derived from the product heading only. Missing evidence stays
     UNKNOWN rather than inventing a marketing taxonomy.
     """
@@ -149,10 +185,8 @@ def _family_and_type(name: str) -> tuple[str, str, BoardType]:
         return "compute-module", "Compute Module", BoardType.COMPUTE_MODULE
     if "zero" in lowered:
         return "raspberry-pi-zero", "Raspberry Pi Zero", BoardType.ZERO_CLASS
-    if re.search(r"raspberry pi 500", lowered):
-        return "raspberry-pi-500", "Raspberry Pi 500", BoardType.SBC
-    if re.search(r"raspberry pi 400", lowered):
-        return "raspberry-pi-400", "Raspberry Pi 400", BoardType.SBC
+    if _is_keyboard_computer(name):
+        return UNKNOWN, name, BoardType.UNKNOWN
     gen = re.search(r"raspberry pi\s+(\d+)", lowered)
     if gen:
         number = gen.group(1)
@@ -185,6 +219,13 @@ def _spec_lines(texts: list[str]) -> list[str]:
             break
         if in_spec:
             lines.append(line)
+    if lines:
+        return lines
+    # Newer first-party templates expose Processor/Memory/Connectivity
+    # fields without a wrapping "Specification" heading.
+    for line in texts:
+        if _SPEC_FIELD_RE.search(line) or re.search(r"sdram|lpddr|system-in-package|\bsoc\b", line, re.I):
+            lines.append(line)
     return lines
 
 
@@ -192,18 +233,52 @@ def _join(lines: list[str]) -> str:
     return " ".join(lines)
 
 
+def _token_role(token: str, sentence: str) -> str:
+    """Classify a silicon token as application SoC, companion, or connectivity."""
+    upper = token.upper()
+    lowered = sentence.lower()
+    if upper in _IO_COMPANION:
+        return "companion"
+    if _CONNECTIVITY_CHIP_RE.match(upper):
+        return "connectivity"
+    processor_ctx = any(hint in lowered for hint in _PROCESSOR_HINTS)
+    connectivity_ctx = any(hint in lowered for hint in _CONNECTIVITY_HINTS)
+    if connectivity_ctx and not processor_ctx and upper.startswith("BCM43"):
+        return "connectivity"
+    if _APPLICATION_SOC_RE.match(upper) or processor_ctx:
+        return "processor"
+    return "other"
+
+
+def _compatible_sip_pair(tokens: list[str]) -> str | None:
+    """RP3A0 SiP integrating a BCM2710A1 die is one processor identity, not a conflict."""
+    unique = list(dict.fromkeys(tokens))
+    if set(unique) <= {"RP3A0", "BCM2710A1"} and unique:
+        if "BCM2710A1" in unique:
+            return "BCM2710A1"
+        return "RP3A0"
+    return None
+
+
 def _extract_soc(blob: str) -> tuple[str, str]:
-    matches = _SOC_RE.findall(blob)
-    unique = []
-    for item in matches:
-        token = item.upper()
-        if token not in unique:
-            unique.append(token)
-    if not unique:
+    processor: list[str] = []
+    for sentence in re.split(r"(?<=[;.])\s+|\n", blob):
+        for raw in _SOC_TOKEN_RE.findall(sentence):
+            token = raw.upper()
+            role = _token_role(token, sentence)
+            if role == "processor" and token not in processor:
+                processor.append(token)
+    if not processor:
         return UNKNOWN, UNKNOWN
-    if len(unique) > 1:
-        return "CONFLICT", ",".join(unique)
-    return "broadcom", unique[0]
+    sip = _compatible_sip_pair(processor)
+    if sip:
+        vendor = "raspberry-pi" if sip == "RP3A0" else "broadcom"
+        return vendor, sip
+    if len(processor) > 1:
+        return "CONFLICT", ",".join(processor)
+    token = processor[0]
+    vendor = "raspberry-pi" if token.startswith("RP") else "broadcom"
+    return vendor, token
 
 
 def _memory_sentences(blob: str) -> tuple[str, str]:
@@ -255,7 +330,13 @@ def _storage_options(blob: str) -> list[str]:
 def _wireless_options(blob: str) -> list[str]:
     lowered = blob.lower()
     has_radio = "wi-fi" in lowered or "wifi" in lowered or "wireless" in lowered
-    optional = "option for fully certified radio" in lowered or "wireless, sdram and emmc options" in lowered
+    optional = (
+        "option for fully certified radio" in lowered
+        or "wireless, sdram and emmc options" in lowered
+        or "options for certified radio" in lowered
+        or bool(re.search(r"\boptional\b.*\b(wi-fi|wifi|wireless|bluetooth)", lowered))
+        or bool(re.search(r"\b(wi-fi|wifi|wireless)\b.*\boptional\b", lowered))
+    )
     if optional and has_radio:
         return ["none", "wifi"]
     if has_radio:
@@ -277,10 +358,14 @@ def _first_match(blob: str, patterns: list[tuple[str, str]]) -> str:
     return UNKNOWN
 
 
-def _build_spec(blob: str, soc_name: str, ram_matrix: str) -> NormalizedSpec:
+def _build_spec(blob: str, soc_name: str, ram_matrix: str, soc_vendor: str = "broadcom") -> NormalizedSpec:
+    if soc_name in {UNKNOWN, "CONFLICT"}:
+        key = UNKNOWN
+    else:
+        key = f"{slugify(soc_vendor)}:{slugify(soc_name)}"
     return NormalizedSpec(
         soc=soc_name,
-        soc_key=f"broadcom:{slugify(soc_name)}" if soc_name not in {UNKNOWN, "CONFLICT"} else UNKNOWN,
+        soc_key=key,
         cpu_arch=Architecture.ARM.value,
         ram_type=_first_match(blob, [("lpddr4x", "LPDDR4X"), ("lpddr4", "LPDDR4"), ("lpddr2", "LPDDR2")]),
         ram_options=ram_matrix,
@@ -300,6 +385,45 @@ def _build_spec(blob: str, soc_name: str, ram_matrix: str) -> NormalizedSpec:
         dimensions=_first_match(blob, [("55 mm × 40 mm", "55x40mm"), ("65 mm × 30 mm", "65x30mm")]),
         pcb_revision=UNKNOWN,
     )
+
+
+def _extract_skus(html: str) -> list[str]:
+    """Capture SCxxxx model identifiers. Search-placeholder examples are ignored."""
+    found: list[str] = []
+    for line in html.splitlines():
+        lowered = line.lower()
+        if "e.g." in lowered or "placeholder" in lowered or 'name="q"' in lowered:
+            continue
+        for sku in _SKU_RE.findall(line):
+            if sku not in found:
+                found.append(sku)
+    return found
+
+
+def _extract_pcn_titles(texts: list[str]) -> list[str]:
+    titles: list[str] = []
+    for line in texts:
+        if re.search(r"\bPCN\b", line) and "Product Change Notes" not in line:
+            cleaned = re.sub(r"\s+", " ", line).strip()
+            if cleaned and cleaned not in titles and cleaned != "PCN":
+                titles.append(cleaned)
+    return titles
+
+
+def _classify_pip(parsed_url, parser: _PageParser) -> tuple[str, list[str], list[str]]:
+    path = parsed_url.path.rstrip("/")
+    leads: list[str] = []
+    for href in parser.hrefs:
+        abs_url = urljoin("https://pip.raspberrypi.com", href)
+        parsed = urlparse(abs_url)
+        if parsed.netloc in PIP_HOSTS and parsed.path.startswith("/categories/"):
+            leads.append(abs_url.split("#")[0])
+    leads = sorted(set(leads))
+    if path in {"", "/"} or path in {"/categories/505-computers", "/categories/616-modules"}:
+        return "lead-index", leads, ["DISCOVERY"]
+    if path.endswith("-pcn") or path.endswith("/pcn"):
+        return "pip-pcn", leads, ["CHANGE_EVIDENCE"]
+    return "pip-product", leads, ["PRODUCT_IDENTITY", "PRODUCT_SPEC", "REVISION_EVIDENCE", "CHANGE_EVIDENCE"]
 
 
 def parse_product_html(html: str, *, page_url: str, observed_at: str, historical_known: bool = False) -> tuple[list[ObservationDraft], dict[str, Any]]:
@@ -323,6 +447,22 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         "status": "ok",
     }
     parsed_url = urlparse(page_url)
+    skus = _extract_skus(html)
+    pcns = _extract_pcn_titles(parser.texts)
+    diagnostics["skus"] = skus
+    diagnostics["pcns"] = pcns
+    if parsed_url.netloc in PIP_HOSTS:
+        pip_status, pip_leads, pip_role = _classify_pip(parsed_url, parser)
+        diagnostics["lead_hrefs"] = pip_leads
+        diagnostics["evidence_roles"] = pip_role
+        diagnostics["surface"] = "pip"
+        if pip_status == "lead-index":
+            diagnostics["status"] = "lead-index"
+            return [], diagnostics
+        if pip_status == "pip-pcn":
+            diagnostics["status"] = "pip-pcn"
+            diagnostics["evidence_roles"] = ["CHANGE_EVIDENCE"]
+            return [], diagnostics
     if parsed_url.path.rstrip("/") == "/products":
         leads = []
         for href in parser.hrefs:
@@ -332,10 +472,17 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                 leads.append(abs_url.split("#")[0])
         diagnostics["lead_hrefs"] = sorted(set(leads))
         diagnostics["status"] = "lead-index"
+        diagnostics["evidence_roles"] = ["DISCOVERY"]
         return [], diagnostics
 
+    if _is_keyboard_computer(name):
+        diagnostics["status"] = "ignored-non-computer"
+        diagnostics["scope"] = "NON_BOARD_CATALOGUE_ITEM"
+        diagnostics["reason"] = "integrated-consumer-computer-out-of-sbc-module-scope"
+        return [], diagnostics
     if not name or not _is_computer_name(name):
         diagnostics["status"] = "ignored-non-computer"
+        diagnostics["scope"] = "NON_BOARD_CATALOGUE_ITEM"
         return [], diagnostics
 
     spec_lines = _spec_lines(parser.texts)
@@ -349,6 +496,8 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     storage_opts = _storage_options(storage_source or blob) or [UNKNOWN]
     wireless_opts = _wireless_options(blob)
     rev_kind, rev_token = _revision_token(blob)
+    if rev_token == UNKNOWN and pcns:
+        rev_kind, rev_token = _revision_token(" ".join(pcns))
     conflict = soc_vendor == "CONFLICT"
     insufficient = not spec_lines or soc_name in {UNKNOWN, "CONFLICT"} or not ram_opts and "512MB" not in blob.upper() and "SDRAM" not in blob.upper()
     if not spec_lines:
@@ -368,7 +517,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
             marketing_name=name or UNKNOWN,
             board_type=board_type,
             spec=NormalizedSpec(),
-            raw_fields={"html_excerpt": html[:400]},
+            raw_fields={"html_excerpt": html[:400], "skus": skus, "pcns": pcns},
             native_fields={"heading": name, "page_url": page_url},
             novelty=NoveltyEvidence(
                 first_seen_at=observed_at,
@@ -401,7 +550,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
             soc_marketing_name=UNKNOWN,
             architecture=Architecture.ARM,
             spec=NormalizedSpec(),
-            raw_fields={"soc_candidates": soc_name.split(",")},
+            raw_fields={"soc_candidates": soc_name.split(","), "skus": skus, "pcns": pcns},
             native_fields={"heading": name, "conflicting_socs": soc_name},
             novelty=NoveltyEvidence(
                 first_seen_at=observed_at,
@@ -427,7 +576,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     for ram in ram_opts:
         for storage in storage_opts:
             for wireless in wireless_opts:
-                spec = _build_spec(blob, soc_name, ram_matrix)
+                spec = _build_spec(blob, soc_name, ram_matrix, soc_vendor)
                 spec.emmc_options = storage_matrix if "emmc" in blob.lower() else UNKNOWN
                 spec.pcb_revision = rev_token
                 drafts.append(
@@ -445,13 +594,13 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                         revision_kind=rev_kind,
                         revision_token=rev_token,
                         variant=VariantDimensions(ram=ram, storage=storage, wireless=wireless),
-                        soc_vendor="broadcom",
+                        soc_vendor=soc_vendor,
                         soc_marketing_name=soc_name,
                         architecture=Architecture.ARM,
                         cpu_configuration=UNKNOWN,
                         gpu="VideoCore VII" if "videocore vii" in blob.lower() else ("VideoCore" if "videocore" in blob.lower() else UNKNOWN),
                         spec=spec,
-                        raw_fields={"spec_lines": spec_lines},
+                        raw_fields={"spec_lines": spec_lines, "skus": skus, "pcns": pcns},
                         native_fields={
                             "heading": name,
                             "page_url": page_url,
@@ -557,6 +706,11 @@ def _assert_official_url(url: str) -> str:
     parsed = urlparse(url)
     if parsed.scheme != "https":
         raise CollectorError(f"refusing non-https raspberry pi url: {url}")
+    if parsed.netloc in PIP_HOSTS:
+        path = parsed.path.rstrip("/")
+        if path and not path.startswith("/categories"):
+            raise CollectorError(f"refusing non-category raspberry pi pip url: {url}")
+        return url
     if parsed.netloc not in OFFICIAL_HOSTS:
         raise CollectorError(f"refusing third-party url: {url}")
     if not parsed.path.startswith(PRODUCT_PREFIX):
@@ -655,8 +809,27 @@ class RaspberryPiProductAdapter(CollectorAdapter):
 
 def _is_likely_computer_url(url: str) -> bool:
     path = urlparse(url).path.lower()
-    blocked = ("case", "hat", "power", "camera", "display", "cable", "sd-card", "cooler", "antenna", "keyboard")
-    if any(token in path for token in blocked) and "raspberry-pi-400" not in path and "raspberry-pi-500" not in path:
+    blocked = (
+        "case",
+        "hat",
+        "power",
+        "camera",
+        "display",
+        "cable",
+        "sd-card",
+        "cooler",
+        "antenna",
+        "keyboard",
+        "desktop-kit",
+        "io-board",
+        "mouse",
+        "monitor",
+        "pico",
+        "raspberry-pi-400",
+        "raspberry-pi-500",
+        "programming-jig",
+    )
+    if any(token in path for token in blocked):
         return False
     allowed = ("raspberry-pi-", "compute-module")
     return any(token in path for token in allowed)

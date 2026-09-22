@@ -398,3 +398,192 @@ def test_other_phase1_sources_remain_inert() -> None:
         adapter = get_adapter(f"{vendor}-product")
         assert isinstance(adapter, InertVendorAdapter)
         assert adapter.live_network is False
+
+
+def test_pi3_wifi_controller_is_not_the_soc() -> None:
+    html = Path("fixtures/rpi_product/html/pi3-wifi-controller.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://www.raspberrypi.com/products/raspberry-pi-3-model-b/",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert info["status"] == "resolved"
+    assert {item.soc_marketing_name for item in drafts} == {"BCM2837"}
+    assert all("43438" not in item.soc_marketing_name for item in drafts)
+    assert {item.board_slug for item in drafts} == {"raspberry-pi-3-model-b"}
+
+
+def test_genuine_processor_conflict_still_fails_closed() -> None:
+    html = Path("fixtures/rpi_product/html/conflicting-identity.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://www.raspberrypi.com/products/raspberry-pi-5/",
+        observed_at="2026-07-01T00:00:00+00:00",
+    )
+    assert info["status"] == "identity-conflict"
+    assert drafts[0].identity_conflict is True
+    assert "BCM2712" in (info.get("soc_candidates") or drafts[0].raw_fields.get("soc_candidates") or [])
+
+
+def test_zero2w_modern_template_resolves() -> None:
+    html = Path("fixtures/rpi_product/html/zero2w-modern.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert info["status"] == "resolved"
+    assert {item.board_slug for item in drafts} == {"raspberry-pi-zero-2-w"}
+    assert {item.soc_marketing_name for item in drafts} == {"BCM2710A1"}
+    assert {item.variant.ram for item in drafts} == {"512MB"}
+    assert {item.family_slug for item in drafts} == {"raspberry-pi-zero"}
+
+
+def test_compute_module_zero_identity_and_variants() -> None:
+    html = Path("fixtures/rpi_product/html/compute-module-zero.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://www.raspberrypi.com/products/compute-module-zero/",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert info["status"] == "resolved"
+    assert {item.family_slug for item in drafts} == {"compute-module"}
+    assert {item.board_slug for item in drafts} == {"raspberry-pi-compute-module-zero"}
+    assert {item.soc_marketing_name for item in drafts} == {"RP3A0"}
+    assert {item.soc_vendor for item in drafts} == {"raspberry-pi"}
+    assert {item.variant.ram for item in drafts} == {"512MB"}
+    assert {item.variant.storage for item in drafts} == {"none", "8GB", "16GB"}
+    assert {item.variant.wireless for item in drafts} == {"none", "wifi"}
+
+
+def test_cm4_and_cm5_share_family_and_stay_distinct(pipeline: Pipeline, store: Store) -> None:
+    result = pipeline.accept_run(
+        collect_corpus("expanded", run_id="rpi-expanded", started_at="2026-09-22T00:00:00+00:00")
+    )
+    assert result.status == "accepted"
+    assert result.baseline is True
+    slugs = {row["board_slug"] for row in store.all("SELECT board_slug FROM boards")}
+    assert "raspberry-pi-compute-module-4" in slugs
+    assert "raspberry-pi-compute-module-5" in slugs
+    assert "raspberry-pi-compute-module-zero" in slugs
+    families = {
+        row["board_slug"]: row["family_key"]
+        for row in store.all("SELECT board_slug, family_key FROM boards")
+    }
+    assert families["raspberry-pi-compute-module-4"] == families["raspberry-pi-compute-module-5"]
+    assert families["raspberry-pi-compute-module-4"] == "raspberry-pi:compute-module"
+    socs = {
+        row["board_slug"]: row["marketing_name"]
+        for row in store.all(
+            """
+            SELECT b.board_slug, s.marketing_name
+            FROM boards b
+            JOIN board_revisions r ON r.board_key = b.board_key
+            JOIN socs s ON s.soc_key = r.soc_key
+            """
+        )
+    }
+    assert socs["raspberry-pi-compute-module-4"] == "BCM2711"
+    assert socs["raspberry-pi-compute-module-5"] == "BCM2712"
+    assert socs["raspberry-pi-compute-module-zero"] == "RP3A0"
+    assert "NEW_BOARD" not in _live_types(store)
+    assert _push_or_review(store) == []
+
+
+def test_keyboard_computers_are_non_board_catalogue_items() -> None:
+    for path, url in (
+        ("fixtures/rpi_product/html/raspberry-pi-400.html", "https://www.raspberrypi.com/products/raspberry-pi-400/"),
+        ("fixtures/rpi_product/html/raspberry-pi-500.html", "https://www.raspberrypi.com/products/raspberry-pi-500/"),
+        ("fixtures/rpi_product/html/raspberry-pi-500-plus.html", "https://www.raspberrypi.com/products/raspberry-pi-500-plus/"),
+    ):
+        drafts, info = parse_product_html(
+            Path(path).read_text(encoding="utf-8"),
+            page_url=url,
+            observed_at="2026-09-22T00:00:00+00:00",
+        )
+        assert drafts == []
+        assert info["status"] == "ignored-non-computer"
+        assert info["scope"] == "NON_BOARD_CATALOGUE_ITEM"
+
+
+def test_pip_skus_are_references_not_boards(pipeline: Pipeline, store: Store) -> None:
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-base", started_at="2026-01-01T00:00:00+00:00"))
+    before = store.count("boards")
+    html = Path("fixtures/rpi_product/html/pip-pi5.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://pip.raspberrypi.com/categories/892-raspberry-pi-5",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert info["status"] == "resolved"
+    assert "SC1110" not in info["skus"]
+    assert "SC1111" in info["skus"]
+    assert {item.board_slug for item in drafts} == {"raspberry-pi-5"}
+    assert all(item.raw_fields.get("skus") == info["skus"] for item in drafts)
+    request = collect_corpus("pip-identity", run_id="rpi-pip", started_at="2026-09-22T00:00:00+00:00")
+    pipeline.accept_run(request)
+    assert store.count("boards") == before
+    slugs = {row["board_slug"] for row in store.all("SELECT board_slug FROM boards")}
+    assert slugs == {
+        "raspberry-pi-5",
+        "raspberry-pi-4-model-b",
+        "raspberry-pi-zero-2-w",
+        "raspberry-pi-compute-module-4",
+    }
+
+
+def test_pip_computers_index_is_discovery_only() -> None:
+    html = Path("fixtures/rpi_product/html/pip-computers.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://pip.raspberrypi.com/categories/505-computers",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert drafts == []
+    assert info["status"] == "lead-index"
+    assert "DISCOVERY" in info["evidence_roles"]
+    assert any("892-raspberry-pi-5" in href for href in info["lead_hrefs"])
+
+
+def test_pip_pcn_listing_does_not_create_a_board() -> None:
+    html = Path("fixtures/rpi_product/html/pip-pi4-pcn.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(
+        html,
+        page_url="https://pip.raspberrypi.com/categories/560-pcn",
+        observed_at="2026-09-22T00:00:00+00:00",
+    )
+    assert drafts == []
+    assert info["status"] == "pip-pcn"
+    assert "CHANGE_EVIDENCE" in info["evidence_roles"]
+    assert any("Rev 11" in title for title in info["pcns"])
+
+
+def test_pcn_named_revision_is_recorded_under_existing_board(pipeline: Pipeline, store: Store) -> None:
+    pipeline.accept_run(collect_corpus("baseline", run_id="rpi-base", started_at="2026-01-01T00:00:00+00:00"))
+    boards_before = store.count("boards")
+    pipeline.accept_run(collect_corpus("pi4-pcn-rev", run_id="rpi-pcn", started_at="2026-09-22T00:00:00+00:00"))
+    assert store.count("boards") == boards_before
+    pi4 = store.one("SELECT board_key FROM boards WHERE board_slug = 'raspberry-pi-4-model-b'")
+    tokens = {
+        row["revision_token"]
+        for row in store.all("SELECT revision_token FROM board_revisions WHERE board_key = ?", (pi4["board_key"],))
+    }
+    assert "11" in tokens
+    assert "NEW_BOARD" not in _live_types(store)
+
+
+def test_expanded_baseline_is_silent_and_replay_stable(pipeline: Pipeline, store: Store) -> None:
+    first = collect_corpus("expanded", run_id="exp-a", started_at="2026-09-22T00:00:00+00:00")
+    second = collect_corpus("expanded", run_id="exp-b", started_at="2026-09-23T00:00:00+00:00")
+    r1 = pipeline.accept_run(first)
+    boards = store.count("boards")
+    variants = store.count("board_variants")
+    r2 = pipeline.accept_run(second)
+    assert r1.baseline is True
+    assert r2.baseline is False
+    assert store.count("boards") == boards
+    assert store.count("board_variants") == variants
+    assert "NEW_BOARD" not in _live_types(store)
+    assert store.all("SELECT event_id FROM events WHERE event_type = 'FIELD_CHANGED'") == []
+    assert _push_or_review(store) == []
+    assert all(row["disposition"] == "SUPPRESSED" for row in store.all("SELECT disposition FROM notifications"))
