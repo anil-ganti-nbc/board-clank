@@ -1,5 +1,5 @@
 # Deterministic Foundation 0 dev lock.
--r requirements.lock
+# Runtime pins live in requirements.lock; this file adds test tooling only.
 iniconfig==2.1.0
 packaging==25.0
 pluggy==1.6.0
