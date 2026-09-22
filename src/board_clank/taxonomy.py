@@ -81,6 +81,11 @@ class EventType(StrEnum):
     NEW_REFERENCE = "NEW_REFERENCE"
     REGION_ADDED = "REGION_ADDED"
     NOVELTY_UNRESOLVED = "NOVELTY_UNRESOLVED"
+    # Foundation 2B diagnostic lifecycle type. Persistent uncertainty is
+    # state, not perpetual novelty: an unresolved/anomalous condition that
+    # stops appearing closes once (observable), instead of the condition
+    # re-opening as fresh intelligence on every collection run.
+    DIAGNOSTIC_RESOLVED = "DIAGNOSTIC_RESOLVED"
 
 
 class NoveltyStatus(StrEnum):

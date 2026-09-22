@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from board_clank.identity import (
     UNKNOWN,
@@ -117,6 +118,7 @@ class Pipeline:
         baseline = self._is_baseline(request.source_key)
         event_keys: list[str] = []
         occurrences = 0
+        unresolved: list[tuple[ObservationDraft, "_UnresolvedIdentity"]] = []
         try:
             self.store.begin()
             self.store.execute(
@@ -136,7 +138,7 @@ class Pipeline:
                 ),
             )
             for draft in request.observations:
-                occ, keys = self._admit_observation(request, draft, baseline=baseline)
+                occ, keys = self._admit_observation(request, draft, baseline=baseline, unresolved_out=unresolved)
                 occurrences += occ
                 event_keys.extend(keys)
             if baseline:
@@ -147,6 +149,12 @@ class Pipeline:
                     """,
                     (request.source_key, request.run_id, _now(), len(request.observations)),
                 )
+            # Diagnostics are admitted as a per-run batch: one candidate may be
+            # evidenced ambiguous by several pages at once, and the condition's
+            # state is the aggregate of that run's evidence.
+            event_keys.extend(self._admit_diagnostic_batch(request, unresolved, baseline=baseline))
+            resolved_keys = self._reconcile_diagnostic_conditions(request, baseline=baseline)
+            event_keys.extend(resolved_keys)
             notification_count = self._count_notifications(event_keys)
             receipt_hash = content_hash(
                 {
@@ -199,8 +207,12 @@ class Pipeline:
         draft: ObservationDraft,
         *,
         baseline: bool,
+        unresolved_out: list | None = None,
     ) -> tuple[int, list[str]]:
         if draft.evidence_insufficient:
+            if unresolved_out is not None:
+                unresolved_out.append((draft, _UnresolvedIdentity(draft)))
+                return 0, []
             return self._admit_unresolved(request, draft, baseline=baseline)
         identity = self._resolve_identity(draft)
         self._upsert_graph(draft, identity, request)
@@ -973,6 +985,287 @@ class Pipeline:
                 (identity.board_key, context, draft.source_key, draft.observed_at),
             )
 
+    # ------------------------------------------------------ diagnostic conditions
+
+    def _diagnostic_condition_key(
+        self,
+        request: CollectorRunRequest,
+        draft: ObservationDraft,
+        identity: _UnresolvedIdentity,
+        diagnostic_type: EventType,
+    ) -> str:
+        """Durable identity of a diagnostic condition: semantic facts only.
+
+        Source, plane, candidate entity and diagnostic class. Never run id,
+        timestamps, raw bytes, or session noise; reason and evidence hashes
+        are state, not identity, so their changes are transitions.
+        """
+        return content_hash(
+            {
+                "source_key": request.source_key,
+                "plane": draft.plane.value,
+                "entity_key": identity.board_key,
+                "diagnostic_type": diagnostic_type.value,
+            }
+        )
+
+    def _diagnostic_state(
+        self,
+        draft: ObservationDraft,
+        identity: _UnresolvedIdentity,
+        diagnostic_type: EventType,
+        reason: str,
+    ) -> tuple[str, dict]:
+        """Semantic state of a condition: reason, candidates, names, reference.
+
+        Raw HTML excerpts and other volatile transport artifacts are excluded
+        on purpose: a raw-only change with identical semantic content must not
+        look like a state transition.
+        """
+        state = {
+            "entity_key": identity.board_key,
+            "diagnostic_type": diagnostic_type.value,
+            "reason": reason,
+            "soc_candidates": sorted(
+                str(item) for item in (draft.raw_fields.get("soc_candidates") or [])
+            ),
+            "marketing_name": draft.marketing_name,
+            "page_url": draft.page_url,
+        }
+        return content_hash(state), state
+
+    def _upsert_condition_row(
+        self,
+        *,
+        condition_key: str,
+        source_key: str,
+        plane: str,
+        diagnostic_type: str,
+        entity_key: str,
+        reason: str,
+        state_hash: str,
+        payload_json: str,
+        observed_at: str,
+        run_id: str,
+    ) -> dict:
+        row = self.store.one(
+            "SELECT status, state_hash, resolved_at FROM diagnostic_conditions WHERE condition_key = ?",
+            (condition_key,),
+        )
+        if row is None:
+            self.store.execute(
+                """
+                INSERT INTO diagnostic_conditions(
+                    condition_key, source_key, plane, diagnostic_type, entity_key, reason,
+                    state_hash, payload_json, status, first_observed_at, first_run_id,
+                    last_observed_at, last_run_id, open_occurrences, total_occurrences,
+                    transition_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, 1, 1, 0)
+                """,
+                (condition_key, source_key, plane, diagnostic_type, entity_key, reason,
+                 state_hash, payload_json, observed_at, run_id, observed_at, run_id),
+            )
+            return {"transition": "opened", "state_hash": state_hash, "from_state_hash": UNKNOWN, "resolved_at": None}
+        from_state_hash = row["state_hash"]
+        bump = ", transition_count = transition_count + 1" if from_state_hash != state_hash or row["status"] == "RESOLVED" else ""
+        if row["status"] == "RESOLVED":
+            transition = "reappeared"
+            self.store.execute(
+                f"""
+                UPDATE diagnostic_conditions
+                SET status = 'OPEN', reason = ?, state_hash = ?, payload_json = ?,
+                    last_observed_at = ?, last_run_id = ?, resolved_at = NULL, resolved_run_id = NULL,
+                    open_occurrences = open_occurrences + 1, total_occurrences = total_occurrences + 1{bump}
+                WHERE condition_key = ?
+                """,
+                (reason, state_hash, payload_json, observed_at, run_id, condition_key),
+            )
+            return {"transition": transition, "state_hash": state_hash, "from_state_hash": from_state_hash, "resolved_at": row["resolved_at"]}
+        if from_state_hash != state_hash:
+            self.store.execute(
+                f"""
+                UPDATE diagnostic_conditions
+                SET reason = ?, state_hash = ?, payload_json = ?, last_observed_at = ?, last_run_id = ?,
+                    open_occurrences = open_occurrences + 1, total_occurrences = total_occurrences + 1{bump}
+                WHERE condition_key = ?
+                """,
+                (reason, state_hash, payload_json, observed_at, run_id, condition_key),
+            )
+            return {"transition": "evidence-changed", "state_hash": state_hash, "from_state_hash": from_state_hash, "resolved_at": None}
+        self.store.execute(
+            """
+            UPDATE diagnostic_conditions
+            SET last_observed_at = ?, last_run_id = ?,
+                open_occurrences = open_occurrences + 1, total_occurrences = total_occurrences + 1
+            WHERE condition_key = ?
+            """,
+            (observed_at, run_id, condition_key),
+        )
+        return {"transition": None, "state_hash": state_hash, "from_state_hash": from_state_hash, "resolved_at": None}
+
+    def _admit_diagnostic_batch(
+        self,
+        request: CollectorRunRequest,
+        unresolved: list[tuple[ObservationDraft, "_UnresolvedIdentity"]],
+        *,
+        baseline: bool,
+    ) -> list[str]:
+        """Admit one run's unresolved/anomalous observations as durable state.
+
+        Foundation 2B law: persistent uncertainty is state, not perpetual
+        novelty. A condition's durable identity is (source, plane, candidate
+        entity, diagnostic class); its state is the aggregate of every page
+        that evidenced it in this run. Unchanged aggregate state means an
+        existing condition: sightings are recorded, nothing is emitted.
+        Transitions — opened, evidence-changed, reappeared — are the only
+        intelligence events.
+        """
+        groups: dict[tuple[str, str], list[tuple[ObservationDraft, "_UnresolvedIdentity", str]]] = {}
+        for draft, identity in unresolved:
+            reason = draft.identity_conflict_reason if draft.identity_conflict else "insufficient-evidence"
+            types = [EventType.NOVELTY_UNRESOLVED]
+            if draft.identity_conflict:
+                types.append(EventType.IDENTITY_ANOMALY)
+            for diagnostic_type in types:
+                key = self._diagnostic_condition_key(request, draft, identity, diagnostic_type)
+                groups.setdefault((diagnostic_type.value, key), []).append((draft, identity, reason))
+
+        persisted: list[str] = []
+        observed_at = unresolved[0][0].observed_at if unresolved else _now()
+        for (type_value, condition_key), members in sorted(groups.items()):
+            diagnostic_type = EventType(type_value)
+            identity = members[0][1]
+            page_states = [
+                self._diagnostic_state(draft, ident, diagnostic_type, reason)
+                for draft, ident, reason in members
+            ]
+            aggregate = {
+                "entity_key": identity.board_key,
+                "diagnostic_type": type_value,
+                "pages": sorted((state for _h, state in page_states), key=canonical_json),
+            }
+            aggregate_hash = content_hash(aggregate)
+            reasons = sorted({reason for _d, _i, reason in members})
+            reason_label = "; ".join(reasons)
+            outcome = self._upsert_condition_row(
+                condition_key=condition_key,
+                source_key=request.source_key,
+                plane=members[0][0].plane.value,
+                diagnostic_type=type_value,
+                entity_key=identity.board_key,
+                reason=reason_label,
+                state_hash=aggregate_hash,
+                payload_json=canonical_json(aggregate),
+                observed_at=observed_at,
+                run_id=request.run_id,
+            )
+            event_key = None
+            if outcome["transition"] is not None:
+                payload = {
+                    "reason": reason_label,
+                    "condition_key": condition_key,
+                    "transition": outcome["transition"],
+                    "pages": len(page_states),
+                    "page_urls": sorted({draft.page_url for draft, _i, _r in members}),
+                }
+                if outcome["transition"] == "evidence-changed":
+                    payload["from_state_hash"] = outcome["from_state_hash"]
+                    payload["to_state_hash"] = outcome["state_hash"]
+                elif outcome["transition"] == "reappeared":
+                    payload["previously_resolved_at"] = outcome["resolved_at"]
+                    if outcome["from_state_hash"] != outcome["state_hash"]:
+                        payload["from_state_hash"] = outcome["from_state_hash"]
+                event = self._make_event(
+                    diagnostic_type,
+                    EntityKind.BOARD,
+                    identity.board_key,
+                    request,
+                    identity,
+                    outcome["from_state_hash"],
+                    outcome["state_hash"],
+                    baseline,
+                    payload,
+                )
+                event_key = self._persist_event(event, request.run_id)
+                if event_key:
+                    persisted.append(event_key)
+            for (draft, _ident, _reason), (_page_hash, _page_state) in zip(members, page_states):
+                self._record_diagnostic_sighting(request, draft, condition_key, outcome["state_hash"], event_key)
+        return [key for key in persisted if key]
+
+    def _record_diagnostic_sighting(
+        self,
+        request: CollectorRunRequest,
+        draft: ObservationDraft,
+        condition_key: str,
+        state_hash: str,
+        event_key: str | None,
+    ) -> None:
+        """Operational, per-run record that this run encountered the condition.
+
+        The health/diagnostics plane: present for every run and every
+        evidencing page, whether or not the intelligence plane emitted an
+        event for the condition.
+        """
+        self.store.execute(
+            """
+            INSERT INTO diagnostic_sightings(condition_key, run_id, source_key, observed_at, state_hash, emitted_event_key)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (condition_key, request.run_id, request.source_key, draft.observed_at, state_hash, event_key),
+        )
+
+    def _reconcile_diagnostic_conditions(self, request: CollectorRunRequest, *, baseline: bool) -> list[str]:
+        """Close still-open conditions of this source that the run did not see.
+
+        A condition the source no longer reports is resolved: closure is
+        observable once (DIAGNOSTIC_RESOLVED) instead of the condition
+        lingering or re-opening as fresh intelligence later. A later
+        material reappearance is a new occurrence and re-opens it.
+        """
+        rows = self.store.all(
+            """
+            SELECT condition_key, entity_key, diagnostic_type, state_hash, last_observed_at
+            FROM diagnostic_conditions
+            WHERE source_key = ? AND status = 'OPEN' AND COALESCE(last_run_id, '') != ?
+            """,
+            (request.source_key, request.run_id),
+        )
+        persisted: list[str] = []
+        for row in rows:
+            self.store.execute(
+                """
+                UPDATE diagnostic_conditions
+                SET status = 'RESOLVED', resolved_at = ?, resolved_run_id = ?
+                WHERE condition_key = ?
+                """,
+                (_now(), request.run_id, row["condition_key"]),
+            )
+            closed = SimpleNamespace(
+                board_key=row["entity_key"], revision_key=UNKNOWN, variant_key=UNKNOWN
+            )
+            event = self._make_event(
+                EventType.DIAGNOSTIC_RESOLVED,
+                EntityKind.BOARD,
+                row["entity_key"],
+                request,
+                closed,
+                row["state_hash"],
+                UNKNOWN,
+                baseline,
+                {
+                    "condition_key": row["condition_key"],
+                    "diagnostic_type": row["diagnostic_type"],
+                    "entity_key": row["entity_key"],
+                    "last_observed_at": row["last_observed_at"],
+                    "transition": "resolved",
+                },
+            )
+            key = self._persist_event(event, request.run_id)
+            if key:
+                persisted.append(key)
+        return persisted
+
     def _record_software(self, draft: ObservationDraft, identity, request: CollectorRunRequest) -> None:
         for os_name in draft.supported_os:
             self.store.execute(
@@ -1004,37 +1297,11 @@ class _UnresolvedIdentity:
 
 # Bound as a method via assignment below to keep Pipeline methods together.
 def _admit_unresolved(self, request: CollectorRunRequest, draft: ObservationDraft, *, baseline: bool) -> tuple[int, list[str]]:
-    identity = _UnresolvedIdentity(draft)
-    event = self._make_event(
-        EventType.NOVELTY_UNRESOLVED,
-        EntityKind.BOARD,
-        identity.board_key,
-        request,
-        identity,
-        UNKNOWN,
-        draft.payload_hash(),
-        baseline,
-        {
-            "reason": draft.identity_conflict_reason if draft.identity_conflict else "insufficient-evidence",
-            "page_url": draft.page_url,
-            "marketing_name": draft.marketing_name,
-        },
+    """Single-draft fallback; the run-level batch path is the normal route."""
+    keys = self._admit_diagnostic_batch(
+        request, [(draft, _UnresolvedIdentity(draft))], baseline=baseline
     )
-    if draft.identity_conflict:
-        anomaly = self._make_event(
-            EventType.IDENTITY_ANOMALY,
-            EntityKind.BOARD,
-            identity.board_key,
-            request,
-            identity,
-            UNKNOWN,
-            draft.payload_hash(),
-            baseline,
-            {"reason": draft.identity_conflict_reason},
-        )
-        keys = [self._persist_event(event, request.run_id), self._persist_event(anomaly, request.run_id)]
-        return 0, [key for key in keys if key]
-    return 0, [self._persist_event(event, request.run_id)]
+    return 0, keys
 
 
 Pipeline._admit_unresolved = _admit_unresolved

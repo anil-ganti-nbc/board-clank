@@ -26,15 +26,18 @@ def _utcnow() -> str:
 
 
 def load_migration_sql(version: int = 1) -> str:
-    candidates = [
-        MIGRATIONS_DIR / "001_initial.sql",
-        MIGRATIONS_DIR / f"{version:03d}_initial.sql",
-        PACKAGED_SCHEMA,
-    ]
+    if version == 1:
+        candidates = [
+            MIGRATIONS_DIR / "001_initial.sql",
+            MIGRATIONS_DIR / f"{version:03d}_initial.sql",
+            PACKAGED_SCHEMA,
+        ]
+    else:
+        candidates = sorted(MIGRATIONS_DIR.glob(f"{version:03d}_*.sql"))
     for path in candidates:
         if path.exists():
             return path.read_text(encoding="utf-8")
-    raise FileNotFoundError("board-clank schema SQL is not packaged")
+    raise FileNotFoundError(f"board-clank schema migration {version} is not packaged")
 
 
 class Store:
@@ -76,13 +79,23 @@ class Store:
             return
         raise StateCompatibilityError(report)
 
-    def _bootstrap(self) -> None:
-        sql = load_migration_sql(1)
-        self.con.executescript(sql)
+    def _stamp_migration(self, version: int, name: str) -> None:
         self.con.execute(
             "INSERT OR IGNORE INTO schema_migrations(version, applied_at, name) VALUES (?, ?, ?)",
-            (EXPECTED_SCHEMA_VERSION, _utcnow(), "001_initial"),
+            (version, _utcnow(), name),
         )
+
+    def _bootstrap(self) -> None:
+        if MIGRATIONS_DIR.joinpath("002_diagnostic_conditions.sql").exists():
+            # Repo layout: apply each migration in order so history matches
+            # migrated databases exactly.
+            for version in range(1, EXPECTED_SCHEMA_VERSION + 1):
+                self.con.executescript(load_migration_sql(version))
+                self._stamp_migration(version, f"{version:03d}")
+        else:
+            # Packaged install without migrations dir: full schema in one shot.
+            self.con.executescript(PACKAGED_SCHEMA.read_text(encoding="utf-8"))
+            self._stamp_migration(EXPECTED_SCHEMA_VERSION, "packaged")
         self._seed_delivery_policy()
         self.con.commit()
 
@@ -90,14 +103,19 @@ class Store:
         current = report.observed_version or 0
         if current >= EXPECTED_SCHEMA_VERSION:
             return
-        # Foundation 0 ships only v1. Future versions append here.
-        raise StateCompatibilityError(
-            CompatibilityReport(
-                CompatibilityState.UNKNOWN,
-                f"no canonical migration path from {current} to {EXPECTED_SCHEMA_VERSION}",
-                observed_version=current,
+        if current < 1:
+            raise StateCompatibilityError(
+                CompatibilityReport(
+                    CompatibilityState.UNKNOWN,
+                    f"no canonical migration path from {current} to {EXPECTED_SCHEMA_VERSION}",
+                    observed_version=current,
+                )
             )
-        )
+        # Append-only forward migrations; Foundation 2 adds v2 diagnostics.
+        for version in range(current + 1, EXPECTED_SCHEMA_VERSION + 1):
+            self.con.executescript(load_migration_sql(version))
+            self._stamp_migration(version, f"{version:03d}")
+        self.con.commit()
 
     def _seed_delivery_policy(self) -> None:
         for event_type, disposition in DEFAULT_POLICY.items():

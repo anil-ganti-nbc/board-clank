@@ -40,6 +40,7 @@ SUPPRESSED_EVENTS = frozenset(
         EventType.NEW_REFERENCE,
         EventType.REGION_ADDED,
         EventType.NOVELTY_UNRESOLVED,
+        EventType.DIAGNOSTIC_RESOLVED,
     }
 )
 

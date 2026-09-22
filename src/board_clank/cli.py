@@ -221,6 +221,16 @@ def cmd_source_intel(args: argparse.Namespace) -> int:
     )
     errors = store.all("SELECT message, created_at FROM run_errors WHERE source_key = ? ORDER BY error_id", (source,))
     src = store.one("SELECT enabled, promotion_state FROM sources WHERE source_key = ?", (source,))
+    diagnostics = store.all(
+        """
+        SELECT diagnostic_type, status, COUNT(*) AS conditions
+        FROM diagnostic_conditions
+        WHERE source_key = ?
+        GROUP BY diagnostic_type, status
+        ORDER BY diagnostic_type, status
+        """,
+        (source,),
+    )
     store.close()
     last_ok = next((dict(row) for row in reversed(runs) if row["status"] == "accepted"), None)
     last_attempt = dict(runs[-1]) if runs else None
@@ -235,6 +245,7 @@ def cmd_source_intel(args: argparse.Namespace) -> int:
             "last_succeeded": last_ok,
             "baseline": dict(baseline) if baseline else None,
             "event_counts": [dict(row) for row in events],
+            "diagnostic_conditions": [dict(row) for row in diagnostics],
             "parser_or_source_errors": [dict(row) for row in errors],
             "attempts": [dict(row) for row in runs],
         }

@@ -3,7 +3,7 @@ name: Fleet laws reminder
 on:
   pull_request:
   push:
-    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product]
+    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency]
 
 permissions:
   contents: read

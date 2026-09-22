@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from board_clank._version import EXPECTED_SCHEMA_VERSION
 from board_clank.compatibility import CompatibilityState, StateCompatibilityError, inspect_path
 from board_clank.health import health_payload
 from board_clank.store import Store, expected_table_names
@@ -20,7 +21,7 @@ def test_bootstrap_compatible(tmp_path: Path) -> None:
     Store(path)
     report = inspect_path(path)
     assert report.state is CompatibilityState.COMPATIBLE
-    assert report.observed_version == 1
+    assert report.observed_version == EXPECTED_SCHEMA_VERSION
 
 
 def test_unknown_without_marker(tmp_path: Path) -> None:

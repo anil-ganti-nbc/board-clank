@@ -99,6 +99,38 @@ ingested. Future enhancement (not built): a first-class reference-set model
 so a board can hold multiple canonical references without adapter-side
 canonicalization.
 
+## Foundation 2B — diagnostic state idempotency
+
+**Law: persistent uncertainty is state, not perpetual novelty.**
+
+A collector may report a persistent unresolved/anomalous condition in the
+health/diagnostics plane on every run, but the event/outbox plane represents
+meaningful state transitions, not polling frequency. This is event-creation
+idempotency, not notification suppression: an unchanged condition produces
+no duplicate event row at all, and the suppression machinery is untouched.
+
+Mechanics:
+
+- Unresolved (`NOVELTY_UNRESOLVED`) and conflicting (`IDENTITY_ANOMALY`)
+  observations are admitted through durable **diagnostic conditions**
+  (`diagnostic_conditions`, schema v2). The durable identity is semantic:
+  source + plane + candidate entity + diagnostic class — never run id,
+  timestamps, raw bytes, or session noise.
+- The **state** of a condition (reason, conflicting candidate set, marketing
+  name, reference) is hashed separately. Unchanged state = existing
+  condition: the run is recorded as an operational sighting
+  (`diagnostic_sightings`) with occurrence counters, but no event and no
+  outbox row.
+- The intelligence plane sees transitions only: `opened`,
+  `evidence-changed` (semantic state changed while ambiguity remains),
+  `reappeared` (a resolved condition came back — a new occurrence), and
+  `DIAGNOSTIC_RESOLVED` (audit, suppressed) when a successful run of the
+  source no longer reports the condition. A failed run closes nothing.
+- Resolution never implies market novelty: a candidate that later resolves
+  follows the normal first-seen/existing-product laws like any other board.
+- `board-clank source-intel` reports open/resolved condition counts per
+  source, keeping the health plane separate from the event plane.
+
 ## How to run
 
 ```bash

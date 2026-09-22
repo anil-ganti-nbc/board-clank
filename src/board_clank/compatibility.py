@@ -32,6 +32,8 @@ EXPECTED_TABLES = (
     "novelty_evidence",
     "price_observations",
     "software_support",
+    "diagnostic_conditions",
+    "diagnostic_sightings",
 )
 
 
