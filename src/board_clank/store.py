@@ -90,6 +90,7 @@ class Store:
         current = report.observed_version or 0
         if current >= EXPECTED_SCHEMA_VERSION:
             return
+        # Foundation 0 ships only v1. Future versions append here.
         raise StateCompatibilityError(
             CompatibilityReport(
                 CompatibilityState.UNKNOWN,
@@ -104,7 +105,8 @@ class Store:
                 """
                 INSERT OR IGNORE INTO delivery_policy(event_type, disposition, notes)
                 VALUES (?, ?, ?)
-                """,
+                """
+                ,
                 (event_type.value, disposition.value, "foundation-0 initial policy"),
             )
 
