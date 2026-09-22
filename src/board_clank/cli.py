@@ -17,6 +17,7 @@ from board_clank._version import (
     SOURCE_REVISION,
 )
 from board_clank.collectors.mock import FixtureCollector, get_adapter
+from board_clank.collectors.raspberry_pi import SOURCE_KEY as RPI_SOURCE_KEY
 from board_clank.compatibility import StateCompatibilityError, inspect_path
 from board_clank.health import health_payload
 from board_clank.paths import default_db_path
@@ -166,6 +167,10 @@ def cmd_collect(args: argparse.Namespace) -> int:
     if args.live:
         print(json.dumps({"status": "refused", "reason": "live collection is disabled in Foundation 0"}))
         return 2
+    experimental_live = bool(getattr(args, "experimental_live", False))
+    if experimental_live and args.source != RPI_SOURCE_KEY:
+        print(json.dumps({"status": "refused", "reason": "experimental live is only implemented for raspberry-pi-product"}))
+        return 2
     store = _open_store(args.db, migrate=True)
     sync_sources_to_store(store)
     pipeline = Pipeline(store)
@@ -175,10 +180,58 @@ def cmd_collect(args: argparse.Namespace) -> int:
         results = [pipeline.accept_run(req).as_dict() for req in requests]
         store.close()
         return _json({"mode": "fixture", "results": results})
-    adapter = get_adapter(args.source)
-    result = pipeline.accept_run(adapter.collect(args.run_id or f"inert-{args.source}", now))
+    adapter = get_adapter(
+        args.source,
+        experimental_live=experimental_live,
+        corpus=getattr(args, "corpus", None) or "baseline",
+    )
+    mode = "experimental-live" if experimental_live else ("rpi-fixture" if args.source == RPI_SOURCE_KEY else "inert")
+    result = pipeline.accept_run(adapter.collect(args.run_id or f"{mode}-{args.source}", now))
     store.close()
-    return _json({"mode": "inert", "result": result.as_dict()})
+    return _json({"mode": mode, "result": result.as_dict(), "delivery_eligible": False, "promoted": False})
+
+
+def cmd_source_intel(args: argparse.Namespace) -> int:
+    try:
+        store = _open_store(args.db, migrate=False)
+    except StateCompatibilityError as exc:
+        if exc.report.state is CompatibilityState.FRESH:
+            return _json({"source_key": args.source, "attempts": [], "baselines": [], "delivery_eligible": False})
+        print(json.dumps({"status": "state_incompatible", **exc.report.as_dict()}, indent=2))
+        return 3
+    source = args.source
+    runs = store.all(
+        """
+        SELECT run_id, source_key, collector_key, started_at, finished_at, status, fixture_scenario, error
+        FROM collector_runs WHERE source_key = ? ORDER BY started_at
+        """,
+        (source,),
+    )
+    baseline = store.one("SELECT source_key, baseline_run_id, established_at, observation_count FROM source_baselines WHERE source_key = ?", (source,))
+    events = store.all(
+        "SELECT event_type, COUNT(*) AS n FROM events WHERE source_key = ? GROUP BY event_type ORDER BY event_type",
+        (source,),
+    )
+    errors = store.all("SELECT message, created_at FROM run_errors WHERE source_key = ? ORDER BY error_id", (source,))
+    src = store.one("SELECT enabled, promotion_state FROM sources WHERE source_key = ?", (source,))
+    store.close()
+    last_ok = next((dict(row) for row in reversed(runs) if row["status"] == "accepted"), None)
+    last_attempt = dict(runs[-1]) if runs else None
+    return _json(
+        {
+            "source_key": source,
+            "operational_health_separate": True,
+            "delivery_eligible": False,
+            "enabled": bool(src["enabled"]) if src else False,
+            "promotion_state": src["promotion_state"] if src else "EXPERIMENTAL",
+            "last_attempted": last_attempt,
+            "last_succeeded": last_ok,
+            "baseline": dict(baseline) if baseline else None,
+            "event_counts": [dict(row) for row in events],
+            "parser_or_source_errors": [dict(row) for row in errors],
+            "attempts": [dict(row) for row in runs],
+        }
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -202,6 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--source", default="raspberry-pi-product")
     collect.add_argument("--run-id")
     collect.add_argument("--live", action="store_true")
+    collect.add_argument(
+        "--experimental-live",
+        action="store_true",
+        help="Manual opt-in network fetch for raspberry-pi-product only. Never used by tests.",
+    )
+    collect.add_argument("--corpus", default="baseline", help="Offline Raspberry Pi fixture corpus name")
+    intel = sub.add_parser("source-intel")
+    intel.add_argument("--source", default="raspberry-pi-product")
     return parser
 
 
@@ -218,6 +279,7 @@ COMMANDS = {
     "check-state": cmd_check_state,
     "migrate": cmd_migrate,
     "collect": cmd_collect,
+    "source-intel": cmd_source_intel,
 }
 
 

@@ -21,7 +21,7 @@ sources:
     promotion_state: EXPERIMENTAL
     expected_identity_surface: family+board+revision
     expected_variant_surface: ram+wireless
-    notes: Official product catalogue. Experimental adapter only.
+    notes: Official product catalogue. Foundation 1 experimental PRODUCT adapter exists; disabled by default; live fetch is manual --experimental-live only; not promoted.
 
   - source_key: orange-pi-product
     vendor: orange-pi

@@ -91,6 +91,7 @@ def _draft(raw: dict) -> ObservationDraft:
         historical_known=bool(raw.get("historical_known", False)),
         identity_conflict=bool(raw.get("identity_conflict", False)),
         identity_conflict_reason=raw.get("identity_conflict_reason", UNKNOWN),
+        evidence_insufficient=bool(raw.get("evidence_insufficient", False)),
     )
 
 

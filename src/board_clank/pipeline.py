@@ -49,9 +49,10 @@ class RunResult:
     events: list[str] = field(default_factory=list)
     notifications: int = 0
     error: str | None = None
+    diagnostics: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "run_id": self.run_id,
             "status": self.status,
             "replayed": self.replayed,
@@ -62,6 +63,9 @@ class RunResult:
             "notifications": self.notifications,
             "error": self.error,
         }
+        if self.diagnostics:
+            payload["diagnostics"] = self.diagnostics
+        return payload
 
 
 class Pipeline:
@@ -74,7 +78,12 @@ class Pipeline:
             (request.run_id,),
         )
         if existing:
-            return RunResult(run_id=request.run_id, status="replayed", replayed=True)
+            return RunResult(
+                run_id=request.run_id,
+                status="replayed",
+                replayed=True,
+                diagnostics=dict(request.diagnostics or {}),
+            )
 
         if not request.ok:
             self.store.execute(
@@ -98,7 +107,12 @@ class Pipeline:
                 (request.run_id, request.source_key, request.error or "collector failed", _now()),
             )
             self.store.commit()
-            return RunResult(run_id=request.run_id, status="failed", error=request.error)
+            return RunResult(
+                run_id=request.run_id,
+                status="failed",
+                error=request.error,
+                diagnostics=dict(request.diagnostics or {}),
+            )
 
         baseline = self._is_baseline(request.source_key)
         event_keys: list[str] = []
@@ -172,6 +186,7 @@ class Pipeline:
             occurrences=occurrences,
             events=event_keys,
             notifications=notification_count,
+            diagnostics=dict(request.diagnostics or {}),
         )
 
     def _is_baseline(self, source_key: str) -> bool:
@@ -185,6 +200,8 @@ class Pipeline:
         *,
         baseline: bool,
     ) -> tuple[int, list[str]]:
+        if draft.evidence_insufficient:
+            return self._admit_unresolved(request, draft, baseline=baseline)
         identity = self._resolve_identity(draft)
         self._upsert_graph(draft, identity, request)
         payload = draft.canonical_payload()
@@ -545,7 +562,47 @@ class Pipeline:
     ) -> list[EventRecord]:
         events: list[EventRecord] = []
         if kind is EntityKind.BOARD:
+            events.append(
+                self._make_event(
+                    EventType.FIRST_SEEN_BY_CLANK,
+                    kind,
+                    identity.board_key,
+                    request,
+                    identity,
+                    UNKNOWN,
+                    payload_hash,
+                    baseline,
+                    {"plane": draft.plane.value, "page_url": draft.page_url},
+                )
+            )
+            if baseline:
+                events.append(
+                    self._make_event(
+                        EventType.BASELINE_ENTITY,
+                        kind,
+                        identity.board_key,
+                        request,
+                        identity,
+                        UNKNOWN,
+                        payload_hash,
+                        True,
+                        {"plane": draft.plane.value},
+                    )
+                )
             if draft.historical_known:
+                events.append(
+                    self._make_event(
+                        EventType.HISTORICAL_DISCOVERY,
+                        kind,
+                        identity.board_key,
+                        request,
+                        identity,
+                        UNKNOWN,
+                        payload_hash,
+                        baseline,
+                        {"plane": draft.plane.value},
+                    )
+                )
                 # First-seen now does not become NEW_BOARD when historical evidence exists.
                 return events
             events.append(
@@ -618,6 +675,20 @@ class Pipeline:
                         {"storage": draft.variant.storage},
                     )
                 )
+            if draft.variant.region != UNKNOWN:
+                events.append(
+                    self._make_event(
+                        EventType.REGION_ADDED,
+                        kind,
+                        identity.variant_key,
+                        request,
+                        identity,
+                        UNKNOWN,
+                        payload_hash,
+                        baseline,
+                        {"region": draft.variant.region},
+                    )
+                )
         return events
 
     def _transition_events(
@@ -634,6 +705,20 @@ class Pipeline:
     ) -> list[EventRecord]:
         events: list[EventRecord] = []
         if kind is EntityKind.BOARD:
+            if previous.get("page_url") != current.get("page_url"):
+                events.append(
+                    self._make_event(
+                        EventType.NEW_REFERENCE,
+                        kind,
+                        identity.board_key,
+                        request,
+                        identity,
+                        from_hash,
+                        to_hash,
+                        baseline,
+                        {"from": previous.get("page_url"), "to": current.get("page_url")},
+                    )
+                )
             prev_soc = (previous.get("soc_key") or UNKNOWN)
             cur_soc = (current.get("soc_key") or UNKNOWN)
             if prev_soc != cur_soc:
@@ -908,3 +993,55 @@ class Pipeline:
 
 def source_authority_may_override_identity(authority: SourceAuthority) -> bool:
     return authority not in WEAK_OVERRIDE_AUTHORITY
+
+
+class _UnresolvedIdentity:
+    board_key = UNKNOWN
+    revision_key = UNKNOWN
+    variant_key = UNKNOWN
+
+
+    def __init__(self, draft: ObservationDraft) -> None:
+        slug = draft.board_slug if draft.board_slug and draft.board_slug != UNKNOWN else UNKNOWN
+        vendor = draft.vendor_key or UNKNOWN
+        self.board_key = f"{vendor}:{slug}" if slug != UNKNOWN else UNKNOWN
+        self.revision_key = UNKNOWN
+        self.variant_key = UNKNOWN
+
+
+# Bound as a method via assignment below to keep Pipeline methods together.
+def _admit_unresolved(self, request: CollectorRunRequest, draft: ObservationDraft, *, baseline: bool) -> tuple[int, list[str]]:
+    identity = _UnresolvedIdentity(draft)
+    event = self._make_event(
+        EventType.NOVELTY_UNRESOLVED,
+        EntityKind.BOARD,
+        identity.board_key,
+        request,
+        identity,
+        UNKNOWN,
+        draft.payload_hash(),
+        baseline,
+        {
+            "reason": draft.identity_conflict_reason if draft.identity_conflict else "insufficient-evidence",
+            "page_url": draft.page_url,
+            "marketing_name": draft.marketing_name,
+        },
+    )
+    if draft.identity_conflict:
+        anomaly = self._make_event(
+            EventType.IDENTITY_ANOMALY,
+            EntityKind.BOARD,
+            identity.board_key,
+            request,
+            identity,
+            UNKNOWN,
+            draft.payload_hash(),
+            baseline,
+            {"reason": draft.identity_conflict_reason},
+        )
+        keys = [self._persist_event(event, request.run_id), self._persist_event(anomaly, request.run_id)]
+        return 0, [key for key in keys if key]
+    return 0, [self._persist_event(event, request.run_id)]
+
+
+Pipeline._admit_unresolved = _admit_unresolved

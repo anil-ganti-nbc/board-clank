@@ -1,0 +1,129 @@
+{
+  "source_key": "raspberry-pi-product",
+  "vendor": "raspberry-pi",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "official_surfaces": [
+    "https://www.raspberrypi.com/products/",
+    "https://www.raspberrypi.com/products/raspberry-pi-5/",
+    "https://www.raspberrypi.com/products/raspberry-pi-4-model-b/",
+    "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
+    "https://www.raspberrypi.com/products/compute-module-4/",
+    "https://www.raspberrypi.com/products/raspberry-pi-3-model-b/"
+  ],
+  "corpora": {
+    "baseline": {
+      "description": "First source-scoped corpus: current official computers only.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/products-index.html",
+          "page_url": "https://www.raspberrypi.com/products/",
+          "role": "lead",
+          "observed_at": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "id": "pi5",
+          "file": "html/raspberry-pi-5.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-5/",
+          "role": "product",
+          "observed_at": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "id": "pi4",
+          "file": "html/raspberry-pi-4-model-b.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-4-model-b/",
+          "role": "product",
+          "observed_at": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "id": "zero2w",
+          "file": "html/raspberry-pi-zero-2-w.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/",
+          "role": "product",
+          "observed_at": "2026-01-01T00:00:00+00:00"
+        },
+        {
+          "id": "cm4",
+          "file": "html/compute-module-4.html",
+          "page_url": "https://www.raspberrypi.com/products/compute-module-4/",
+          "role": "product",
+          "observed_at": "2026-01-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "second-reference": {
+      "description": "Second official Raspberry Pi 5 product-surface URL.",
+      "documents": [
+        {
+          "id": "pi5-ref",
+          "file": "html/raspberry-pi-5-variant-ref.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-5/?variant=16gb",
+          "role": "product",
+          "observed_at": "2026-02-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "historical": {
+      "description": "Historical catalogue product encountered after baseline.",
+      "documents": [
+        {
+          "id": "pi3",
+          "file": "html/raspberry-pi-3-model-b.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-3-model-b/",
+          "role": "product",
+          "historical_known": true,
+          "observed_at": "2026-03-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "revision": {
+      "description": "Same board with an explicit first-party PCB revision token.",
+      "documents": [
+        {
+          "id": "pi4-rev15",
+          "file": "html/pi4-pcb-rev15-brief.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-4-model-b/",
+          "role": "product",
+          "observed_at": "2026-04-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Unparseable HTML.",
+      "documents": [
+        {
+          "id": "bad",
+          "file": "html/malformed.html",
+          "page_url": "https://www.raspberrypi.com/products/broken/",
+          "role": "product",
+          "observed_at": "2026-05-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Apparent new product lacking specification evidence.",
+      "documents": [
+        {
+          "id": "pi6-stub",
+          "file": "html/insufficient-new.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-6/",
+          "role": "product",
+          "observed_at": "2026-06-01T00:00:00+00:00"
+        }
+      ]
+    },
+    "conflict": {
+      "description": "Conflicting SoC strings on one official-looking page.",
+      "documents": [
+        {
+          "id": "pi5-conflict",
+          "file": "html/conflicting-identity.html",
+          "page_url": "https://www.raspberrypi.com/products/raspberry-pi-5/",
+          "role": "product",
+          "observed_at": "2026-07-01T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

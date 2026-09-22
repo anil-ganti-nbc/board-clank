@@ -138,6 +138,7 @@ class ObservationDraft(BaseModel):
     historical_known: bool = False
     identity_conflict: bool = False
     identity_conflict_reason: str = UNKNOWN
+    evidence_insufficient: bool = False
 
     def resolved_soc_key(self) -> str:
         if self.spec.soc_key and self.spec.soc_key != UNKNOWN:
@@ -180,6 +181,7 @@ class CollectorRunRequest(BaseModel):
     ok: bool = True
     error: str | None = None
     fixture_scenario: str | None = None
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
 class EventRecord(BaseModel):

@@ -2,7 +2,7 @@
 
 Operational Clank for single-board computers, compute modules, and closely related board computers.
 
-Foundation 0 only. This repository is the durable architecture: contracts, schemas, identity, source registry, event taxonomy, CLI, fixtures and tests. Future collectors plug into these contracts.
+Foundation 0 contracts plus Foundation 1's experimental Raspberry Pi PRODUCT adapter. The Raspberry Pi adapter is disabled by default, soak/manual only, and never required for tests.
 
 > A new SKU is not necessarily a new board; a new board revision is not necessarily a new product name.
 >
@@ -47,7 +47,10 @@ board-clank health
 | `board-clank migrate` | Explicit schema admission |
 | `board-clank baseline-status` | Per-source silent baselines |
 | `board-clank collect --fixture A` | Inert fixture run |
-| `board-clank collect --live` | Refused in Foundation 0 |
+| `board-clank collect --source raspberry-pi-product` | Offline Raspberry Pi HTML corpus |
+| `board-clank collect --live` | Refused |
+| `board-clank collect --experimental-live` | Manual Raspberry Pi fetch only |
+| `board-clank source-intel` | Source intelligence separate from health |
 
 ## Hierarchy
 
@@ -75,6 +78,7 @@ Persistent state: `/app/data`.
 ## Docs
 
 - [docs/FOUNDATION_0.md](docs/FOUNDATION_0.md)
+- [docs/FOUNDATION_1.md](docs/FOUNDATION_1.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/IDENTITY_MODEL.md](docs/IDENTITY_MODEL.md)
 - [docs/EVENT_MODEL.md](docs/EVENT_MODEL.md)

@@ -13,10 +13,14 @@ def test_no_discord_webhook_surface() -> None:
 
 
 def test_collectors_are_inert() -> None:
-    from board_clank.collectors import InertVendorAdapter, get_adapter
+    from board_clank.collectors import InertVendorAdapter, RaspberryPiProductAdapter, get_adapter
     from board_clank.taxonomy import PHASE1_VENDORS
 
     for vendor in PHASE1_VENDORS:
         adapter = get_adapter(f"{vendor}-product")
         assert adapter.live_network is False
-        assert isinstance(adapter, InertVendorAdapter)
+        if vendor == "raspberry-pi":
+            assert isinstance(adapter, RaspberryPiProductAdapter)
+            assert adapter.experimental_live is False
+        else:
+            assert isinstance(adapter, InertVendorAdapter)

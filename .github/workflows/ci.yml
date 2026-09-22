@@ -3,7 +3,7 @@ name: Foundation 0 CI
 on:
   pull_request:
   push:
-    branches: [main, foundation-0]
+    branches: [main, foundation-0, foundation-1-rpi-product]
   workflow_dispatch:
 
 permissions:

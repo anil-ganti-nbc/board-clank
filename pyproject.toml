@@ -27,7 +27,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-board_clank = ["py.typed", "schema.sql", "sources.yaml", "fixture_data/*.json"]
+board_clank = ["py.typed", "schema.sql", "sources.yaml", "fixture_data/*.json", "fixture_data/rpi_product/*", "fixture_data/rpi_product/html/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

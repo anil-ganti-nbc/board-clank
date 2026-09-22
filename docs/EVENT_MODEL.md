@@ -22,8 +22,16 @@ Event existence does not depend on Discord. Delivery policy is a separate table.
 - `IDENTITY_ANOMALY`
 - `CLASSIFICATION_CHANGED`
 - `SOURCE_DEGRADED`
+- `BASELINE_ENTITY` (Foundation 1 additive, suppressed)
+- `HISTORICAL_DISCOVERY` (Foundation 1 additive, suppressed)
+- `FIRST_SEEN_BY_CLANK` (Foundation 1 additive, suppressed)
+- `NEW_REFERENCE` (Foundation 1 additive, suppressed)
+- `REGION_ADDED` (Foundation 1 additive, suppressed)
+- `NOVELTY_UNRESOLVED` (Foundation 1 additive, suppressed)
 
 Room is left for future types without schema surgery (`event_type` is text).
+These additive types record chronology and diagnostics. They are not
+newsroom novelty and do not change Foundation 0 push defaults.
 
 ## Baseline
 

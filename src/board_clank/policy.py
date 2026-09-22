@@ -34,6 +34,12 @@ SUPPRESSED_EVENTS = frozenset(
         EventType.IMAGE_RELEASED,
         EventType.CLASSIFICATION_CHANGED,
         EventType.SOURCE_DEGRADED,
+        EventType.BASELINE_ENTITY,
+        EventType.HISTORICAL_DISCOVERY,
+        EventType.FIRST_SEEN_BY_CLANK,
+        EventType.NEW_REFERENCE,
+        EventType.REGION_ADDED,
+        EventType.NOVELTY_UNRESOLVED,
     }
 )
 
