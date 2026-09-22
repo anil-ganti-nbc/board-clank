@@ -1,6 +1,6 @@
 # Architecture
 
-Board Clank is an operational Clank. It owns domain truth.
+Board Clank is an operational Clank. SQLite is domain truth.
 
 ## Ownership
 

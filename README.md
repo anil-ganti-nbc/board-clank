@@ -21,7 +21,9 @@ Foundation 0 only. This repository is the durable architecture: contracts, schem
 Python 3.12+.
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements.lock
+python -m pip install -r requirements-dev.lock
+python -m pip install --no-deps -e .
 board-clank version
 board-clank identity
 board-clank sources --assert-foundation

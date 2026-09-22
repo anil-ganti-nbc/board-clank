@@ -1,5 +1,7 @@
 # Novelty model
 
+FIRST_SEEN != MARKET_NOVELTY.
+
 First-seen is observation time, not market novelty.
 
 Do not collapse these into one "release date":
