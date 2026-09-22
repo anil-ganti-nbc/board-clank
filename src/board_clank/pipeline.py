@@ -36,3 +36,29 @@ WEAK_OVERRIDE_AUTHORITY = {SourceAuthority.THIRD_PARTY_DISCOVERY, SourceAuthorit
 
 def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+@dataclass
+class RunResult:
+    run_id: str
+    status: str
+    replayed: bool = False
+    baseline: bool = False
+    observations: int = 0
+    occurrences: int = 0
+    events: list[str] = field(default_factory=list)
+    notifications: int = 0
+    error: str | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "run_id": self.run_id,
+            "status": self.status,
+            "replayed": self.replayed,
+            "baseline": self.baseline,
+            "observations": self.observations,
+            "occurrences": self.occurrences,
+            "events": self.events,
+            "notifications": self.notifications,
+            "error": self.error,
+        }
