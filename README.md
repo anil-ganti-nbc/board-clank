@@ -21,7 +21,9 @@ Foundation 0 only. This repository is the durable architecture: contracts, schem
 Python 3.12+.
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements.lock
+python -m pip install -r requirements-dev.lock
+python -m pip install --no-deps -e .
 board-clank version
 board-clank identity
 board-clank sources --assert-foundation
@@ -52,3 +54,29 @@ board-clank health
 Vendor → Family → Board → Board revision → Commercial variant / SKU
 
 RAM, storage, wireless, region, bundle and SKU never create a new board identity.
+
+## Tests
+
+```bash
+pytest
+```
+
+No live network is required. CI forces a black-hole proxy.
+
+## Container
+
+```bash
+docker build --build-arg GIT_REVISION=$(git rev-parse HEAD) -t board-clank:foundation-0 .
+docker run --rm --user 10001 board-clank:foundation-0 health
+```
+
+Persistent state: `/app/data`.
+
+## Docs
+
+- [docs/FOUNDATION_0.md](docs/FOUNDATION_0.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/IDENTITY_MODEL.md](docs/IDENTITY_MODEL.md)
+- [docs/EVENT_MODEL.md](docs/EVENT_MODEL.md)
+- [docs/SOURCE_PLANES.md](docs/SOURCE_PLANES.md)
+- [docs/NOVELTY_MODEL.md](docs/NOVELTY_MODEL.md)
