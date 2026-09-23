@@ -395,13 +395,15 @@ def test_cli_still_refuses_live_and_fixture_path_works(tmp_path: Path, capsys) -
     assert intel["enabled"] is False
 
 
-def test_other_phase1_sources_remain_inert() -> None:
+def test_no_phase1_source_remains_inert() -> None:
+    """Foundation 6A completed the Phase-1 roster: every vendor has a real
+    adapter. Regression guards against silently reverting one to inert."""
     from board_clank.collectors import InertVendorAdapter, get_adapter
+    from board_clank.taxonomy import PHASE1_VENDORS
 
-    # Foundation 5A gave hardkernel-odroid a real adapter; pine64 stays inert.
-    for vendor in ("pine64",):
+    for vendor in PHASE1_VENDORS:
         adapter = get_adapter(f"{vendor}-product")
-        assert isinstance(adapter, InertVendorAdapter)
+        assert not isinstance(adapter, InertVendorAdapter), vendor
         assert adapter.live_network is False
 
 

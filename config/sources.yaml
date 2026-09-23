@@ -85,8 +85,8 @@ sources:
     registered_state: REGISTERED
     promotion_state: EXPERIMENTAL
     expected_identity_surface: family+board
-    expected_variant_surface: ram+wireless
-    notes: Official PINE64 pages. Experimental adapter only.
+    expected_variant_surface: ram+emmc+wireless
+    notes: Official Pine64 devices catalogue (pine64.org/devices; category-gated scope - SBCs and compute modules only, phones/laptops/tablets/wearables/tools rejected; store.pine64.org and pine64.com are commerce-only, wiki and linux.pine64.org documentation-only, none ingested). Foundation 6A experimental PRODUCT adapter (final vendor); disabled by default; live fetch is manual --experimental-live only; not promoted.
 
   # Phase-2 placeholders — documented, not activated.
   - source_key: friendlyelec-placeholder

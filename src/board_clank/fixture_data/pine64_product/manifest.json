@@ -1,0 +1,196 @@
+{
+  "source_key": "pine64-product",
+  "vendor": "pine64",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "observed_at": "2026-09-23T00:00:00+00:00",
+  "official_surfaces": [
+    "https://pine64.org/devices/ (DISCOVERY + category scope)",
+    "https://pine64.org/devices/star64/",
+    "https://pine64.org/devices/quartz64_model_a/",
+    "https://pine64.org/devices/rockpro64/",
+    "https://wiki.pine64.org/ (documentation; not ingested)",
+    "https://pine64.com/ (commerce-only; not ingested)",
+    "https://store.pine64.org/ (commerce; TLS mismatch from this network; not ingested)",
+    "https://linux.pine64.org/ (blog; TLS failure from this network; not ingested)"
+  ],
+  "notes": "Category scope is enforced from the devices index: SBCs + compute modules are board scope; laptops/phones/tablets/wearables/tools/IoT are rejected. Thin pages (SOQuartz) may be identity-only.",
+  "corpora": {
+    "baseline": {
+      "description": "Representative Pine64 SBC + compute-module corpus across four SoC vendors.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/devices-index.html",
+          "page_url": "https://pine64.org/devices/",
+          "role": "lead",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "star64",
+          "file": "html/star64.html",
+          "page_url": "https://pine64.org/devices/star64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "quartz-a",
+          "file": "html/quartz64_model_a.html",
+          "page_url": "https://pine64.org/devices/quartz64_model_a/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "quartz-b",
+          "file": "html/quartz64_model_b.html",
+          "page_url": "https://pine64.org/devices/quartz64_model_b/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "quartz-zero",
+          "file": "html/quartz64-zero.html",
+          "page_url": "https://pine64.org/devices/quartz64-zero/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "rockpro64",
+          "file": "html/rockpro64.html",
+          "page_url": "https://pine64.org/devices/rockpro64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "rock64",
+          "file": "html/rock64.html",
+          "page_url": "https://pine64.org/devices/rock64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "pine-a64",
+          "file": "html/pine_a64.html",
+          "page_url": "https://pine64.org/devices/pine_a64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "pine-a64-lts",
+          "file": "html/pine_a64-lts.html",
+          "page_url": "https://pine64.org/devices/pine_a64-lts/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "sopine",
+          "file": "html/sopine.html",
+          "page_url": "https://pine64.org/devices/sopine/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "scope-rejection": {
+      "description": "Phone, laptop, smartwatch, soldering iron, and thin identity-only module pages.",
+      "documents": [
+        {
+          "id": "pinephone",
+          "file": "html/pinephone.html",
+          "page_url": "https://pine64.org/devices/pinephone/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "pinebook-pro",
+          "file": "html/pinebook_pro.html",
+          "page_url": "https://pine64.org/devices/pinebook_pro/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "pinetime",
+          "file": "html/pinetime.html",
+          "page_url": "https://pine64.org/devices/pinetime/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "pinecil",
+          "file": "html/pinecil.html",
+          "page_url": "https://pine64.org/devices/pinecil/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "soquartz",
+          "file": "html/soquartz.html",
+          "page_url": "https://pine64.org/devices/soquartz/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "historical": {
+      "description": "First-sighted historical boards (Ox64 discovered late) plus re-sighted older boards: historical discovery, never market-new.",
+      "documents": [
+        {
+          "id": "ox64-hist",
+          "file": "html/ox64.html",
+          "page_url": "https://pine64.org/devices/ox64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        },
+        {
+          "id": "rock64-hist",
+          "file": "html/rock64.html",
+          "page_url": "https://pine64.org/devices/rock64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        },
+        {
+          "id": "rockpro64-hist",
+          "file": "html/rockpro64.html",
+          "page_url": "https://pine64.org/devices/rockpro64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        },
+        {
+          "id": "pine-a64-hist",
+          "file": "html/pine_a64.html",
+          "page_url": "https://pine64.org/devices/pine_a64/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Board-shaped teaser without specification evidence.",
+      "documents": [
+        {
+          "id": "pinex",
+          "file": "html/teaser-pine-x.html",
+          "page_url": "https://pine64.org/devices/pine-x/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Broken HTML fragment.",
+      "documents": [
+        {
+          "id": "malformed",
+          "file": "html/malformed.html",
+          "page_url": "https://pine64.org/devices/malformed/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

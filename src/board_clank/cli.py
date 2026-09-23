@@ -168,11 +168,16 @@ def cmd_collect(args: argparse.Namespace) -> int:
         print(json.dumps({"status": "refused", "reason": "live collection is disabled in Foundation 0"}))
         return 2
     experimental_live = bool(getattr(args, "experimental_live", False))
-    adapter = get_adapter(
-        args.source,
-        experimental_live=experimental_live,
-        corpus=getattr(args, "corpus", None) or "baseline",
-    )
+    try:
+        adapter = get_adapter(
+            args.source,
+            experimental_live=experimental_live,
+            corpus=getattr(args, "corpus", None) or "baseline",
+        )
+    except KeyError:
+        # Fail closed: unknown or unregistered source, never a crash.
+        print(json.dumps({"status": "refused", "reason": f"no adapter registered for {args.source}"}))
+        return 2
     if experimental_live and not getattr(type(adapter), "supports_experimental_live", False):
         print(json.dumps({"status": "refused", "reason": f"experimental live is not implemented for {args.source}"}))
         return 2

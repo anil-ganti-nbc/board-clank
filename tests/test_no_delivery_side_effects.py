@@ -18,6 +18,7 @@ def test_collectors_are_inert() -> None:
         InertVendorAdapter,
         OdroidProductAdapter,
         OrangePiProductAdapter,
+        Pine64ProductAdapter,
         RadxaProductAdapter,
         RaspberryPiProductAdapter,
         get_adapter,
@@ -42,5 +43,8 @@ def test_collectors_are_inert() -> None:
         elif vendor == "hardkernel-odroid":
             assert isinstance(adapter, OdroidProductAdapter)
             assert adapter.experimental_live is False
+        elif vendor == "pine64":
+            assert isinstance(adapter, Pine64ProductAdapter)
+            assert adapter.experimental_live is False
         else:
-            assert isinstance(adapter, InertVendorAdapter)
+            raise AssertionError(f"unexpected Phase-1 vendor {vendor} resolved to inert")

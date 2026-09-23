@@ -402,5 +402,5 @@ def test_cli_offline_collect_works_for_banana_pi(tmp_path: Path, capsys) -> None
     intel = json.loads(capsys.readouterr().out)
     assert intel["enabled"] is False
     assert intel["promotion_state"] == "EXPERIMENTAL"
-    assert main(["--db", str(db), "collect", "--source", "pine64-product", "--experimental-live"]) == 2
+    assert main(["--db", str(db), "collect", "--source", "friendlyelec-product", "--experimental-live"]) == 2
     assert json.loads(capsys.readouterr().out)["status"] == "refused"
