@@ -470,5 +470,5 @@ def test_cli_offline_collect_works_for_radxa(tmp_path: Path, capsys) -> None:
     assert intel["promotion_state"] == "EXPERIMENTAL"
     assert intel["delivery_eligible"] is False
     # Sources without live adapters stay refused.
-    assert main(["--db", str(db), "collect", "--source", "hardkernel-odroid-product", "--experimental-live"]) == 2
+    assert main(["--db", str(db), "collect", "--source", "pine64-product", "--experimental-live"]) == 2
     assert json.loads(capsys.readouterr().out)["status"] == "refused"

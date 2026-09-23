@@ -3,7 +3,7 @@ name: Foundation 0 CI
 on:
   pull_request:
   push:
-    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency, foundation-3-radxa-product, foundation-4-banana-pi-product]
+    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency, foundation-3-radxa-product, foundation-4-banana-pi-product, foundation-5-odroid-product]
   workflow_dispatch:
 
 permissions:

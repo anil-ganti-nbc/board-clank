@@ -398,8 +398,8 @@ def test_cli_still_refuses_live_and_fixture_path_works(tmp_path: Path, capsys) -
 def test_other_phase1_sources_remain_inert() -> None:
     from board_clank.collectors import InertVendorAdapter, get_adapter
 
-    # Foundation 4A gave banana-pi a real adapter; the remaining vendors stay inert.
-    for vendor in ("hardkernel-odroid", "pine64"):
+    # Foundation 5A gave hardkernel-odroid a real adapter; pine64 stays inert.
+    for vendor in ("pine64",):
         adapter = get_adapter(f"{vendor}-product")
         assert isinstance(adapter, InertVendorAdapter)
         assert adapter.live_network is False

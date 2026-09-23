@@ -38,5 +38,8 @@ def test_collectors_are_inert() -> None:
         elif vendor == "banana-pi":
             assert isinstance(adapter, BananaPiProductAdapter)
             assert adapter.experimental_live is False
+        elif vendor == "hardkernel-odroid":
+            assert isinstance(adapter, OdroidProductAdapter)
+            assert adapter.experimental_live is False
         else:
             assert isinstance(adapter, InertVendorAdapter)

@@ -73,7 +73,7 @@ sources:
     promotion_state: EXPERIMENTAL
     expected_identity_surface: family+board+revision
     expected_variant_surface: ram+emmc
-    notes: Official Hardkernel / ODROID catalogue. Experimental adapter only.
+    notes: Official Hardkernel shop catalogue (hardkernel.com/shop WooCommerce; h1 product-title identity; per-RAM storefront slugs canonicalise; shop stock status is availability evidence; odroid.com/wiki/forum are documentation planes, HTTP 403 from this network, not ingested). Foundation 5A experimental PRODUCT adapter; disabled by default; live fetch is manual --experimental-live only; not promoted.
 
   - source_key: pine64-product
     vendor: pine64

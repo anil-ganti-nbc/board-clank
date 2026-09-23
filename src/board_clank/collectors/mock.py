@@ -42,7 +42,7 @@ class FixtureCollector:
 ADAPTERS = {
     vendor: InertVendorAdapter(vendor, f"{vendor}-product")
     for vendor in PHASE1_VENDORS
-    if vendor not in {"raspberry-pi", "orange-pi", "radxa", "banana-pi"}
+    if vendor not in {"raspberry-pi", "orange-pi", "radxa", "banana-pi", "hardkernel-odroid"}
 }
 
 
@@ -72,6 +72,13 @@ def get_adapter(source_key: str, **kwargs):
         from board_clank.collectors.banana_pi import BananaPiProductAdapter
 
         return BananaPiProductAdapter(
+            experimental_live=bool(kwargs.get("experimental_live")),
+            corpus=str(kwargs.get("corpus") or "baseline"),
+        )
+    if source_key in {"hardkernel-odroid-product", "hardkernel-odroid", "odroid-product"}:
+        from board_clank.collectors.odroid import OdroidProductAdapter
+
+        return OdroidProductAdapter(
             experimental_live=bool(kwargs.get("experimental_live")),
             corpus=str(kwargs.get("corpus") or "baseline"),
         )

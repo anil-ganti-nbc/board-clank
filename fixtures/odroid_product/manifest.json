@@ -1,0 +1,211 @@
+{
+  "source_key": "hardkernel-odroid-product",
+  "vendor": "hardkernel-odroid",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "observed_at": "2026-09-23T00:00:00+00:00",
+  "official_surfaces": [
+    "https://www.hardkernel.com/shop/",
+    "https://www.hardkernel.com/shop/odroid-h4/",
+    "https://www.hardkernel.com/shop/odroid-m1-with-4gbyte-ram/",
+    "https://www.hardkernel.com/shop/odroid-c5/",
+    "odroid.com / wiki.odroid.com / forum.odroid.com (documentation/community; HTTP 403 from this network; not ingested)"
+  ],
+  "notes": "Product identity is the h1 product-title; shop slugs encode RAM configurations; H-series pages carry multi-model comparison tables with per-model production dates; shop stock status is availability evidence.",
+  "corpora": {
+    "baseline": {
+      "description": "Current ODROID boards across three silicon vendors and two architectures.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/shop-index.html",
+          "page_url": "https://www.hardkernel.com/shop/",
+          "role": "lead",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "h4",
+          "file": "html/odroid-h4.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-h4/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "h4-plus",
+          "file": "html/odroid-h4-plus.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-h4-plus/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "h4-ultra",
+          "file": "html/odroid-h4-ultra.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-h4-ultra/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "h5",
+          "file": "html/odroid-h5.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-h5/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m1-4g",
+          "file": "html/odroid-m1-with-4gbyte-ram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1-with-4gbyte-ram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m1s-4g",
+          "file": "html/odroid-m1s-with-4gbyte-ram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m1s-lite",
+          "file": "html/odroid-m1s-lite-2gb.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1s-lite-2gb/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m2-16g",
+          "file": "html/odroid-m2-with-16gbyte-ram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m2-with-16gbyte-ram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "c5",
+          "file": "html/odroid-c5.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-c5/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "config-storefronts": {
+      "description": "Per-RAM storefront pages of the same boards (M1 4G/8G; C4 4G/2G with glued slug).",
+      "documents": [
+        {
+          "id": "m1-4g",
+          "file": "html/odroid-m1-with-4gbyte-ram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1-with-4gbyte-ram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m1-8g",
+          "file": "html/odroid-m1-with-8gbyte-ram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1-with-8gbyte-ram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "m1s-4g-ioh",
+          "file": "html/odroid-m1s-with-4gbyte-ram-io-header.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-io-header/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "c4-4g",
+          "file": "html/odroid-c4.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-c4/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "c4-2g",
+          "file": "html/odroid-c4with2gbyteram.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-c4with2gbyteram/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "historical": {
+      "description": "Older-generation boards first sighted by Clank: historical discovery, never market-new.",
+      "documents": [
+        {
+          "id": "n2plus",
+          "file": "html/odroid-n2-plus.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-n2-with-2gbyte-ram-2/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        },
+        {
+          "id": "hc4",
+          "file": "html/odroid-hc4.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-hc4/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        },
+        {
+          "id": "c4-hist",
+          "file": "html/odroid-c4.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-c4/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00",
+          "historical_known": true
+        }
+      ]
+    },
+    "non-board": {
+      "description": "Handheld console (two colour storefronts) and a chassis/power bundle kit.",
+      "documents": [
+        {
+          "id": "go-clear",
+          "file": "html/odroid-go-ultra-clear-white.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-go-ultra-clear-white/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "go-gray",
+          "file": "html/odroid-go-ultra-dim-gray.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-go-ultra-dim-gray/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        },
+        {
+          "id": "hc4-kit",
+          "file": "html/odroid-hc4-p-kit.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-hc4-p-kit/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Board-shaped teaser without specification evidence.",
+      "documents": [
+        {
+          "id": "n3",
+          "file": "html/odroid-n3-teaser.html",
+          "page_url": "https://www.hardkernel.com/shop/odroid-n3-teaser/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Broken HTML fragment.",
+      "documents": [
+        {
+          "id": "malformed",
+          "file": "html/malformed.html",
+          "page_url": "https://www.hardkernel.com/shop/malformed/",
+          "role": "product",
+          "observed_at": "2026-09-23T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}
