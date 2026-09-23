@@ -1,0 +1,154 @@
+{
+  "source_key": "banana-pi-product",
+  "vendor": "banana-pi",
+  "plane": "PRODUCT",
+  "authority": "FIRST_PARTY_CANONICAL",
+  "observed_at": "2026-09-22T00:00:00+00:00",
+  "official_surfaces": [
+    "https://banana-pi.org/en/banana-pi-sbcs/",
+    "https://banana-pi.org/en/banana-pi-sbcs/177.html",
+    "https://banana-pi.org/en/bananapi-router/205.html",
+    "https://wiki.banana-pi.org/ (documentation; not ingested)",
+    "https://docs.banana-pi.org/ (documentation; not ingested)"
+  ],
+  "notes": "Product identity is title-anchored: pages carry other products' names in furniture; URLs are opaque numbers.",
+  "corpora": {
+    "baseline": {
+      "description": "Representative Banana Pi corpus across five SoC vendors and two architectures.",
+      "documents": [
+        {
+          "id": "index",
+          "file": "html/index-sbcs.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/",
+          "role": "lead",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m5pro",
+          "file": "html/sbcs-177-bpi-m5-pro.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/177.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m7s",
+          "file": "html/sbcs-211-bpi-m7s.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/211.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m7",
+          "file": "html/sbcs-169-bpi-m7.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/169.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m8",
+          "file": "html/sbcs-213-bpi-m8.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/213.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m4berry",
+          "file": "html/sbcs-167-bpi-m4-berry.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/167.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "m4zero",
+          "file": "html/sbcs-171-bpi-m4-zero.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/171.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "forge1",
+          "file": "html/sbcs-199-bpi-forge1.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/199.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "f3",
+          "file": "html/sbcs-175-bpi-f3.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/175.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "canmv",
+          "file": "html/sbcs-181-bpi-canmv-k230d-zero.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/181.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "r4pro",
+          "file": "html/router-205-bpi-r4-pro.html",
+          "page_url": "https://banana-pi.org/en/bananapi-router/205.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "conflict": {
+      "description": "One page documenting three SoC options (H3/H2+/H5).",
+      "documents": [
+        {
+          "id": "m2zero",
+          "file": "html/sbcs-1-bpi-m2-zero.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/1.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "insufficient": {
+      "description": "Board-shaped teaser without specification evidence.",
+      "documents": [
+        {
+          "id": "m9",
+          "file": "html/teaser-bpi-m9.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/999.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "non-board": {
+      "description": "WiFi module accessory and STEAM microcontroller board.",
+      "documents": [
+        {
+          "id": "mt7615",
+          "file": "html/ai-iot-101-bpi-mt7615.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-ai-iot/101.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        },
+        {
+          "id": "bpibit",
+          "file": "html/steam-63-bpi-bit.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-steam/63.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    },
+    "malformed": {
+      "description": "Broken HTML fragment.",
+      "documents": [
+        {
+          "id": "malformed",
+          "file": "html/malformed.html",
+          "page_url": "https://banana-pi.org/en/banana-pi-sbcs/0.html",
+          "role": "product",
+          "observed_at": "2026-09-22T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

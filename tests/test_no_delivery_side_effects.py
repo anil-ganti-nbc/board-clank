@@ -14,6 +14,7 @@ def test_no_discord_webhook_surface() -> None:
 
 def test_collectors_are_inert() -> None:
     from board_clank.collectors import (
+        BananaPiProductAdapter,
         InertVendorAdapter,
         OrangePiProductAdapter,
         RadxaProductAdapter,
@@ -33,6 +34,9 @@ def test_collectors_are_inert() -> None:
             assert adapter.experimental_live is False
         elif vendor == "radxa":
             assert isinstance(adapter, RadxaProductAdapter)
+            assert adapter.experimental_live is False
+        elif vendor == "banana-pi":
+            assert isinstance(adapter, BananaPiProductAdapter)
             assert adapter.experimental_live is False
         else:
             assert isinstance(adapter, InertVendorAdapter)
