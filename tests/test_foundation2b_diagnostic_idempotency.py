@@ -416,7 +416,7 @@ def test_schema_v2_and_forward_migration_path(tmp_path: Path) -> None:
     Store(path)
     con = sqlite3.connect(path)
     versions = [row[0] for row in con.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == [1, 2]
+    assert versions == list(range(1, EXPECTED_SCHEMA_VERSION + 1))
     con.close()
     report = __import__("board_clank.compatibility", fromlist=["inspect_path"]).inspect_path(path)
     assert report.state.value == "COMPATIBLE"
@@ -428,7 +428,9 @@ def test_schema_v2_and_forward_migration_path(tmp_path: Path) -> None:
     con = sqlite3.connect(legacy)
     con.execute("DROP TABLE diagnostic_sightings")
     con.execute("DROP TABLE diagnostic_conditions")
-    con.execute("DELETE FROM schema_migrations WHERE version = 2")
+    con.execute("DROP INDEX IF EXISTS idx_events_code_revision")
+    con.execute("ALTER TABLE events DROP COLUMN code_revision")
+    con.execute("DELETE FROM schema_migrations WHERE version >= 2")
     con.commit()
     con.close()
     inspected = __import__("board_clank.compatibility", fromlist=["inspect_path"]).inspect_path(legacy)

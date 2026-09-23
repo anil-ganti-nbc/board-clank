@@ -65,6 +65,18 @@ jobs:
           board-clank version
           board-clank identity
           board-clank health
+      - name: Production readiness gates
+        run: |
+          board-clank manifest
+          board-clank manifest-declared
+          rm -f /tmp/pr-ci.db /tmp/pr-ci-restored.db
+          board-clank --db /tmp/pr-ci.db collect --source orange-pi-product --run-id pr-ci
+          board-clank --db /tmp/pr-ci.db backup --out /tmp/pr-ci-backup
+          BACKUP_DB=$(ls /tmp/pr-ci-backup/*.board-clank-backup.db)
+          BACKUP_META=$(ls /tmp/pr-ci-backup/*.board-clank-backup.meta.json)
+          board-clank restore --backup-file "$BACKUP_DB" --metadata "$BACKUP_META" --target /tmp/pr-ci-restored.db --activate
+          board-clank --db /tmp/pr-ci-restored.db observe > /dev/null
+          echo "production-readiness gates passed: manifest + backup + restore + observe"
 
   container:
     name: ci / container-nonroot

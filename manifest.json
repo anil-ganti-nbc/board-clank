@@ -1,0 +1,108 @@
+{
+  "architecture": {
+    "python": ">=3.11",
+    "storage": "sqlite"
+  },
+  "backup_restore": {
+    "format": "sqlite online-backup image + sidecar metadata (format v1)",
+    "integrity": "PRAGMA integrity_check + SHA-256 verified",
+    "operator_triggered": true
+  },
+  "capabilities": [
+    "discovery",
+    "identity",
+    "spec_extraction",
+    "variant_handling",
+    "replay",
+    "backup",
+    "restore",
+    "observer_surface"
+  ],
+  "capability_states": {
+    "backup_restore": {
+      "evidence": "operator-triggered SQLite online backup with SHA-256 verified isolated restore",
+      "state": "active"
+    },
+    "collection": {
+      "evidence": "six real source adapters exist; every source enabled=false",
+      "state": "supported_unconfigured"
+    },
+    "delivery": {
+      "evidence": "notification rows are generated outbox-only; no send path exists; promotion_freeze=true",
+      "state": "unsupported_by_policy"
+    },
+    "deployment": {
+      "evidence": "no deployment evidence exists; deployed HEAD is a separate observer fact",
+      "state": "unknown_or_unverified"
+    },
+    "events": {
+      "evidence": "event/outbox plane with baseline silence and diagnostic conditions",
+      "state": "active"
+    },
+    "health": {
+      "evidence": "read-only health surface over persistent state",
+      "state": "active"
+    },
+    "observer_surface": {
+      "evidence": "read-only identity/capabilities/status/health/last_run/capability_states",
+      "state": "active"
+    },
+    "replay": {
+      "evidence": "processed_run_receipts idempotency proven across six vendors",
+      "state": "active"
+    },
+    "scheduler": {
+      "evidence": "no scheduler authority declared or implemented",
+      "state": "unsupported_by_policy"
+    }
+  },
+  "clank_id": "board-clank",
+  "declaration_note": "Declared manifest. code_revision is a build/runtime fact (BOARD_CLANK_SOURCE_REVISION env) and is deliberately UNKNOWN in the committed declaration; runtime truth is exposed by board_clank.manifest.build_manifest() and the observer surface.",
+  "display_name": "Board Clank (SBC hardware intelligence)",
+  "manifest_version": 1,
+  "maturity": "EXPERIMENTAL",
+  "notification_authority": "NONE",
+  "observer_surface": {
+    "contract": "Observer Adapter Surface Contract v0.2 (required core)",
+    "methods": [
+      "identity",
+      "capabilities",
+      "status",
+      "health",
+      "last_run",
+      "capability_states"
+    ],
+    "optional_extensions": [
+      "schema_revision",
+      "source_summary",
+      "diagnostic_summary",
+      "execution_evidence"
+    ],
+    "read_only": true
+  },
+  "ownership": {
+    "domain": "SBC board/vendor inventory and novelty (first-party PRODUCT plane)",
+    "operator": "anil-ganti-nbc"
+  },
+  "persistence": {
+    "default_path_semantics": "operator-provided --db path; no writes outside the declared database file",
+    "engine": "sqlite",
+    "schema_version": 3
+  },
+  "release_channel": "foundation-0",
+  "scheduler_authority": "NONE",
+  "sources": [
+    "raspberry-pi-product",
+    "orange-pi-product",
+    "radxa-product",
+    "banana-pi-product",
+    "hardkernel-odroid-product",
+    "pine64-product"
+  ],
+  "versions": {
+    "adapter_contract": "0.2",
+    "code_revision": "UNKNOWN",
+    "package": "0.1.0",
+    "schema": 3
+  }
+}

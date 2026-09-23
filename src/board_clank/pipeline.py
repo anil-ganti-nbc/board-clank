@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+from board_clank._version import SOURCE_REVISION
 from board_clank.identity import (
     UNKNOWN,
     VariantDimensions,
@@ -901,8 +902,9 @@ class Pipeline:
             """
             INSERT INTO events(
                 event_key, event_type, entity_kind, entity_key, board_key, revision_key, variant_key,
-                source_key, run_id, from_hash, to_hash, baseline_silent, payload_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source_key, run_id, from_hash, to_hash, baseline_silent, payload_json, created_at,
+                code_revision
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 event.event_key,
@@ -919,6 +921,7 @@ class Pipeline:
                 1 if event.baseline_silent else 0,
                 canonical_json(event.payload),
                 _now(),
+                SOURCE_REVISION,
             ),
         )
         disposition = disposition_for(event.event_type, baseline_silent=event.baseline_silent)

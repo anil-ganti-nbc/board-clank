@@ -231,6 +231,9 @@ class EventRecord(BaseModel):
     to_hash: str
     baseline_silent: bool
     payload: dict[str, Any] = Field(default_factory=dict)
+    # Fleet Law 6 provenance: the build/source revision that produced this
+    # event. Provenance, not novelty — never part of event identity.
+    code_revision: str = UNKNOWN
 
 
 class NotificationRecord(BaseModel):

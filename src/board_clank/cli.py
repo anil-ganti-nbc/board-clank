@@ -257,6 +257,65 @@ def cmd_source_intel(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    from board_clank.backup import BackupError, create_backup
+
+    try:
+        result = create_backup(args.db, args.out, name=args.name)
+    except BackupError as exc:
+        print(json.dumps({"status": "failed", "reason": str(exc)}, indent=2))
+        return 3
+    return _json({"status": "backed_up", **result.as_dict()})
+
+
+def cmd_restore(args: argparse.Namespace) -> int:
+    from board_clank.backup import BackupError, restore_backup
+
+    try:
+        report = restore_backup(
+            args.backup_file,
+            args.metadata,
+            args.target,
+            activate=args.activate,
+            force=args.force,
+        )
+    except BackupError as exc:
+        print(json.dumps({"status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    status = "restored_activated" if report["activated"] else "restored_staging"
+    return _json({"status": status, **report})
+
+
+def cmd_manifest(args: argparse.Namespace) -> int:
+    from board_clank.manifest import ManifestError, build_manifest, validate_manifest
+
+    try:
+        report = validate_manifest(build_manifest())
+    except ManifestError as exc:
+        print(json.dumps({"valid": False, "error": str(exc)}, indent=2))
+        return 3
+    return _json(report)
+
+
+def cmd_observe(args: argparse.Namespace) -> int:
+    from board_clank import observer
+
+    target = args.db or str(default_db_path())
+    return _json(observer.full_snapshot(target))
+
+
+def cmd_manifest_declared(args: argparse.Namespace) -> int:
+    from board_clank.manifest import ManifestError, load_manifest, validate_manifest
+
+    try:
+        manifest = load_manifest(args.file) if args.file else load_manifest()
+        report = validate_manifest(manifest)
+    except ManifestError as exc:
+        print(json.dumps({"valid": False, "error": str(exc)}, indent=2))
+        return 3
+    return _json(report)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="board-clank")
     parser.add_argument("--db", help="SQLite path")
@@ -286,6 +345,19 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--corpus", default="baseline", help="Offline Raspberry Pi fixture corpus name")
     intel = sub.add_parser("source-intel")
     intel.add_argument("--source", default="raspberry-pi-product")
+    backup = sub.add_parser("backup", help="Operator-triggered verified backup of persistent state")
+    backup.add_argument("--out", required=True, help="Output directory for the artifact pair")
+    backup.add_argument("--name", help="Optional artifact stem (default: <db stem>-<UTC timestamp>)")
+    restore = sub.add_parser("restore", help="Restore a verified backup into an explicit target")
+    restore.add_argument("--backup-file", required=True, help="Backup database image path")
+    restore.add_argument("--metadata", required=True, help="Backup sidecar metadata JSON path")
+    restore.add_argument("--target", required=True, help="Explicit operator target database path")
+    restore.add_argument("--activate", action="store_true", help="Replace the target with the verified restore")
+    restore.add_argument("--force", action="store_true", help="Allow replacing an existing target")
+    sub.add_parser("manifest", help="Validate and emit the Board Clank manifest report")
+    manifest_cmd = sub.add_parser("manifest-declared", help="Validate the committed declaration manifest")
+    manifest_cmd.add_argument("--file", help="Optional declaration path (default: bundled manifest.json)")
+    sub.add_parser("observe", help="Read-only observer surface snapshot (v0.2 contract)")
     return parser
 
 
@@ -303,6 +375,11 @@ COMMANDS = {
     "migrate": cmd_migrate,
     "collect": cmd_collect,
     "source-intel": cmd_source_intel,
+    "backup": cmd_backup,
+    "restore": cmd_restore,
+    "manifest": cmd_manifest,
+    "manifest-declared": cmd_manifest_declared,
+    "observe": cmd_observe,
 }
 
 

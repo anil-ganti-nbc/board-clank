@@ -157,7 +157,8 @@ CREATE TABLE IF NOT EXISTS events (
     to_hash TEXT NOT NULL,
     baseline_silent INTEGER NOT NULL,
     payload_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    code_revision TEXT NOT NULL DEFAULT 'UNKNOWN'
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
