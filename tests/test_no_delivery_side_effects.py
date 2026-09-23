@@ -16,6 +16,7 @@ def test_collectors_are_inert() -> None:
     from board_clank.collectors import (
         BananaPiProductAdapter,
         InertVendorAdapter,
+        OdroidProductAdapter,
         OrangePiProductAdapter,
         RadxaProductAdapter,
         RaspberryPiProductAdapter,
