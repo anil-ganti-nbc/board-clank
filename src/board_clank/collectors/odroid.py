@@ -83,7 +83,7 @@ _NON_SOC_TOKEN_RE = re.compile(r"^(?:RTL[0-9]{4}[A-Z]?|Mali|AP[0-9]{4}|NPU|RKNN)
 _RAM_TYPE_RE = re.compile(r"(LPDDR5|LPDDR4|DDR5|DDR4)\b", re.I)
 _GIB_LIST_RE = re.compile(r"(?:\d+\s*GiB?\s*(?:or|/|,)\s*)+\d+\s*GiB?\b", re.I)
 _GIB_SIZE_RE = re.compile(r"(\d+)\s*GiB?\b", re.I)
-_EMMC_SOCKET_RE = re.compile(r"eMMC (module )?(socket|connector|Socket)", re.I)
+_EMMC_SOCKET_RE = re.compile(r"eMMC(?:\s+\([^)]{1,80}\))?\s+(?:module\s+)?(?:socket|connector)", re.I)
 _EMMC_ONBOARD_RE = re.compile(r"(?:on-?board|embedded|soldered)[^.]{0,20}?(\d+)\s*G[i]?[bB]?\s*eMMC|(\d+)\s*G[i]?[bB]?\s*eMMC", re.I)
 _SATA_RE = re.compile(r"SATA", re.I)
 _NAS_HINT_RE = re.compile(r"NAS|SATA", re.I)
@@ -108,6 +108,7 @@ class _PageParser(HTMLParser):
         self._capture: str | None = None
         self._buf = ""
         self._cell_buf: list[str] = []
+        self._cell_span = 1
         self._row: list[str] | None = None
         self._table: list[list[str]] | None = None
         self._in_title = False
@@ -118,6 +119,12 @@ class _PageParser(HTMLParser):
             self.hrefs.append(attrd["href"])
         if tag == "meta" and attrd.get("name", "").lower() == "description":
             self.description = attrd.get("content") or ""
+        # Hardkernel's live comparison headers contain <p> inside <td>.
+        # A nested paragraph must not steal the cell's capture buffer.
+        if self._capture == "cell":
+            if tag in {"p", "br"}:
+                self._cell_buf.append(" ")
+            return
         if tag in {"h1", "h2", "h3", "p"}:
             self._capture = tag
             self._buf = ""
@@ -130,9 +137,14 @@ class _PageParser(HTMLParser):
             self._row = []
         elif tag in {"td", "th"} and self._row is not None:
             self._cell_buf = []
+            span = attrd.get("colspan") or "1"
+            self._cell_span = min(int(span), 12) if span.isdigit() else 1
             self._capture = "cell"
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "p" and self._capture == "cell":
+            self._cell_buf.append(" ")
+            return
         if tag == "title" and self._in_title:
             self.title = re.sub(r"\s+", " ", self._buf).strip()
             self._in_title = False
@@ -150,8 +162,10 @@ class _PageParser(HTMLParser):
             self._buf = ""
         elif tag in {"td", "th"} and self._capture == "cell":
             if self._row is not None:
-                self._row.append(re.sub(r"\s+", " ", "".join(self._cell_buf)).strip())
+                value = re.sub(r"\s+", " ", "".join(self._cell_buf)).strip()
+                self._row.extend([value] * self._cell_span)
             self._cell_buf = []
+            self._cell_span = 1
             self._capture = None
         elif tag == "tr" and self._row is not None:
             if any(c for c in self._row):
@@ -214,6 +228,43 @@ def _normalize_header_model(header: str) -> str:
     return text.replace(" ", "-")
 
 
+def _comparison_evidence(tables: list[list[list[str]]], model: str) -> tuple[dict[str, str], str, bool]:
+    """Return only the target model's labelled cells from one comparison table.
+
+    The table header is a product-to-column map, not body text. A comparison
+    table without this model cannot supply evidence for it.
+    """
+    target = _board_slug(model)
+    saw_comparison = False
+    for table in tables:
+        if not table:
+            continue
+        # Benchmarks also put ODROID names in their headers; they are not
+        # processor evidence and must not suppress a labelled spec table.
+        if not any(row and row[0].strip().lower().startswith(("cpu", "processor")) for row in table[1:]):
+            continue
+        header = table[0]
+        columns = {
+            _board_slug(_normalize_header_model(cell)): index
+            for index, cell in enumerate(header)
+            if index and re.match(r"^ODROID[ -]", cell, re.I)
+        }
+        if not columns:
+            continue
+        saw_comparison = True
+        column = columns.get(target)
+        if column is None:
+            continue
+        fields = {
+            row[0].strip().lower(): row[column].strip()
+            for row in table[1:]
+            if len(row) > column and row[0].strip() and row[column].strip()
+        }
+        date = re.search(r"\b\d{4}\s+[A-Za-z]{3}\b", header[column])
+        return fields, date.group(0) if date else "", True
+    return {}, "", saw_comparison
+
+
 def _soc_candidates_from_value(value: str) -> list[tuple[str, str]]:
     candidates: list[tuple[str, str]] = []
     for match in _SOC_TOKEN_RE.finditer(value):
@@ -244,35 +295,16 @@ def _extract_soc(tables: list[list[list[str]]], model: str) -> tuple[str, str, l
     H-series comparison tables map each ODROID model to a column; the
     board's own column supplies its CPU, other columns are furniture.
     Returns (vendor, model, candidates, spec_revision_note)."""
-    header_models: dict[str, int] = {}
-    for table in tables:
-        if not table:
-            continue
-        first = table[0]
-        for idx, cell in enumerate(first):
-            if "ODROID" in cell.upper() and idx:
-                header_models.setdefault(_normalize_header_model(cell).upper(), idx)
-    if header_models:
-        target = model.upper().replace(" PLUS", "+").replace("-PLUS", "+")
-        target = re.sub(r"\s+", "-", target)
-        column = header_models.get(target)
-        if column is not None:
-            for table in tables:
-                for row in table:
-                    if len(row) > column and row and row[0].strip().lower().startswith(("cpu", "processor")):
-                        value = row[column]
-                        candidates = _soc_candidates_from_value(value)
-                        if len(candidates) == 1:
-                            vendor, m = candidates[0]
-                            note = first_header_date = ""
-                            for t2 in tables:
-                                if t2 and t2[0] and column < len(t2[0]):
-                                    date = re.search(r"\((.{4,12})\)", t2[0][column])
-                                    if date:
-                                        note = date.group(1)
-                            return vendor, m, [m], note
-                        if len(candidates) > 1:
-                            return "CONFLICT", ",".join(m for _v, m in candidates), [m for _v, m in candidates], ""
+    fields, note, saw_comparison = _comparison_evidence(tables, model)
+    if saw_comparison:
+        cpu_values = [value for label, value in fields.items() if label.startswith(("cpu", "processor"))]
+        candidates = _soc_candidates_from_value(" ".join(cpu_values))
+        if len(candidates) == 1:
+            vendor, soc_model = candidates[0]
+            return vendor, soc_model, [soc_model], note
+        if len(candidates) > 1:
+            return "CONFLICT", ",".join(m for _v, m in candidates), [m for _v, m in candidates], note
+        return UNKNOWN, UNKNOWN, [], note
 
     for table in tables:
         for row in table:
@@ -430,6 +462,13 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     family_slug = _family_slug(model)
     soc_vendor, soc_name, soc_candidates, spec_revision_note = _extract_soc(parser.tables, model)
     full_text = f"{body_text} {table_text}"
+    comparison_fields, _comparison_date, is_comparison = _comparison_evidence(parser.tables, model)
+    comparison_text = " ".join(f"{label} {value}" for label, value in comparison_fields.items())
+    h_series = bool(re.match(r"^ODROID-H\d", model, re.I))
+    own_memory_text = " ".join(
+        row[1] for table in parser.tables for row in table
+        if len(row) == 2 and row[0].strip().lower() == "memory"
+    )
     conflict = soc_vendor == "CONFLICT"
 
     if conflict:
@@ -465,8 +504,15 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         )
         return [draft], diagnostics
 
-    ram_type, ram_opts = _ram_evidence(full_text, ram_config)
+    ram_type, ram_opts = _ram_evidence(
+        f"{comparison_text} {own_memory_text}" if is_comparison else full_text,
+        ram_config,
+    )
     storage_opts = _storage_options(full_text)
+    if h_series:
+        # These are user-fitted sockets/capabilities, not sold factory SKUs.
+        ram_opts = []
+        storage_opts = []
     if not ram_opts:
         ram_opts = [UNKNOWN]
     if not storage_opts:
@@ -478,6 +524,20 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     if arch is Architecture.X86:
         board_type = BoardType.MINI_ITX_SBC if re.search(r"mini|ITX|H-series|SO-DIMM", full_text, re.I) else BoardType.SBC
     availability = Availability.OUT_OF_STOCK if parser.out_of_stock or "Out of stock" in html else Availability.UNKNOWN
+    if h_series and is_comparison:
+        sata_cell = comparison_fields.get("sata iii", "").lower()
+        sata = "no" if sata_cell == "no" else "yes" if re.search(r"\d+\s*ports?", sata_cell) else UNKNOWN
+        ethernet = "2.5g" if re.search(r"\d+\s*ports?", comparison_fields.get("2.5gbe", ""), re.I) else UNKNOWN
+        usb = "usb3" if re.search(r"\d+\s*ports?", comparison_fields.get("usb 3.0", ""), re.I) else UNKNOWN
+    else:
+        sata = "yes" if _SATA_RE.search(full_text) else UNKNOWN
+        ethernet = "2.5g" if re.search(r"2\.5G", full_text) else ("gigabit" if re.search(r"10/100/1000|GbE", full_text, re.I) else UNKNOWN)
+        usb = "usb3" if re.search(r"USB ?3", full_text, re.I) else ("usb" if "USB" in full_text else UNKNOWN)
+    emmc_capability = (
+        "optional" if h_series and _EMMC_SOCKET_RE.search(full_text)
+        else "yes" if any(s not in (UNKNOWN, "none", "module") for s in storage_opts)
+        else "optional" if "module" in storage_opts else UNKNOWN
+    )
 
     drafts: list[ObservationDraft] = []
     for ram in ram_opts:
@@ -488,12 +548,12 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                 cpu_arch=arch.value,
                 ram_type=ram_type,
                 ram_options=ram_matrix,
-                onboard_emmc="yes" if any(s not in (UNKNOWN, "none", "module") for s in storage_opts) else ("optional" if "module" in storage_opts else UNKNOWN),
+                onboard_emmc=emmc_capability,
                 emmc_options=storage_matrix,
                 microsd="yes" if re.search(r"Micro ?SD|microSD", full_text, re.I) else UNKNOWN,
-                sata="yes" if _SATA_RE.search(full_text) else UNKNOWN,
-                ethernet="2.5g" if re.search(r"2\.5G", full_text) else ("gigabit" if re.search(r"10/100/1000|GbE", full_text, re.I) else UNKNOWN),
-                usb="usb3" if re.search(r"USB ?3", full_text, re.I) else ("usb" if "USB" in full_text else UNKNOWN),
+                sata=sata,
+                ethernet=ethernet,
+                usb=usb,
                 pcb_revision=UNKNOWN,
             )
             drafts.append(

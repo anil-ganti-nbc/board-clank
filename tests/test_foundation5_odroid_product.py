@@ -11,6 +11,7 @@ from board_clank.collectors.odroid import (
     _assert_official_url,
     _board_slug,
     _canonical_page_url,
+    _extract_soc,
     _family_slug,
     _model_and_config,
     collect_corpus,
@@ -21,10 +22,11 @@ from board_clank.collectors.odroid import (
 from board_clank.collectors.orange_pi import collect_corpus as opi_collect_corpus
 from board_clank.collectors.radxa import collect_corpus as radxa_collect_corpus
 from board_clank.collectors.raspberry_pi import collect_corpus as rpi_collect_corpus
+from board_clank.models import CollectorRunRequest
 from board_clank.pipeline import Pipeline
 from board_clank.sources import assert_foundation_0_roster, load_sources
 from board_clank.store import Store
-from board_clank.taxonomy import Availability, BoardType, EventType
+from board_clank.taxonomy import Availability
 
 FIX = Path("fixtures/odroid_product/html")
 BASE = "https://www.hardkernel.com/shop"
@@ -100,7 +102,7 @@ def test_shop_index_is_discovery_leads_only() -> None:
 
 def test_official_url_policy() -> None:
     _assert_official_url(f"{BASE}/odroid-h4/")
-    _assert_official_url(SHOP := "https://www.hardkernel.com/shop/")
+    _assert_official_url("https://www.hardkernel.com/shop/")
     for bad in (
         "https://odroid.com/",
         "https://wiki.odroid.com/Main_Page",
@@ -188,6 +190,85 @@ def test_comparison_table_furniture_never_leaks_other_models() -> None:
     assert {d.soc_marketing_name for d in drafts} == {"N97"}
     drafts, _ = _parse("odroid-h5.html", f"{BASE}/odroid-h5/")
     assert {d.soc_marketing_name for d in drafts} == {"N300"}
+
+
+def test_current_live_h4_comparison_columns_and_user_fitted_options() -> None:
+    html = (FIX / "odroid-h4-live-comparison.html").read_text(encoding="utf-8")
+    cases = (
+        ("ODROID-H4", "odroid-h4", "N97", "no"),
+        ("ODROID-H4 PLUS", "odroid-h4-plus", "N97", "yes"),
+        ("ODROID-H4 ULTRA", "odroid-h4-ultra", "N305", "yes"),
+    )
+    for heading, slug, cpu, sata in cases:
+        page = html.replace("<h1 class=\"product-title\">ODROID-H4</h1>", f"<h1 class=\"product-title\">{heading}</h1>")
+        drafts, info = parse_product_html(page, page_url=f"{BASE}/{slug}/", observed_at=OBS)
+        assert info["status"] == "resolved"
+        assert len(drafts) == 1
+        draft = drafts[0]
+        assert draft.board_slug == slug
+        assert draft.soc_marketing_name == cpu
+        assert draft.soc_vendor == "intel"
+        assert draft.spec.ram_type == "DDR5"
+        assert draft.spec.sata == sata
+        assert draft.spec.ethernet == "2.5g"
+        assert draft.spec.usb == "usb3"
+        assert draft.spec.onboard_emmc == "optional"
+        assert draft.variant.ram == draft.variant.storage == "UNKNOWN"
+        assert draft.raw_fields["spec_table_revision_note"] == "2024 Apr"
+
+
+def test_current_live_h5_colspan_and_companion_chip_rejection() -> None:
+    html = (FIX / "odroid-h5-live-comparison.html").read_text(encoding="utf-8")
+    drafts, info = parse_product_html(html, page_url=f"{BASE}/odroid-h5/", observed_at=OBS)
+    assert info["status"] == "resolved"
+    assert len(drafts) == 1
+    draft = drafts[0]
+    assert draft.soc_marketing_name == "N300"
+    assert draft.spec.ram_type == "DDR5"  # shared colspan=3 cell
+    assert draft.spec.sata == "no"
+    assert draft.spec.onboard_emmc == "optional"
+    assert draft.variant.ram == draft.variant.storage == "UNKNOWN"
+    assert draft.raw_fields["spec_table_revision_note"] == "2026 May"
+
+    # A NIC controller in the CPU cell is not an application processor;
+    # other columns' valid CPUs cannot rescue this model.
+    no_cpu = html.replace("Core i3 Processor N300</td>", "Intel I226-V</td>")
+    missing, diagnostic = parse_product_html(no_cpu, page_url=f"{BASE}/odroid-h5/", observed_at=OBS)
+    assert diagnostic["status"] == "insufficient-evidence"
+    assert all(d.evidence_insufficient for d in missing)
+
+
+def test_benchmark_header_does_not_hide_first_party_processor_spec() -> None:
+    tables = [
+        [["Benchmark", "ODROID-M1 (PCIe 3.0 x 2)", "RPI CM4"], ["Read", "200", "100"]],
+        [["Processor", "Rockchip RK3568 Processor; Ethernet controller RTL8211F"]],
+    ]
+    assert _extract_soc(tables, "ODROID-M1")[:2] == ("rockchip", "RK3568")
+
+
+def test_h4_insufficient_condition_resolves_without_novelty_or_churn(pipeline: Pipeline, store: Store) -> None:
+    html = (FIX / "odroid-h4-live-comparison.html").read_text(encoding="utf-8")
+    stub = "<html><body><h1>ODROID-H4</h1><p>Specifications pending.</p></body></html>"
+
+    def accept(page: str, run_id: str, started_at: str) -> None:
+        drafts, _ = parse_product_html(page, page_url=f"{BASE}/odroid-h4/", observed_at=started_at)
+        result = pipeline.accept_run(CollectorRunRequest(
+            run_id=run_id, source_key="hardkernel-odroid-product",
+            collector_key="hardkernel-odroid-product", started_at=started_at,
+            observations=drafts,
+        ))
+        assert result.status == "accepted"
+
+    accept(html, "h4-base", "2026-09-23T01:00:00+00:00")
+    accept(stub, "h4-stub", "2026-09-23T02:00:00+00:00")
+    assert store.one("SELECT status FROM diagnostic_conditions WHERE diagnostic_type='NOVELTY_UNRESOLVED'")["status"] == "OPEN"
+    accept(html, "h4-resolved", "2026-09-23T03:00:00+00:00")
+    assert store.one("SELECT status FROM diagnostic_conditions WHERE diagnostic_type='NOVELTY_UNRESOLVED'")["status"] == "RESOLVED"
+    assert len(store.all("SELECT event_id FROM events WHERE event_type='DIAGNOSTIC_RESOLVED'")) == 1
+    assert store.all("SELECT event_id FROM events WHERE event_type IN ('NEW_BOARD','NEW_VARIANT','FIELD_CHANGED') AND baseline_silent=0") == []
+    assert store.all("SELECT novelty_status FROM novelty_evidence WHERE novelty_status IN ('NEWLY_ANNOUNCED','NEWLY_AVAILABLE')") == []
+    accept(html, "h4-replay", "2026-09-23T04:00:00+00:00")
+    assert len(store.all("SELECT event_id FROM events WHERE event_type='DIAGNOSTIC_RESOLVED'")) == 1
 
 
 def test_ethernet_transceiver_is_not_the_soc() -> None:

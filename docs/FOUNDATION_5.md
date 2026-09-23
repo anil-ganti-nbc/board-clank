@@ -49,12 +49,32 @@ Mission COPS-000063 (ADR-0015 control).
 burden of Foundation 5A was met: no invariant failure required generic
 modification.)
 
-Known adapter limitation, recorded honestly: the live H-series pages
-currently parse as insufficient evidence (fail-closed, durable schema-v2
-diagnostic conditions, zero churn) rather than resolving through the
-comparison table; the distilled fixtures resolve. Live H-series table
-markup differs from the distillation; refining that is future adapter work,
-not an architecture defect.
+At the time of Foundation 5A, the live H-series pages parsed as insufficient
+evidence (fail-closed diagnostic conditions, zero churn) although the
+distilled fixtures resolved. This was adapter-local coverage debt, not an
+architecture defect. Production Readiness 1B under COPS-000068 closes that
+specific debt; the historical 5A soak evidence below is unchanged.
+
+## Production Readiness 1B H-series addendum (2026-09-23)
+
+Current first-party [H4](https://www.hardkernel.com/shop/odroid-h4/),
+[H4+](https://www.hardkernel.com/shop/odroid-h4-plus/),
+[H4 Ultra](https://www.hardkernel.com/shop/odroid-h4-ultra/), and
+[H5](https://www.hardkernel.com/shop/odroid-h5/) product pages resolve through
+their labelled comparison tables. The live model header cells contain nested
+paragraphs, and H5 uses shared `colspan` cells. The parser now preserves those
+cells, maps the `h1` model to its own column, and extracts the CPU and supported
+capabilities only from that column. An unrelated ODROID benchmark table cannot
+mask a labelled processor specification. Intel I226-V networking controllers
+are not CPU evidence. User-fitted SO-DIMM/eMMC support does not manufacture
+factory RAM or storage variants. Production dates remain raw evidence, not
+launch-date claims; shop stock status remains availability evidence.
+
+Historical fixture layouts remain intact; two new current-live distillations
+cover nested headers, shared cells, companion chips, and column isolation.
+The isolated live re-soak uses fresh state and never seeds persistent shadow
+deployment. All six sources remain EXPERIMENTAL and disabled; this addendum
+does not change Motherclank admission, scheduler, delivery, or promotion.
 
 ## Semantics preserved
 
