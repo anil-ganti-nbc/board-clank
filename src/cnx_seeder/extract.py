@@ -317,6 +317,8 @@ def parse_html(raw: bytes, *, base_url: str, content_type: str = "") -> ParsedPa
         text = raw.decode("utf-8", "replace")
         if "<" not in text:
             return ParsedPage("", "", [], (), malformed=True)
+    if _truncated_markup(text):
+        return ParsedPage("", "", [], (), malformed=True)
     parser = _PageParser()
     try:
         parser.feed(text)
@@ -338,6 +340,25 @@ def parse_html(raw: bytes, *, base_url: str, content_type: str = "") -> ParsedPa
         if absolute.startswith("http://") or absolute.startswith("https://"):
             links.append(Link(absolute, link.anchor))
     return ParsedPage(title, visible, links, normalize_tokens(visible))
+
+
+def _truncated_markup(text: str) -> bool:
+    """Visible-but-cut documents only.
+
+    A page that opened ``html`` or ``body`` and closed neither is truncated,
+    as is a document cut mid-tag. Unclosed ``p`` or ``li`` inside a page that
+    still has ``</body>`` or ``</html>`` is ordinary WordPress markup.
+    """
+    folded = text.casefold()
+    has_html = "</html>" in folded
+    has_body = "</body>" in folded
+    opened = "<html" in folded or "<body" in folded
+    if opened and not has_html and not has_body:
+        return True
+    last = text.rfind("<")
+    if last != -1 and ">" not in text[last:] and (not has_html or not has_body):
+        return True
+    return False
 
 
 def _mask(tokens: tuple[str, ...]) -> tuple[tuple[str, ...], list[str]]:
@@ -693,20 +714,48 @@ def has_cart(text: str) -> bool:
     return any(term in folded for term in _CART)
 
 
-_BRAND_RE = re.compile(r"\b([A-Z][A-Za-z0-9]+)\b")
-_BRAND_SKIP = _PRODUCT_CLASS | _FUNCTION | {"sbc", "html", "http", "https"}
+_LISTING_RE = re.compile(r"\b([A-Z][A-Za-z0-9]+)\s+Board\b")
 
 
-def foreign_brands(text: str, subject: tuple[str, ...]) -> set[str]:
-    found: set[str] = set()
-    subject_join = " ".join(subject)
-    for match in _BRAND_RE.findall(text):
-        token = normalize_tokens(match)
-        if not token or token[0] in _BRAND_SKIP:
-            continue
-        if token == subject or token[0] == subject_join:
-            continue
-        if subject and token[0] == subject[0]:
-            continue
-        found.add(token[0])
-    return found
+def other_manufacturer_evidence(
+    pages: list[ParsedPage],
+    subject: tuple[str, ...],
+    own_domain: str,
+    alias_names: tuple[tuple[str, ...], ...],
+) -> str | None:
+    """Evidence that this site sells other makers, or None.
+
+    Capitalised product words are not evidence. A catalogue of two other
+    ``{Name} Board`` listings, a whole-token roster/alias brand, or an outbound
+    link to another manufacturer's registrable domain is.
+    """
+    listings: set[str] = set()
+    brands: set[tuple[str, ...]] = set()
+    domains: set[str] = set()
+    for page in pages:
+        for match in _LISTING_RE.findall(page.text):
+            token = normalize_tokens(match)
+            if not token or token == subject or (subject and token[0] == subject[0]):
+                continue
+            listings.add(token[0])
+        for name in alias_names:
+            if not name or name == subject:
+                continue
+            size = len(name)
+            if any(page.tokens[i : i + size] == name for i in range(0, len(page.tokens) - size + 1)):
+                brands.add(name)
+        for link in page.links:
+            host = host_of(link.href)
+            if host is None or is_cnx_host(host):
+                continue
+            domain = registrable_domain(host)
+            if domain == own_domain or domain in DENYLIST or _blocked_primary(domain):
+                continue
+            domains.add(domain)
+    if len(listings) >= 2:
+        return "catalogue"
+    if brands:
+        return "alias_brand"
+    if domains:
+        return "other_domain"
+    return None

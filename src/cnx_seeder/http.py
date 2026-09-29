@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
+import socket
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 from cnx_seeder.bounds import (
@@ -21,6 +23,136 @@ from cnx_seeder.bounds import (
 from cnx_seeder.normalize import strip_host
 
 _RETRY_ERRORS = frozenset({"timeout"})
+MAX_REDIRECTS = 5
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+_SIXTO4_ANYCAST = ipaddress.ip_network("192.88.99.0/24")
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_V4COMPAT = ipaddress.ip_network("::/96")
+_METADATA = ipaddress.ip_address("169.254.169.254")
+
+
+class DestinationRejected(Exception):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class Destination:
+    url: str
+    scheme: str
+    hostname: str
+    port: int
+    pin_ip: str
+    allowed_ips: frozenset[str]
+    target: str
+
+
+def _same_ip(left: str, right: str) -> bool:
+    try:
+        return ipaddress.ip_address(left) == ipaddress.ip_address(right)
+    except ValueError:
+        return False
+
+
+def _embedded_addresses(ip: ipaddress.IPv4Address | ipaddress.IPv6Address):
+    found: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = [ip]
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            found.append(ip.ipv4_mapped)
+        if ip.sixtofour is not None:
+            found.append(ip.sixtofour)
+        if ip.teredo is not None:
+            found.append(ip.teredo[1])
+        if ip in _NAT64 or ip in _V4COMPAT:
+            found.append(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
+    return found
+
+
+def _one_blocked(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        return True
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+        or not ip.is_global
+    ):
+        return True
+    if ip.version == 4 and (ip in _CGNAT or ip in _SIXTO4_ANYCAST or ip == _METADATA):
+        return True
+    return False
+
+
+def ip_blocked(text: str) -> bool:
+    try:
+        parsed = ipaddress.ip_address(text)
+    except ValueError:
+        return False
+    return any(_one_blocked(item) for item in _embedded_addresses(parsed))
+
+
+def _resolve_host(host: str) -> list[str]:
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise OSError("name or service not known") from exc
+    found: list[str] = []
+    for info in infos:
+        addr = str(info[4][0])
+        if addr not in found:
+            found.append(addr)
+    return found
+
+
+def validate_destination(url: str, resolve) -> Destination:
+    """Reject a non-public or non-standard destination before any connection."""
+    try:
+        parts = urlsplit(url)
+    except ValueError as exc:
+        raise DestinationRejected("bad_scheme") from exc
+    if parts.scheme not in {"http", "https"}:
+        raise DestinationRejected("bad_scheme")
+    hostname = parts.hostname
+    if not hostname or "%" in hostname:
+        raise DestinationRejected("bad_host")
+    port = 443 if parts.scheme == "https" else 80
+    if parts.port is not None:
+        port = parts.port
+    if port not in {80, 443}:
+        raise DestinationRejected("bad_port")
+    literal = None
+    try:
+        literal = ipaddress.ip_address(hostname)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        addresses = [str(literal)]
+    else:
+        try:
+            addresses = list(resolve(hostname))
+        except OSError as exc:
+            raise DestinationRejected("dns") from exc
+    if not addresses:
+        raise DestinationRejected("dns")
+    if any(ip_blocked(addr) for addr in addresses):
+        raise DestinationRejected("private_address")
+    target = parts.path or "/"
+    if parts.query:
+        target = f"{target}?{parts.query}"
+    return Destination(
+        url,
+        parts.scheme,
+        hostname,
+        port,
+        addresses[0],
+        frozenset(addresses),
+        target,
+    )
 
 
 @dataclass
@@ -30,9 +162,13 @@ class HttpResponse:
     final_url: str
     content_type: str = ""
     error: str | None = None
+    location: str | None = None
 
 
 class Transport:
+    def reject_reason(self, url: str) -> str | None:
+        return None
+
     def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
         raise NotImplementedError
 
@@ -87,6 +223,7 @@ class FetchRecord:
     error: str | None = None
     content_type: str = ""
     final_url: str = ""
+    location: str | None = None
 
 
 @dataclass
@@ -193,11 +330,31 @@ class Fetcher:
             error=error,
             content_type=response.content_type,
             final_url=response.final_url or url,
+            location=response.location,
         )
         self.history.append(record)
         return record
 
-    def fetch(self, url: str) -> list[FetchRecord]:
+    def _refused(self, url: str, error: str) -> FetchRecord:
+        moment = self.clock.now
+        record = FetchRecord(
+            url=url,
+            attempt=1,
+            fetched_at=stamp(moment),
+            http_status=None,
+            body=b"",
+            content_sha256=None,
+            byte_length=0,
+            elapsed_ms=0,
+            robots_decision="deny",
+            outcome="fetch_failed",
+            error=error,
+            final_url=url,
+        )
+        self.history.append(record)
+        return record
+
+    def _fetch_allowed(self, url: str) -> list[FetchRecord]:
         decision = self.can_fetch(url)
         if decision == "disallow":
             moment = self.clock.now
@@ -226,6 +383,27 @@ class Fetcher:
             retryable = record.http_status in RETRY_STATUSES or record.error in _RETRY_ERRORS
             if record.outcome == "ok" or not retryable or attempt > MAX_RETRIES:
                 break
+        return records
+
+    def fetch(self, url: str) -> list[FetchRecord]:
+        return self._follow(url, left=MAX_REDIRECTS, seen=set())
+
+    def _follow(self, url: str, *, left: int, seen: set[str]) -> list[FetchRecord]:
+        if url in seen:
+            return [self._refused(url, "redirect_loop")]
+        if left < 0:
+            return [self._refused(url, "redirect_cap")]
+        seen.add(url)
+        reason = self.transport.reject_reason(url)
+        if reason:
+            return [self._refused(url, reason)]
+        records = self._fetch_allowed(url)
+        if not records:
+            return records
+        last = records[-1]
+        if last.http_status in _REDIRECT_STATUSES and last.location and last.error is None:
+            nxt = urljoin(url, last.location)
+            return records + self._follow(nxt, left=left - 1, seen=seen)
         return records
 
 
@@ -275,24 +453,76 @@ class FixtureTransport(Transport):
         )
 
 
-class LiveTransport(Transport):
-    def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
-        import urllib.error
-        import urllib.request
+def _pinned_get(dest: Destination, headers: dict[str, str], connect) -> HttpResponse:
+    """Connect to the validated address. http.client does not follow redirects."""
+    import http.client
+    import ssl
 
-        request = urllib.request.Request(url, headers=headers)
+    sock = connect((dest.pin_ip, dest.port), TIMEOUT_SECONDS)
+    conn: http.client.HTTPConnection | None = None
+    try:
+        peer = sock.getpeername()[0]
+        if ip_blocked(peer) or not _same_ip(peer, dest.pin_ip):
+            raise DestinationRejected("private_address")
+        if dest.scheme == "https":
+            sock = ssl.create_default_context().wrap_socket(sock, server_hostname=dest.hostname)
+        if dest.scheme == "https":
+            conn = http.client.HTTPSConnection(dest.hostname, dest.port, timeout=TIMEOUT_SECONDS)
+        else:
+            conn = http.client.HTTPConnection(dest.hostname, dest.port, timeout=TIMEOUT_SECONDS)
+        conn.sock = sock
+        conn.request("GET", dest.target, headers=headers)
+        response = conn.getresponse()
+        body = response.read(MAX_BODY_BYTES + 1)
+        return HttpResponse(
+            response.status,
+            body,
+            dest.url,
+            content_type=response.getheader("Content-Type") or "",
+            location=response.getheader("Location"),
+        )
+    finally:
+        if conn is not None:
+            conn.close()
+        else:
+            sock.close()
+
+
+class LiveTransport(Transport):
+    """Live HTTP that never follows redirects and never dials an unvalidated address."""
+
+    def __init__(self, resolve=None, exchange=None, connect=None) -> None:
+        self._resolve = resolve or _resolve_host
+        self._exchange = exchange
+        self._connect = connect or socket.create_connection
+
+    def _checkout(self, url: str) -> Destination:
+        return validate_destination(url, self._resolve)
+
+    def reject_reason(self, url: str) -> str | None:
         try:
-            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-                body = response.read(MAX_BODY_BYTES + 1)
-                ctype = response.headers.get("Content-Type", "")
-                return HttpResponse(response.status, body, response.geturl(), content_type=ctype)
-        except urllib.error.HTTPError as exc:
-            body = exc.read(MAX_BODY_BYTES + 1)
-            return HttpResponse(exc.code, body, url, content_type=exc.headers.get("Content-Type", ""))
-        except urllib.error.URLError as exc:
-            reason = str(exc.reason).casefold()
-            if "timed out" in reason or "timeout" in reason:
-                raise TimeoutError(reason)
-            if "name or service" in reason or "nodename" in reason or "gaierror" in reason:
+            self._checkout(url)
+        except DestinationRejected as exc:
+            return exc.code
+        return None
+
+    def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
+        try:
+            dest = self._checkout(url)
+        except DestinationRejected as exc:
+            return HttpResponse(None, b"", url, error=exc.code)
+        if self._exchange is not None:
+            return self._exchange(url, headers, dest)
+        try:
+            return _pinned_get(dest, headers, self._connect)
+        except DestinationRejected as exc:
+            return HttpResponse(None, b"", url, error=exc.code)
+        except TimeoutError:
+            raise
+        except OSError as exc:
+            message = str(exc).casefold()
+            if "timed out" in message or "timeout" in message:
+                raise TimeoutError(message)
+            if "name or service" in message or "nodename" in message or "gaierror" in message:
                 raise OSError("name or service not known")
             raise OSError("tls handshake failed")

@@ -16,7 +16,7 @@ from cnx_seeder.bounds import FEED_URL, LISTING_URL, MAX_BODY_BYTES, USER_AGENT
 from cnx_seeder.classify import REASON_CODES
 from cnx_seeder.cli import main
 from cnx_seeder.extract import parse_html
-from cnx_seeder.http import Fetcher, HttpResponse, Transport, VirtualClock
+from cnx_seeder.http import Fetcher, HttpResponse, LiveTransport, Transport, VirtualClock
 from cnx_seeder.http import parse_stamp
 from cnx_seeder.normalize import candidate_key
 from cnx_seeder.paths import REPO_ROOT
@@ -427,9 +427,9 @@ def test_14_unresolved_reason_is_stored(tmp_path: Path) -> None:
     [
         ("", "text/html"),
         ("not html at all", "application/octet-stream"),
-        # Unclosed <p> used to be the third case. That fixture was rejected only
-        # by a bracket-balance check. Real pages leave <p> and <li> unclosed, so
-        # the unusable case is now a script with no visible text.
+        # Visible text, cut off before both structural closers.
+        ("<html><body><p>hi", "text/html"),
+        # Script with no visible text stays an extra malformed case.
         ('<html><head><script>if (a > b && c < d) { var x = 1;', "text/html"),
     ],
 )
@@ -445,6 +445,17 @@ def test_15_malformed_page(tmp_path: Path, body: str, content_type: str) -> None
     lead = con.execute("SELECT * FROM leads").fetchone()
     assert lead["reason_code"] == "malformed_page"
     assert con.execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"] == 0
+
+
+def test_15_unclosed_paragraph_inside_complete_document_parses() -> None:
+    """Unclosed p/li with a structural closer is ordinary markup, not truncation."""
+    page = parse_html(
+        b"<html><body><p>hi</body></html>",
+        base_url="https://www.cnx-software.com/2026/09/29/open/",
+        content_type="text/html",
+    )
+    assert page.malformed is False
+    assert "hi" in page.text
 
 
 def test_16_instruction_bearing_page(tmp_path: Path) -> None:
@@ -1595,3 +1606,337 @@ def test_42_live_replay_reuses_stored_oem_fetches(tmp_path: Path, monkeypatch: p
     assert con.execute(
         "SELECT COUNT(*) AS n FROM fetches WHERE run_id = 'run-b' AND url LIKE '%acme.example%'"
     ).fetchone()["n"] == 0
+
+
+def test_43_public_suffix_registrable_domain(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unrelated multi-part hosts must not collapse, and the list is offline."""
+    from cnx_seeder.normalize import PSL_SHA256, _PSL_PATH, registrable_domain
+
+    digest = hashlib.sha256(_PSL_PATH.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    assert digest == PSL_SHA256
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("dns")))
+    assert registrable_domain("a.co.in") == "a.co.in"
+    assert registrable_domain("b.co.in") == "b.co.in"
+    assert registrable_domain("a.co.in") != "co.in"
+    assert registrable_domain("shop.example.co.in") == "example.co.in"
+    assert registrable_domain("www.amazon.co.uk") == "amazon.co.uk"
+    assert registrable_domain("a.example.com.cn") == "example.com.cn"
+    assert registrable_domain("foo.github.io") == "foo.github.io"
+    assert registrable_domain("bar.foo.github.io") == "foo.github.io"
+    assert registrable_domain("foo.github.io") != "github.io"
+    assert registrable_domain("wiki.radxa.com") == "radxa.com"
+    assert registrable_domain("banana-pi.org") == "banana-pi.org"
+    assert registrable_domain("notcnx-software.com") == "notcnx-software.com"
+
+
+def _no_connect(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _boom(*_args: object, **_kwargs: object):
+        raise AssertionError("connect")
+
+    monkeypatch.setattr(socket, "create_connection", _boom)
+
+
+def _guarded(resolve, exchange=None):
+    return LiveTransport(resolve=resolve, exchange=exchange)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/",
+        "http://10.1.2.3/x",
+        "http://192.168.1.1/",
+        "http://172.16.0.1/",
+        "http://100.64.0.1/",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://[::1]/",
+        "http://[fc00::1]/",
+        "http://[fd12::1]/",
+        "http://[fe80::1]/",
+        "http://[::ffff:127.0.0.1]/",
+        "http://[::ffff:169.254.169.254]/",
+        "http://[::ffff:8.8.8.8]/",
+        "http://224.0.0.1/",
+        "ftp://example.com/",
+    ],
+)
+def test_44_live_fetch_rejects_literals(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, url: str) -> None:
+    _no_connect(monkeypatch)
+    calls: list[str] = []
+
+    def exchange(target: str, _headers: dict, _dest: object) -> HttpResponse:
+        calls.append(target)
+        raise AssertionError("exchange")
+
+    def resolve(_host: str) -> list[str]:
+        raise AssertionError("resolve")
+
+    fetcher = Fetcher(_guarded(resolve, exchange), VirtualClock(parse_stamp(NOW)))
+    records = fetcher.fetch(url)
+    assert records
+    if url.startswith("ftp:"):
+        assert records[-1].error == "bad_scheme"
+    else:
+        assert records[-1].error == "private_address"
+    assert calls == []
+    assert fetcher.calls == []
+
+
+@pytest.mark.parametrize(
+    "ips",
+    [
+        ["10.1.2.3"],
+        ["8.8.8.8", "127.0.0.1"],
+        ["169.254.169.254"],
+        ["100.64.1.1"],
+        ["::ffff:10.0.0.1"],
+    ],
+)
+def test_44_hostname_resolving_private(monkeypatch: pytest.MonkeyPatch, ips: list[str]) -> None:
+    _no_connect(monkeypatch)
+    calls: list[str] = []
+
+    def exchange(target: str, _headers: dict, _dest: object) -> HttpResponse:
+        calls.append(target)
+        raise AssertionError("exchange")
+
+    transport = _guarded(lambda _host: list(ips), exchange)
+    fetcher = Fetcher(transport, VirtualClock(parse_stamp(NOW)))
+    records = fetcher.fetch("https://maker.example/board")
+    assert records[-1].error == "private_address"
+    assert calls == []
+
+
+def test_44_nonstandard_port_and_pin(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_connect(monkeypatch)
+    calls: list[tuple[str, str]] = []
+
+    def exchange(target: str, _headers: dict, dest: object) -> HttpResponse:
+        calls.append((target, dest.pin_ip))  # type: ignore[attr-defined]
+        if target.endswith("/robots.txt"):
+            return HttpResponse(200, b"User-agent: *\nAllow: /\n", target, content_type="text/plain")
+        return HttpResponse(200, b"<html><body>ok</body></html>", target, content_type="text/html")
+
+    def resolve(host: str) -> list[str]:
+        assert host == "public.example"
+        return ["93.184.216.34"]
+
+    fetcher = Fetcher(_guarded(resolve, exchange), VirtualClock(parse_stamp(NOW)))
+    blocked = fetcher.fetch("https://public.example:8443/a")
+    assert blocked[-1].error == "bad_port"
+    assert calls == []
+    ok = fetcher.fetch("https://public.example/a")
+    assert ok[-1].http_status == 200
+    assert {pin for _url, pin in calls} == {"93.184.216.34"}
+    assert "urlopen" not in (REPO_ROOT / "src" / "cnx_seeder" / "http.py").read_text(encoding="utf-8")
+
+
+def test_44_connects_to_validated_ip(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, int]] = []
+
+    def connect(addr: tuple[str, int], timeout: float) -> object:
+        seen.append(addr)
+
+        class _Sock:
+            def getpeername(self) -> tuple[str, int]:
+                return ("10.0.0.1", addr[1])
+
+            def close(self) -> None:
+                return None
+
+        return _Sock()
+
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("dns")))
+    transport = LiveTransport(resolve=lambda _host: ["93.184.216.34"], connect=connect)
+    response = transport.get("https://public.example/a", {"User-Agent": "t"})
+    assert seen == [("93.184.216.34", 443)]
+    assert response.error == "private_address"
+
+
+def _scripted(routes: dict[str, HttpResponse]):
+    calls: list[str] = []
+
+    def exchange(target: str, _headers: dict, dest: object) -> HttpResponse:
+        calls.append(target)
+        assert dest.pin_ip == "93.184.216.34"  # type: ignore[attr-defined]
+        spec = routes.get(target)
+        if spec is None:
+            raise AssertionError(target)
+        return spec
+
+    def resolve(_host: str) -> list[str]:
+        return ["93.184.216.34"]
+
+    return calls, _guarded(resolve, exchange)
+
+
+def test_44_redirect_to_private_ip(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_connect(monkeypatch)
+    start = "https://ok.example/start"
+    routes = {
+        "https://ok.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://ok.example/robots.txt", content_type="text/plain"
+        ),
+        start: HttpResponse(302, b"", start, content_type="text/html", location="http://127.0.0.1/secret"),
+    }
+    calls, transport = _scripted(routes)
+    records = Fetcher(transport, VirtualClock(parse_stamp(NOW))).fetch(start)
+    assert records[-1].error == "private_address"
+    assert all("127.0.0.1" not in url for url in calls)
+    assert "http://127.0.0.1/secret" not in calls
+
+
+def test_44_redirect_to_robots_disallowed_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_connect(monkeypatch)
+    start = "https://ok.example/start"
+    secret = "https://nope.example/secret"
+    routes = {
+        "https://ok.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://ok.example/robots.txt", content_type="text/plain"
+        ),
+        start: HttpResponse(302, b"", start, content_type="text/html", location=secret),
+        "https://nope.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nDisallow: /\n", "https://nope.example/robots.txt", content_type="text/plain"
+        ),
+    }
+    calls, transport = _scripted(routes)
+    records = Fetcher(transport, VirtualClock(parse_stamp(NOW))).fetch(start)
+    assert records[-1].error == "robots_disallow"
+    assert secret not in calls
+    assert "https://nope.example/robots.txt" in calls
+
+
+def test_44_redirect_loop_and_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_connect(monkeypatch)
+    loop_routes = {
+        "https://a.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://a.example/robots.txt", content_type="text/plain"
+        ),
+        "https://b.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://b.example/robots.txt", content_type="text/plain"
+        ),
+        "https://a.example/": HttpResponse(
+            302, b"", "https://a.example/", content_type="text/html", location="https://b.example/"
+        ),
+        "https://b.example/": HttpResponse(
+            302, b"", "https://b.example/", content_type="text/html", location="https://a.example/"
+        ),
+    }
+    calls, transport = _scripted(loop_routes)
+    records = Fetcher(transport, VirtualClock(parse_stamp(NOW))).fetch("https://a.example/")
+    assert records[-1].error == "redirect_loop"
+    assert calls.count("https://a.example/") == 1
+    assert calls.count("https://b.example/") == 1
+
+    cap_routes = {
+        "https://hop.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://hop.example/robots.txt", content_type="text/plain"
+        )
+    }
+    for index in range(7):
+        url = f"https://hop.example/{index}"
+        cap_routes[url] = HttpResponse(
+            302, b"", url, content_type="text/html", location=f"https://hop.example/{index + 1}"
+        )
+    cap_calls, cap_transport = _scripted(cap_routes)
+    capped = Fetcher(cap_transport, VirtualClock(parse_stamp(NOW))).fetch("https://hop.example/0")
+    assert capped[-1].error == "redirect_cap"
+    assert "https://hop.example/6" not in cap_calls
+    assert "https://hop.example/5" in cap_calls
+
+
+def test_45_single_brand_page_is_not_reseller(tmp_path: Path) -> None:
+    """Capitalised product words without other-maker evidence are unresolved."""
+    body = (_CNX_FIXTURES / "single-brand-maker.html").read_text(encoding="utf-8")
+    assert "HDMI" in body and "DisplayPort" in body and "Cortex" in body
+    host = "https://northwind.example/"
+    product = "https://northwind.example/products/nx1"
+    extra = {
+        "https://northwind.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        host: {"status": 200, "body": body, "content_type": "text/html"},
+        product: {"status": 200, "body": body, "content_type": "text/html"},
+    }
+    con = _one(
+        tmp_path,
+        "Northwind NX1 brings a new SBC",
+        _plain("Northwind NX1 brings a new SBC", [(product, "product page")]),
+        extra=extra,
+    )
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    assert lead["classification"] != "reseller"
+    assert lead["reason_code"] == "board_maker_unresolved"
+    assert lead["reason_code"] in REASON_CODES
+    assert lead["qualified"] == 0
+
+
+def test_46_multi_brand_shop_is_reseller(tmp_path: Path) -> None:
+    body = (_CNX_FIXTURES / "multi-brand-shop.html").read_text(encoding="utf-8")
+    host = "https://harbor-shop.example/"
+    extra = {
+        "https://harbor-shop.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        host: {"status": 200, "body": body, "content_type": "text/html"},
+    }
+    con = _one(
+        tmp_path,
+        "Harbor Outlet deals",
+        _plain("Harbor Outlet deals", [(host, "shop")]),
+        extra=extra,
+    )
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    assert lead["classification"] == "reseller"
+    assert lead["reason_code"] == "reseller"
+    assert lead["qualified"] == 0
+
+
+def test_47_stored_urls_drop_tracking_params(tmp_path: Path) -> None:
+    from urllib.parse import parse_qs, urlsplit
+
+    url = _article("tracked") + "?utm_source=cnx&token=sekret&key=secret&sig=abc&ok=1&keyword=board"
+    link = "https://www.raspberrypi.com/products/pi?utm_medium=x&token=t&key=k&sig=s&ok=1&keyword=board"
+    fix = tmp_path / "fix"
+    state = tmp_path / "state"
+    feed = _rss([(url.replace("&", "&amp;"), "raspberry pi")])
+    html = _plain("raspberry pi", [(link.replace("&", "&amp;"), "board")])
+    _write(fix, _routes(feed, {url: html}))
+    assert _run(state, fix) == 0
+    con = _db(state)
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    stored_article = lead["cnx_article_url"]
+    stored_primary = lead["primary_url"]
+    for stored in (stored_article, stored_primary):
+        query = parse_qs(urlsplit(stored).query)
+        assert "utm_source" not in query and "utm_medium" not in query
+        assert "token" not in query and "key" not in query and "sig" not in query
+        assert query["ok"] == ["1"]
+        assert query["keyword"] == ["board"]
+    assert urlsplit(stored_primary).path == "/products/pi"
+    fetch = con.execute("SELECT url FROM fetches WHERE url LIKE '%tracked%'").fetchone()
+    assert fetch is not None
+    assert "utm_source" not in fetch["url"]
+    assert "token" not in fetch["url"]
+    logged = [item["url"] for item in _calls(fix)]
+    assert any("utm_source=cnx" in item for item in logged)
+
+
+def test_48_sample_fixtures_keep_skeleton_without_article_prose() -> None:
+    banned = (
+        "industrial mini-ITX motherboard based on",
+        "designed for space-constrained",
+        "don’t intend to manufacture",
+        "affordable yet feature-rich",
+        "application processor in the larger",
+    )
+    for name, url, _title, *_rest in _SAMPLE_PAGES:
+        text = (_CNX_FIXTURES / name).read_text(encoding="utf-8")
+        assert "entry-content" in text
+        assert "saboxplugin-wrap" in text
+        assert "Synthetic placeholder." in text
+        assert "</body>" in text and "</html>" in text
+        for phrase in banned:
+            assert phrase not in text
+        page = parse_html(text.encode("utf-8"), base_url=url, content_type="text/html")
+        assert page.malformed is False
+        assert page.links
+    mix = (_CNX_FIXTURES / "article-01-aaeon-mix.html").read_text(encoding="utf-8")
+    assert 'href="https://www.aaeon.com/en/product/detail/industrial_motherboards_mix-ptlwv1"' in mix
+    assert ">product page</a>" in mix

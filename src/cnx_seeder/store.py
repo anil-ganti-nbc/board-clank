@@ -8,7 +8,7 @@ import sqlite3
 from pathlib import Path
 
 from cnx_seeder.bounds import ALIAS_TABLE_VERSION
-from cnx_seeder.normalize import is_cnx_host
+from cnx_seeder.normalize import is_cnx_host, public_url
 from cnx_seeder.paths import PathGuardError, assert_state_dir_allowed
 
 SCHEMA = """
@@ -135,6 +135,12 @@ class CnxHostRejected(RuntimeError):
     pass
 
 
+def _stored_url(value: str | None) -> str | None:
+    if not value:
+        return value
+    return public_url(value)
+
+
 class Queue:
     def __init__(self, state_dir: Path, repo_root: Path | None = None) -> None:
         self.state_dir = assert_state_dir_allowed(state_dir, repo_root)
@@ -199,7 +205,7 @@ class Queue:
             """,
             (
                 row["run_id"],
-                row["url"],
+                _stored_url(row["url"]),
                 row["attempt"],
                 row["fetched_at"],
                 row.get("http_status"),
@@ -228,19 +234,19 @@ class Queue:
             """,
             (
                 row["lead_key"],
-                row["cnx_article_url"],
+                _stored_url(row["cnx_article_url"]),
                 row["article_title"],
                 row["discovered_name"],
                 row["normalized_name"],
                 json.dumps(row.get("mentions") or []),
                 row["classification"],
                 row["reason_code"],
-                row.get("primary_url"),
+                _stored_url(row.get("primary_url")),
                 row.get("primary_domain"),
                 row.get("primary_host"),
-                row.get("homepage_url"),
+                _stored_url(row.get("homepage_url")),
                 row.get("homepage_host"),
-                row.get("board_surface_url"),
+                _stored_url(row.get("board_surface_url")),
                 1 if row.get("qualified") else 0,
             ),
         )
@@ -262,7 +268,7 @@ class Queue:
             INSERT OR IGNORE INTO article_sightings(run_id, candidate_key, cnx_article_url, seen_at)
             VALUES (?, ?, ?, ?)
             """,
-            (run_id, row["candidate_key"], row["cnx_article_url"], seen_at),
+            (run_id, row["candidate_key"], _stored_url(row["cnx_article_url"]), seen_at),
         )
         if existing:
             return False
@@ -277,14 +283,14 @@ class Queue:
             (
                 row["candidate_key"],
                 run_id,
-                row["cnx_article_url"],
+                _stored_url(row["cnx_article_url"]),
                 row["article_title"],
-                row["primary_url"],
+                _stored_url(row["primary_url"]),
                 row["primary_domain"],
                 row["primary_host"],
-                row["homepage_url"],
+                _stored_url(row["homepage_url"]),
                 row["homepage_host"],
-                row["primary_url"],
+                _stored_url(row["primary_url"]),
                 row["normalized_name"],
                 seen_at,
                 row["content_sha256"],

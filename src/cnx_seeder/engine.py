@@ -29,10 +29,10 @@ from cnx_seeder.extract import (
     is_about_path,
     is_surface_path,
     listing_links,
+    other_manufacturer_evidence,
     page_has_tokens,
     parse_feed_items,
     parse_html,
-    foreign_brands,
 )
 from cnx_seeder.http import (
     FetchRecord,
@@ -162,6 +162,7 @@ def _verify(
     queue: Queue,
     run_id: str,
     cache: dict[str, list[FetchRecord]],
+    rows: list[AliasRow],
 ) -> Decision:
     name = " ".join(subject)
     home = f"https://{domain}/"
@@ -212,19 +213,25 @@ def _verify(
             own_pages.append((record, page))
     pages = own_pages
     texts = "\n".join(page.text for _, page in pages)
-    brands: set[str] = set()
-    for _, page in pages:
-        brands |= foreign_brands(page.text, subject)
-    # Two other brands mark a reseller only when this vendor's own site shows
-    # no company identity. A maker homepage that says "we design" is not a
-    # reseller because its shop page also names a chip vendor, and a shared
-    # widget page is not consulted at all.
-    if len(brands) >= 2 and not has_identity(texts):
-        return Decision("reseller", "reseller", normalized_name=name, discovered_name=name, primary_domain=domain)
-    if has_cart(texts) and not has_identity(texts):
-        return Decision(
-            "reseller", "storefront_only", normalized_name=name, discovered_name=name, primary_domain=domain
+    alias_names = tuple(alias for row in rows for alias in row.names)
+    # Reseller is evidence of other manufacturers plus a storefront signal.
+    # Capitalised chip and interface words are not that evidence. A maker page
+    # that says "we design" is not a reseller.
+    if not has_identity(texts):
+        evidence = other_manufacturer_evidence(
+            [page for _, page in pages],
+            subject,
+            domain,
+            alias_names,
         )
+        if evidence and (has_cart(texts) or evidence == "catalogue"):
+            return Decision(
+                "reseller", "reseller", normalized_name=name, discovered_name=name, primary_domain=domain
+            )
+        if has_cart(texts):
+            return Decision(
+                "reseller", "storefront_only", normalized_name=name, discovered_name=name, primary_domain=domain
+            )
 
     homepage_url = None
     homepage_host = None
@@ -375,7 +382,7 @@ def _decide(
             normalized_name=" ".join(subject),
             discovered_name=" ".join(subject),
         )
-    decision = _verify(subject, domain, extraction.links, fetcher, queue, run_id, cache)
+    decision = _verify(subject, domain, extraction.links, fetcher, queue, run_id, cache, rows)
     decision.mentions = mentions
     return decision
 
