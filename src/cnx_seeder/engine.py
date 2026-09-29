@@ -204,11 +204,22 @@ def _verify(
             continue
         pages.append((ok, page))
 
+    own_pages: list[tuple[FetchRecord, ParsedPage]] = []
+    for record, page in pages:
+        final = record.final_url or record.url
+        final_host = host_of(final)
+        if final_host is not None and registrable_domain(final_host) == domain:
+            own_pages.append((record, page))
+    pages = own_pages
     texts = "\n".join(page.text for _, page in pages)
     brands: set[str] = set()
     for _, page in pages:
         brands |= foreign_brands(page.text, subject)
-    if len(brands) >= 2:
+    # Two other brands mark a reseller only when this vendor's own site shows
+    # no company identity. A maker homepage that says "we design" is not a
+    # reseller because its shop page also names a chip vendor, and a shared
+    # widget page is not consulted at all.
+    if len(brands) >= 2 and not has_identity(texts):
         return Decision("reseller", "reseller", normalized_name=name, discovered_name=name, primary_domain=domain)
     if has_cart(texts) and not has_identity(texts):
         return Decision(
@@ -302,7 +313,8 @@ def _decide(
         return Decision("unresolved", "instruction_bearing_rejected")
     if page is not None and page.malformed:
         return Decision("unresolved", "malformed_page")
-    extraction = extract_subject(title, page)
+    alias_names = tuple(name for row in rows for name in row.names)
+    extraction = extract_subject(title, page, alias_names=alias_names)
     subject = extraction.subject
     domain = extraction.domain
     mentions = list(extraction.mentions)
@@ -320,6 +332,7 @@ def _decide(
         return Decision(
             classification,
             reason,
+            primary_url=extraction.chosen_url,
             primary_domain=domain,
             mentions=mentions,
             normalized_name=" ".join(subject),
@@ -593,7 +606,11 @@ def _print_summary(queue: Queue, run_id: str, *, replay: bool = False, live: boo
         payload["article_count"] = len(articles)
         payload["article_set"] = "reused"
         payload["cnx_fetches"] = "reused"
-        payload["oem_fetches"] = "live" if live else "reused"
+        payload["oem_fetches"] = "reused"
+        note = "article set reused; OEM fetches reused from the source run; no OEM network refetch"
+        if live:
+            note += "; --live does not open OEM sockets"
+        payload["replay_note"] = note
     print(json.dumps(payload, sort_keys=True))
 
 
@@ -693,21 +710,9 @@ def replay_sample(
     )
     _copy_frozen_fetches(queue, source_id, run_id)
     _copy_sightings(queue, source_id, run_id, stamp(clock.now))
-    if live and transport is not None:
-        fetcher = Fetcher(transport, clock)
-        urls = [
-            row["url"]
-            for row in queue.con.execute(
-                "SELECT DISTINCT url FROM fetches WHERE run_id = ? ORDER BY url",
-                (source_id,),
-            )
-        ]
-        for url in urls:
-            host = host_of(url)
-            if host is None or is_cnx_host(host) or url.endswith("/robots.txt"):
-                continue
-            fetcher.fetch(url)
-        _persist_new(queue, run_id, fetcher, 0)
+    # Stored OEM bodies stay on the source run. Replay does not GET them again,
+    # including when --live is set.
+    _ = transport
     queue.con.execute(
         "UPDATE runs SET finished_at = ?, status = 'completed' WHERE run_id = ?",
         (stamp(clock.now), run_id),

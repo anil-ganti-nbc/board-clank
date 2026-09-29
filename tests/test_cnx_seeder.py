@@ -1,4 +1,4 @@
-"""Offline acceptance tests 1-17, 20-36, and 38-40. No live network."""
+"""Offline acceptance tests 1-17, 20-36, and 38-42. No live network."""
 
 from __future__ import annotations
 
@@ -23,6 +23,12 @@ from cnx_seeder.paths import REPO_ROOT
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
 NOW = "2026-09-29T00:00:00Z"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_code_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A stale CNX_SEEDER_CODE_REVISION in the environment must not leak into tests."""
+    monkeypatch.delenv("CNX_SEEDER_CODE_REVISION", raising=False)
 ROSTER_SHA = "ba2a5bc4a25f4b7836b7ec99b9c7dfdee5593bd863a6cacb63f4a710339fd6ab"
 ROBOTS = "User-agent: *\nAllow: /\n"
 CONFIG = REPO_ROOT / "config" / "sources.yaml"
@@ -1337,3 +1343,255 @@ def test_40_report_prints_summary(tmp_path: Path, capsys: pytest.CaptureFixture[
     assert summary["qualified"] == 0
     assert summary["status"] == "completed"
     assert (state / "report.json").is_file()
+
+
+_CNX_FIXTURES = REPO_ROOT / "tests" / "fixtures" / "cnx_seeder"
+_SAMPLE_PAGES = (
+    (
+        "article-01-aaeon-mix.html",
+        "https://www.cnx-software.com/2026/09/16/aaeon-mix-ptlwv1-panther-lake-industrial-mini-itx-motherboard-offers-quad-displayport-dual-10gbe/",
+        "AAEON MIX-PTLWV1 Panther Lake industrial mini-ITX motherboard offers quad DisplayPort, dual 10GbE, and more",
+        "aaeon",
+        "known_placeholder",
+        "aaeon.com",
+    ),
+    (
+        "article-02-aaeon-pico.html",
+        "https://www.cnx-software.com/2026/08/13/aaeon-pico-adn2-a-low-profile-alder-lake-n-pico-itx-sbc-for-space-constrained-applications/",
+        "AAEON PICO-ADN2 - A low-profile Alder Lake-N Pico-ITX SBC for space-constrained applications",
+        "aaeon",
+        "known_placeholder",
+        "aaeon.com",
+    ),
+    (
+        "article-03-forlinx.html",
+        "https://www.cnx-software.com/2026/08/12/forlinx-am62l32-local-evm-a-low-power-industrial-sbc-ti-am62l32-cortex-a53-m4f-soc/",
+        "Forlinx AM62L32 Local EVM - A low-power industrial SBC powered by TI AM62L32",
+        "forlinx",
+        "board_maker",
+        "forlinx.net",
+    ),
+    (
+        "article-04-orange-pi.html",
+        "https://www.cnx-software.com/2026/08/31/orange-pi-zero-4-allwinner-a733-sbc-offers-hdmi-usb-c-dp-gbe-wifi-6-pcie-ffc-connector/",
+        "Orange Pi Zero 4 - Compact Allwinner A733 SBC offers HDMI, USB-C DP, GbE, WiFi 6",
+        "orange pi",
+        "known_active",
+        "orangepi.org",
+    ),
+    (
+        "article-05-pine64.html",
+        "https://www.cnx-software.com/2026/08/19/pine64-hits-pause-on-linux-devices-due-to-ram-and-emmc-shortage-high-prices/",
+        "Pine64 hits pause on Linux devices due to RAM and eMMC shortage",
+        "pine64",
+        "known_active",
+        None,
+    ),
+    (
+        "article-06-nxp.html",
+        "https://www.cnx-software.com/2026/08/11/nxp-frdm-imx95-pro-i-mx-95-board-features-10gbe-faster-6400-mt-s-lpddr5-memory-dual-m-2-expansion/",
+        "NXP FRDM-IMX95-PRO i.MX 95 board features 10GbE, faster 6400 MT/s LPDDR5 memory",
+        "nxp",
+        "board_maker",
+        "nxp.com",
+    ),
+)
+
+
+def _oem_page(name: str, identity: bool, scope: bool, extra: str = "") -> str:
+    bits = [name]
+    if identity:
+        bits.append(f"We design boards at {name}.")
+    if scope:
+        bits.append(f"{name} single board computer specifications.")
+    if extra:
+        bits.append(extra)
+    return _page(" ".join(bits))
+
+
+def test_41_article_body_picks_vendor_not_share_widgets(tmp_path: Path) -> None:
+    """Trimmed CNX pages: body links only, known names before domains, no share primary."""
+    from cnx_seeder.extract import PRIMARY_BLOCK
+    from cnx_seeder.normalize import host_of, registrable_domain
+
+    lumenix_url = "https://www.cnx-software.com/2026/09/01/lumenix-board-x1/"
+    lumenix_title = "Lumenix Board X1 brings a new SBC"
+    pages = {url: (_CNX_FIXTURES / name).read_text(encoding="utf-8") for name, url, *_rest in _SAMPLE_PAGES}
+    pages[lumenix_url] = (_CNX_FIXTURES / "article-07-lumenix.html").read_text(encoding="utf-8")
+    items = [(url, title) for _name, url, title, *_rest in _SAMPLE_PAGES]
+    items.append((lumenix_url, lumenix_title))
+    forlinx_product = "https://www.forlinx.net/single-board-computer/ti-am62l32-local-evm-evaluation-board-181.mhtml"
+    nxp_product = "https://www.nxp.com/design/design-center/development-boards-and-designs/FRDM-IMX95-PRO"
+    lumenix_product = "https://lumenix.example/products/sbc"
+    lumenix_shop = "https://eshop.lumenix.example/shop"
+    extra = {
+        "https://forlinx.net/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://www.forlinx.net/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://forlinx.net/": {
+            "status": 200,
+            "body": _oem_page("Forlinx", True, False),
+            "content_type": "text/html",
+        },
+        forlinx_product: {
+            "status": 200,
+            "body": _oem_page("Forlinx", False, True),
+            "content_type": "text/html",
+        },
+        "https://nxp.com/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://www.nxp.com/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://nxp.com/": {
+            "status": 200,
+            "body": _oem_page("NXP", True, False),
+            "content_type": "text/html",
+        },
+        nxp_product: {
+            "status": 200,
+            "body": _oem_page("NXP", False, True),
+            "content_type": "text/html",
+        },
+        "https://lumenix.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://eshop.lumenix.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://lumenix.example/": {
+            "status": 200,
+            "body": _oem_page("Lumenix", True, False),
+            "content_type": "text/html",
+        },
+        lumenix_product: {
+            "status": 200,
+            "body": _oem_page("Lumenix", False, True),
+            "content_type": "text/html",
+        },
+        lumenix_shop: {
+            "status": 200,
+            "body": _page("Add to cart. Intel and Texas Instruments modules."),
+            "content_type": "text/html",
+        },
+    }
+    fix = tmp_path / "fix"
+    state = tmp_path / "state"
+    _write(fix, _routes(_rss(items), pages, extra))
+    assert _run(state, fix) == 0
+    con = _db(state)
+    leads = {row["cnx_article_url"]: row for row in con.execute("SELECT * FROM leads")}
+    for _name, url, _title, vendor, classification, domain in _SAMPLE_PAGES:
+        lead = leads[url]
+        assert lead["discovered_name"] == vendor
+        assert lead["normalized_name"] == vendor
+        assert lead["classification"] == classification
+        assert lead["primary_domain"] == domain
+        if domain is None:
+            assert lead["primary_url"] is None
+            assert lead["qualified"] == 0
+        else:
+            assert lead["primary_url"]
+            host = host_of(lead["primary_url"])
+            assert host is not None
+            assert registrable_domain(host) == domain
+            assert registrable_domain(host) not in PRIMARY_BLOCK
+        assert lead["primary_domain"] not in PRIMARY_BLOCK
+    # AAEON is the UP Board placeholder (spec 4.2, test 5). Not a new OEM.
+    for url in (_SAMPLE_PAGES[0][1], _SAMPLE_PAGES[1][1]):
+        assert leads[url]["reason_code"] == "known_placeholder"
+        assert leads[url]["qualified"] == 0
+        assert "aaeon.com" in leads[url]["primary_url"]
+    assert leads[_SAMPLE_PAGES[3][1]]["reason_code"] == "known_active_source"
+    assert leads[_SAMPLE_PAGES[4][1]]["reason_code"] == "known_active_source"
+    lumenix = leads[lumenix_url]
+    assert lumenix["normalized_name"] == "lumenix"
+    assert lumenix["classification"] == "board_maker"
+    assert lumenix["reason_code"] == "qualified"
+    assert lumenix["primary_domain"] == "lumenix.example"
+    assert lumenix["primary_url"] == lumenix_product
+    qualified = list(con.execute("SELECT * FROM qualified_candidates"))
+    assert len(qualified) >= 3
+    assert {row["normalized_name"] for row in qualified} == {"forlinx", "nxp", "lumenix"}
+    assert len({row["candidate_key"] for row in qualified}) == len(qualified)
+    for row in qualified:
+        assert row["primary_domain"] not in PRIMARY_BLOCK
+        assert "addtoany" not in row["primary_url"]
+    fetched = [item["url"] for item in _calls(fix)]
+    assert all(registrable_domain(host_of(url) or "") not in PRIMARY_BLOCK for url in fetched if host_of(url))
+    assert any(url == forlinx_product for url in fetched)
+    assert not any("eshop.aaeon.com" in url for url in fetched)
+    con.close()
+    assert (
+        main(
+            [
+                "replay",
+                "--state-dir",
+                str(state),
+                "--run-id",
+                "run-replay",
+                "--from-run",
+                "run-1",
+                "--code-revision",
+                SHA,
+                "--now",
+                NOW,
+                "--fixture",
+                str(fix),
+            ]
+        )
+        == 0
+    )
+    con = _db(state)
+    again = list(con.execute("SELECT candidate_key, normalized_name FROM qualified_candidates"))
+    assert len(again) == len(qualified)
+    assert len({row["candidate_key"] for row in again}) == len(again)
+    new_qualified = con.execute(
+        "SELECT COUNT(*) AS n FROM qualified_candidates WHERE first_run_id = 'run-replay'"
+    ).fetchone()["n"]
+    assert new_qualified == 0
+
+
+def test_42_live_replay_reuses_stored_oem_fetches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    from cnx_seeder.revision import read_head_sha
+
+    title = "Acme Board X1 brings a new SBC"
+    url = _article("acme-live-replay")
+    fix = tmp_path / "fix"
+    state = tmp_path / "state"
+    _write(fix, _routes(_rss([(url, title)]), {url: _page(title, ACME_LINKS)}, _acme_extra()))
+    assert _run(state, fix, "run-a") == 0
+    assert _db(state).execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"] == 1
+    blocked = {"n": 0}
+
+    def _no_socket(*_args: object, **_kwargs: object) -> None:
+        blocked["n"] += 1
+        raise RuntimeError("socket")
+
+    monkeypatch.setattr(socket, "socket", _no_socket)
+    monkeypatch.setattr(socket, "create_connection", _no_socket)
+    head = read_head_sha(REPO_ROOT)
+    assert head
+    capsys.readouterr()
+    assert (
+        main(
+            [
+                "replay",
+                "--state-dir",
+                str(state),
+                "--run-id",
+                "run-b",
+                "--from-run",
+                "run-a",
+                "--live",
+                "--code-revision",
+                head,
+                "--now",
+                NOW,
+            ]
+        )
+        == 0
+    )
+    assert blocked["n"] == 0
+    summary = json.loads([line for line in capsys.readouterr().out.splitlines() if '"article_set"' in line][-1])
+    assert summary["article_set"] == "reused"
+    assert summary["cnx_fetches"] == "reused"
+    assert summary["oem_fetches"] == "reused"
+    assert "no OEM network refetch" in summary["replay_note"]
+    con = _db(state)
+    assert con.execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"] == 1
+    assert con.execute(
+        "SELECT COUNT(*) AS n FROM fetches WHERE run_id = 'run-b' AND url LIKE '%acme.example%'"
+    ).fetchone()["n"] == 0

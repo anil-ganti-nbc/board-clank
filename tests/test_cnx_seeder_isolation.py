@@ -17,6 +17,11 @@ from cnx_seeder.paths import REPO_ROOT, operational_db_path
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
 NOW = "2026-09-29T00:00:00Z"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_code_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CNX_SEEDER_CODE_REVISION", raising=False)
 BANNED = {"subprocess", "fcntl", "msvcrt", "pty", "posix"}
 
 
