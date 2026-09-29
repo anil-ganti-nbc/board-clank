@@ -1,0 +1,66 @@
+version: known-vendors-1
+vendors:
+  - vendor: raspberry-pi
+    role: active
+    names: [raspberry pi, raspberrypi, rpi]
+    domains: [raspberrypi.com, raspberrypi.org]
+  - vendor: orange-pi
+    role: active
+    names: [orange pi, orangepi, xunlong]
+    domains: [orangepi.org, orangepi.cn]
+  - vendor: radxa
+    role: active
+    names: [radxa]
+    domains: [radxa.com]
+  - vendor: banana-pi
+    role: active
+    names: [banana pi, bananapi]
+    domains: [banana-pi.org]
+  - vendor: hardkernel-odroid
+    role: active
+    names: [hardkernel, odroid]
+    domains: [hardkernel.com, odroid.com]
+  - vendor: pine64
+    role: active
+    names: [pine64, pine 64]
+    domains: [pine64.org, pine64.com]
+  - vendor: friendlyelec
+    role: placeholder
+    names: [friendlyelec, friendly elec, friendlyarm, friendly arm, nanopi, nanopc]
+    domains: [friendlyelec.com, friendlyarm.com]
+  - vendor: milk-v
+    role: placeholder
+    names: [milk-v, milkv, milk v]
+    domains: [milkv.io]
+  - vendor: beagleboard
+    role: placeholder
+    names: [beagleboard, beagle board, beaglebone, beagleplay]
+    domains: [beagleboard.org]
+  - vendor: libre-computer
+    role: placeholder
+    names: [libre computer, librecomputer, le potato, renegade elite, tritium]
+    domains: [libre.computer]
+  - vendor: khadas
+    role: placeholder
+    names: [khadas, khadas vim, khadas edge]
+    domains: [khadas.com]
+  - vendor: up-board
+    role: placeholder
+    names: [up board, up-board, up squared, up xtreme, aaeon]
+    domains: [up-board.org, up-shop.org, aaeon.com]
+  - vendor: seeed-studio
+    role: placeholder
+    names: [seeed, seeed studio, seeedstudio]
+    domains: [seeedstudio.com, seeed.cc]
+  - vendor: firefly
+    role: placeholder
+    names: [firefly, t-firefly, tfirefly]
+    domains: [t-firefly.com, firefly.store]
+  - vendor: lattepanda
+    role: placeholder
+    names: [lattepanda, latte panda, dfrobot, df robot]
+    domains: [lattepanda.com, dfrobot.com]
+  - vendor: nvidia-jetson
+    role: out_of_scope
+    names: [nvidia, jetson, nvidia jetson, jetson orin, jetson nano, jetson xavier, jetson agx, jetson thor]
+    domains: [nvidia.com]
