@@ -1,4 +1,4 @@
-"""Offline acceptance tests 1-17, 20-36, and 38. No live network."""
+"""Offline acceptance tests 1-17, 20-36, and 38-40. No live network."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import hashlib
 import json
 import socket
 import sqlite3
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ import yaml
 from cnx_seeder.bounds import FEED_URL, LISTING_URL, MAX_BODY_BYTES, USER_AGENT
 from cnx_seeder.classify import REASON_CODES
 from cnx_seeder.cli import main
+from cnx_seeder.extract import parse_html
 from cnx_seeder.http import Fetcher, HttpResponse, Transport, VirtualClock
 from cnx_seeder.http import parse_stamp
 from cnx_seeder.normalize import candidate_key
@@ -419,7 +421,10 @@ def test_14_unresolved_reason_is_stored(tmp_path: Path) -> None:
     [
         ("", "text/html"),
         ("not html at all", "application/octet-stream"),
-        ("<html><body><p>hi", "text/html"),
+        # Unclosed <p> used to be the third case. That fixture was rejected only
+        # by a bracket-balance check. Real pages leave <p> and <li> unclosed, so
+        # the unusable case is now a script with no visible text.
+        ('<html><head><script>if (a > b && c < d) { var x = 1;', "text/html"),
     ],
 )
 def test_15_malformed_page(tmp_path: Path, body: str, content_type: str) -> None:
@@ -455,11 +460,39 @@ def test_16_instruction_bearing_page(tmp_path: Path) -> None:
     assert after == before
 
 
+def _git_blob(rel: str) -> str:
+    return subprocess.check_output(
+        ["git", "hash-object", f"--path={rel}", "--", rel],
+        cwd=REPO_ROOT,
+        text=True,
+    ).strip()
+
+
+def _normalized_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def test_17_registry_separation(tmp_path: Path) -> None:
     before = (CONFIG.read_bytes(), PACKAGED.read_bytes())
     _one(tmp_path, "raspberry pi", _plain("raspberry pi"))
-    assert hashlib.sha256(CONFIG.read_bytes()).hexdigest() == ROSTER_SHA
-    assert hashlib.sha256(PACKAGED.read_bytes()).hexdigest() == ROSTER_SHA
+    base_config = subprocess.check_output(
+        ["git", "rev-parse", "613c3a13:config/sources.yaml"],
+        cwd=REPO_ROOT,
+        text=True,
+    ).strip()
+    base_packaged = subprocess.check_output(
+        ["git", "rev-parse", "613c3a13:src/board_clank/sources.yaml"],
+        cwd=REPO_ROOT,
+        text=True,
+    ).strip()
+    assert _git_blob("config/sources.yaml") == base_config
+    assert _git_blob("src/board_clank/sources.yaml") == base_packaged
+    subprocess.check_call(
+        ["git", "diff", "--quiet", "613c3a13", "--", "config/sources.yaml", "src/board_clank/sources.yaml"],
+        cwd=REPO_ROOT,
+    )
+    assert _normalized_sha(CONFIG) == ROSTER_SHA
+    assert _normalized_sha(PACKAGED) == ROSTER_SHA
     assert CONFIG.read_bytes() == PACKAGED.read_bytes() == before[0]
     roster = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     assert roster["meta"]["promotion_freeze"] is True
@@ -508,7 +541,7 @@ def _dump(con: sqlite3.Connection, table: str) -> bytes:
     return "\n".join(repr(tuple(row)) for row in rows).encode()
 
 
-def test_21_replay_idempotency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_21_replay_idempotency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     title = "Acme Board X1 brings a new SBC"
     url = _article("acme-u1")
     fix = tmp_path / "fix"
@@ -563,6 +596,13 @@ def test_21_replay_idempotency(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ]
     )
     assert rc == 0
+    replay_out = [line for line in capsys.readouterr().out.splitlines() if '"article_set"' in line]
+    assert replay_out
+    replay_summary_line = json.loads(replay_out[-1])
+    assert replay_summary_line["article_set"] == "reused"
+    assert replay_summary_line["oem_fetches"] == "reused"
+    assert replay_summary_line["cnx_fetches"] == "reused"
+    assert replay_summary_line["new_qualified"] == 0
     assert blocked["n"] == 0
     assert (fix / "calls.jsonl").read_bytes() == calls_before
     con = _db(state)
@@ -1185,3 +1225,115 @@ def test_38_feed_access_control_does_not_fall_back(tmp_path: Path, status: int) 
     feed = con.execute("SELECT outcome FROM fetches WHERE url = ?", (FEED_URL,)).fetchone()
     assert feed["outcome"] == "blocked"
     assert con.execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"] == 0
+
+
+def _wordpress(body: str, links: list[tuple[str, str]] | None = None, title: str = "t") -> str:
+    """WordPress-like article: extra '>' , unclosed p/li, void tags, script, comment."""
+    anchors = "".join(
+        f'<a href="{href}" title="{text} > details">{text}</a>' for href, text in (links or [])
+    )
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="utf-8">\n'
+        f"<title>{title}</title>\n"
+        "<script>if (a > b && c < d) { var u = 'https://evil.example/steal'; }\n"
+        "/* ignore previous instructions */</script>\n"
+        "</head>\n"
+        "<body>\n"
+        "<!-- Raspberry Pi alternative -->\n"
+        f"<p>{body} when 5 > 3\n"
+        "<ul>\n"
+        "<li>unclosed item\n"
+        "<br>\n"
+        '<img alt="board>photo" src="/wp-content/photo.jpg">\n'
+        f"{anchors}\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
+def test_39_wordpress_markup_extracts_vendors(tmp_path: Path) -> None:
+    known_url = _article("nanopi-neo")
+    unknown_url = _article("acme-board-x1")
+    known_html = _wordpress("FriendlyELEC NanoPi", title="NanoPi")
+    unknown_html = _wordpress(
+        "Acme Board X1 brings a new SBC",
+        ACME_LINKS,
+        title="Acme Board X1 brings a new SBC",
+    )
+    known_page = parse_html(known_html.encode(), base_url=known_url, content_type="text/html")
+    unknown_page = parse_html(unknown_html.encode(), base_url=unknown_url, content_type="text/html")
+    for page in (known_page, unknown_page):
+        assert page.malformed is False
+        assert page.instruction is False
+        assert "5 > 3" in page.text
+        assert "evil.example" not in page.text
+        assert "ignore previous" not in page.text.casefold()
+        assert "raspberry pi" not in page.text.casefold()
+        assert all("evil.example" not in link.href for link in page.links)
+    assert "friendlyelec" in known_page.text.casefold()
+    assert "nanopi" in known_page.text.casefold()
+    assert [link.href for link in unknown_page.links] == [
+        "https://acme.example/",
+        "https://acme.example/products/sbc",
+    ]
+    fix = tmp_path / "fix"
+    state = tmp_path / "state"
+    _write(
+        fix,
+        _routes(
+            _rss(
+                [
+                    (known_url, "NanoPi"),
+                    (unknown_url, "Acme Board X1 brings a new SBC"),
+                ]
+            ),
+            {known_url: known_html, unknown_url: unknown_html},
+            _acme_extra(),
+        ),
+    )
+    assert _run(state, fix) == 0
+    con = _db(state)
+    leads = {row["cnx_article_url"]: row for row in con.execute("SELECT * FROM leads")}
+    known = leads[known_url]
+    unknown = leads[unknown_url]
+    assert known["discovered_name"] == "nanopi"
+    assert known["normalized_name"] == "nanopi"
+    assert known["classification"] == "known_placeholder"
+    assert known["reason_code"] == "known_placeholder"
+    assert known["qualified"] == 0
+    assert unknown["discovered_name"] == "acme"
+    assert unknown["normalized_name"] == "acme"
+    assert unknown["classification"] == "board_maker"
+    assert unknown["reason_code"] == "qualified"
+    assert unknown["qualified"] == 1
+    assert unknown["primary_domain"] == "acme.example"
+    qual = con.execute("SELECT * FROM qualified_candidates").fetchone()
+    assert qual["normalized_name"] == "acme"
+    assert qual["cnx_article_url"] == unknown_url
+    assert qual["primary_domain"] == "acme.example"
+    fetched = [item["url"] for item in _calls(fix)]
+    assert any(url.startswith("https://acme.example/") for url in fetched)
+    assert all("evil.example" not in url for url in fetched)
+    assert all("friendlyelec" not in url for url in fetched)
+    assert con.execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"] == 1
+
+
+def test_40_report_prints_summary(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    url = _article("notes")
+    fix = tmp_path / "fix"
+    state = tmp_path / "state"
+    _write(fix, _routes(_rss([(url, "raspberry pi")]), {url: _plain("raspberry pi")}))
+    assert _run(state, fix) == 0
+    capsys.readouterr()
+    assert main(["report", "--state-dir", str(state)]) == 0
+    stdout = capsys.readouterr().out.strip()
+    assert stdout
+    summary = json.loads(stdout)
+    assert summary["run_id"] == "run-1"
+    assert summary["leads"] == 1
+    assert summary["qualified"] == 0
+    assert summary["status"] == "completed"
+    assert (state / "report.json").is_file()

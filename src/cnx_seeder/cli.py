@@ -6,7 +6,14 @@ import argparse
 import sys
 from pathlib import Path
 
-from cnx_seeder.engine import make_clock, make_transport, noop_existing, replay_sample, run_sample
+from cnx_seeder.engine import (
+    make_clock,
+    make_transport,
+    noop_existing,
+    print_report_summary,
+    replay_sample,
+    run_sample,
+)
 from cnx_seeder.paths import REPO_ROOT, PathGuardError, default_state_dir
 from cnx_seeder.report import write_report
 from cnx_seeder.revision import RevisionError, resolve_revision
@@ -95,6 +102,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
         return 1
     try:
         write_report(queue)
+        print_report_summary(queue)
     finally:
         queue.close()
     return 0

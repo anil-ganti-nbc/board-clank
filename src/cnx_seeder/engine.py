@@ -573,26 +573,37 @@ def run_sample(
     return 0
 
 
-def _print_summary(queue: Queue, run_id: str) -> None:
-    row = queue.con.execute("SELECT status FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+def _print_summary(queue: Queue, run_id: str, *, replay: bool = False, live: bool = False) -> None:
+    row = queue.con.execute("SELECT status, article_urls_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
     leads = queue.con.execute("SELECT COUNT(*) AS n FROM leads").fetchone()["n"]
     qualified = queue.con.execute("SELECT COUNT(*) AS n FROM qualified_candidates").fetchone()["n"]
     new_qualified = queue.con.execute(
         "SELECT COUNT(*) AS n FROM qualified_candidates WHERE first_run_id = ?",
         (run_id,),
     ).fetchone()["n"]
-    print(
-        json.dumps(
-            {
-                "leads": leads,
-                "new_qualified": new_qualified,
-                "qualified": qualified,
-                "run_id": run_id,
-                "status": None if row is None else row["status"],
-            },
-            sort_keys=True,
-        )
-    )
+    payload: dict[str, object] = {
+        "leads": leads,
+        "new_qualified": new_qualified,
+        "qualified": qualified,
+        "run_id": run_id,
+        "status": None if row is None else row["status"],
+    }
+    if replay:
+        articles = json.loads(row["article_urls_json"]) if row is not None else []
+        payload["article_count"] = len(articles)
+        payload["article_set"] = "reused"
+        payload["cnx_fetches"] = "reused"
+        payload["oem_fetches"] = "live" if live else "reused"
+    print(json.dumps(payload, sort_keys=True))
+
+
+def print_report_summary(queue: Queue) -> None:
+    rows = queue.con.execute("SELECT run_id FROM runs ORDER BY started_at, run_id").fetchall()
+    if not rows:
+        print(json.dumps({"leads": 0, "qualified": 0, "runs": 0}, sort_keys=True))
+        return
+    for row in rows:
+        _print_summary(queue, str(row["run_id"]))
 
 
 def _copy_frozen_fetches(queue: Queue, source_id: str, run_id: str) -> None:
@@ -703,7 +714,7 @@ def replay_sample(
     )
     queue.commit()
     write_report(queue)
-    _print_summary(queue, run_id)
+    _print_summary(queue, run_id, replay=True, live=live)
     return 0
 
 

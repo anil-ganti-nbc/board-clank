@@ -169,39 +169,39 @@ class _PageParser(HTMLParser):
         if self._anchor is not None:
             self._anchor.append(data)
 
-
-def _balanced(raw: str) -> bool:
-    if raw.count("<") != raw.count(">") or "<" not in raw or ">" not in raw:
-        return False
-    void = {"br", "img", "meta", "link", "hr", "input", "source", "wbr"}
-    stack: list[str] = []
-    for match in re.finditer(r"</?([A-Za-z0-9]+)", raw):
-        token = match.group(0)
-        name = match.group(1).casefold()
-        if token.startswith("</"):
-            if not stack or stack[-1] != name:
-                return False
-            stack.pop()
-        elif name not in void:
-            stack.append(name)
-    return not stack
+    def handle_comment(self, data: str) -> None:
+        return None
 
 
 def parse_html(raw: bytes, *, base_url: str, content_type: str = "") -> ParsedPage:
+    """Parse untrusted HTML tolerantly.
+
+    Real article pages are not well-formed XML. ``>`` in text and attributes,
+    void tags, unclosed ``p``/``li``, and inline scripts are normal. Malformed
+    means the page cannot be used: empty, a non-HTML content type, a decode
+    that leaves no markup, or no visible text after script/style/comments are
+    dropped.
+    """
     if not raw or not raw.strip():
         return ParsedPage("", "", [], (), malformed=True)
     ctype = content_type.casefold()
     if ctype and "html" not in ctype and "xml" not in ctype:
         return ParsedPage("", "", [], (), malformed=True)
-    text = raw.decode("utf-8", "replace")
-    if "<" not in text or ">" not in text or not _balanced(text):
-        return ParsedPage("", "", [], (), malformed=True)
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("utf-8", "replace")
+        if "<" not in text:
+            return ParsedPage("", "", [], (), malformed=True)
     parser = _PageParser()
     try:
         parser.feed(text)
+        parser.close()
     except Exception:
         return ParsedPage("", "", [], (), malformed=True)
     visible = " ".join(part.strip() for part in parser.text_parts if part.strip())
+    if not visible:
+        return ParsedPage("", "", [], (), malformed=True)
     folded = visible.casefold()
     if any(phrase in folded for phrase in _INSTRUCTION):
         return ParsedPage(visible, visible, [], normalize_tokens(visible), instruction=True)
