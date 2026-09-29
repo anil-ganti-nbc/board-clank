@@ -1,0 +1,298 @@
+"""Bounded HTTP fetch: robots, retries, body cap, per-host interval."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
+
+from cnx_seeder.bounds import (
+    MAX_BODY_BYTES,
+    MAX_RETRIES,
+    PER_HOST_INTERVAL_SECONDS,
+    RETRY_STATUSES,
+    TIMEOUT_SECONDS,
+    USER_AGENT,
+)
+from cnx_seeder.normalize import strip_host
+
+_RETRY_ERRORS = frozenset({"timeout"})
+
+
+@dataclass
+class HttpResponse:
+    status: int | None
+    body: bytes
+    final_url: str
+    content_type: str = ""
+    error: str | None = None
+
+
+class Transport:
+    def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
+        raise NotImplementedError
+
+
+@dataclass
+class VirtualClock:
+    now: datetime
+
+    def sleep(self, seconds: float) -> None:
+        if seconds > 0:
+            self.now += timedelta(seconds=seconds)
+
+
+@dataclass
+class LiveClock:
+    def __post_init__(self) -> None:
+        return None
+
+    @property
+    def now(self) -> datetime:
+        return datetime.now(timezone.utc).replace(microsecond=0)
+
+    def sleep(self, seconds: float) -> None:
+        import time
+
+        if seconds > 0:
+            time.sleep(seconds)
+
+
+def stamp(moment: datetime) -> str:
+    value = moment.astimezone(timezone.utc).replace(microsecond=0)
+    return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_stamp(text: str) -> datetime:
+    raw = text.replace("Z", "+00:00")
+    return datetime.fromisoformat(raw)
+
+
+@dataclass
+class FetchRecord:
+    url: str
+    attempt: int
+    fetched_at: str
+    http_status: int | None
+    body: bytes
+    content_sha256: str | None
+    byte_length: int
+    elapsed_ms: int
+    robots_decision: str
+    outcome: str
+    error: str | None = None
+    content_type: str = ""
+    final_url: str = ""
+
+
+@dataclass
+class Fetcher:
+    transport: Transport
+    clock: VirtualClock | LiveClock
+    calls: list[tuple[str, str]] = field(default_factory=list)
+    history: list[FetchRecord] = field(default_factory=list)
+    _last: dict[str, datetime] = field(default_factory=dict)
+    _robots: dict[str, tuple[str, RobotFileParser | None]] = field(default_factory=dict)
+    blocked_hosts: set[str] = field(default_factory=set)
+
+    def _host(self, url: str) -> str:
+        return strip_host(urlsplit(url).hostname or "")
+
+    def _wait(self, host: str) -> datetime:
+        last = self._last.get(host)
+        now = self.clock.now
+        if last is not None:
+            earliest = last + timedelta(seconds=PER_HOST_INTERVAL_SECONDS)
+            if now < earliest:
+                self.clock.sleep((earliest - now).total_seconds())
+                now = self.clock.now
+        self._last[host] = now
+        return now
+
+    def _robots_url(self, url: str) -> str:
+        parts = urlsplit(url)
+        return f"{parts.scheme}://{parts.netloc}/robots.txt"
+
+    def prepare_host(self, url: str) -> str:
+        host = self._host(url)
+        if host in self._robots:
+            return self._robots[host][0]
+        robots_url = self._robots_url(url)
+        record = self._once(robots_url, robots_decision="allow", skip_robots=True)
+        if record.http_status != 200 or record.error:
+            record.robots_decision = "robots_unavailable"
+            self._robots[host] = ("robots_unavailable", None)
+            self.blocked_hosts.add(host)
+            return "robots_unavailable"
+        parser = RobotFileParser()
+        parser.parse(record.body.decode("utf-8", "replace").splitlines())
+        parser.last_checked = 1
+        self._robots[host] = ("allow", parser)
+        return "allow"
+
+    def can_fetch(self, url: str) -> str:
+        host = self._host(url)
+        decision = self.prepare_host(url)
+        if decision == "robots_unavailable" or host in self.blocked_hosts:
+            return "robots_unavailable"
+        parser = self._robots[host][1]
+        if parser is not None and not parser.can_fetch(USER_AGENT, url):
+            return "disallow"
+        return "allow"
+
+    def _once(self, url: str, *, robots_decision: str, skip_robots: bool) -> FetchRecord:
+        host = self._host(url)
+        moment = self._wait(host)
+        self.calls.append((url, USER_AGENT))
+        started = self.clock.now
+        try:
+            response = self.transport.get(url, {"User-Agent": USER_AGENT})
+        except TimeoutError:
+            response = HttpResponse(None, b"", url, error="timeout")
+        except OSError as exc:
+            message = str(exc).casefold()
+            kind = "dns" if "name or service" in message or "nodename" in message else "tls"
+            response = HttpResponse(None, b"", url, error=kind)
+        elapsed = 0
+        body = response.body or b""
+        overflow = len(body) > MAX_BODY_BYTES
+        if overflow:
+            body = body[:MAX_BODY_BYTES]
+        retained = body
+        digest = hashlib.sha256(retained).hexdigest() if response.error is None else None
+        outcome = "ok"
+        error = response.error
+        if response.error:
+            outcome = "timeout" if response.error == "timeout" else "fetch_failed"
+        elif overflow:
+            outcome = "fetch_failed"
+            error = "body_cap"
+        elif response.status is None:
+            outcome = "fetch_failed"
+        elif response.status in {401, 403, 407, 429}:
+            outcome = "blocked"
+            error = "http_blocked"
+        elif response.status >= 400:
+            outcome = "fetch_failed"
+            error = error or f"http_{response.status}"
+        record = FetchRecord(
+            url=url,
+            attempt=1,
+            fetched_at=stamp(moment),
+            http_status=response.status,
+            body=retained,
+            content_sha256=digest,
+            byte_length=len(retained),
+            elapsed_ms=elapsed,
+            robots_decision=robots_decision,
+            outcome=outcome,
+            error=error,
+            content_type=response.content_type,
+            final_url=response.final_url or url,
+        )
+        self.history.append(record)
+        return record
+
+    def fetch(self, url: str) -> list[FetchRecord]:
+        decision = self.can_fetch(url)
+        if decision == "disallow":
+            moment = self.clock.now
+            record = FetchRecord(
+                url=url,
+                attempt=1,
+                fetched_at=stamp(moment),
+                http_status=None,
+                body=b"",
+                content_sha256=None,
+                byte_length=0,
+                elapsed_ms=0,
+                robots_decision="disallow",
+                outcome="blocked",
+                error="robots_disallow",
+            )
+            self.history.append(record)
+            return [record]
+        if decision == "robots_unavailable":
+            return []
+        records: list[FetchRecord] = []
+        for attempt in range(1, MAX_RETRIES + 2):
+            record = self._once(url, robots_decision="allow", skip_robots=False)
+            record.attempt = attempt
+            records.append(record)
+            retryable = record.http_status in RETRY_STATUSES or record.error in _RETRY_ERRORS
+            if record.outcome == "ok" or not retryable or attempt > MAX_RETRIES:
+                break
+        return records
+
+
+class FixtureTransport(Transport):
+    """File-backed transport. It never opens a socket."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        payload = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+        self.routes: dict[str, dict] = payload.get("routes") or {}
+        self._cursors: dict[str, int] = {}
+
+    def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
+        log = self.root / "calls.jsonl"
+        with log.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"url": url, "ua": headers.get("User-Agent", "")}) + "\n")
+        spec = self.routes.get(url)
+        if spec is None:
+            return HttpResponse(404, b"missing fixture", url, content_type="text/plain")
+        error = spec.get("error")
+        if error == "timeout":
+            raise TimeoutError("timeout")
+        if error == "dns":
+            raise OSError("name or service not known")
+        if error == "tls":
+            raise OSError("tls handshake failed")
+        statuses = spec.get("statuses")
+        if isinstance(statuses, list) and statuses:
+            index = self._cursors.get(url, 0)
+            status = int(statuses[min(index, len(statuses) - 1)])
+            self._cursors[url] = index + 1
+        else:
+            status = int(spec.get("status", 200))
+        if "body_file" in spec:
+            body = (self.root / spec["body_file"]).read_bytes()
+        elif "body_b64" in spec:
+            import base64
+
+            body = base64.b64decode(spec["body_b64"])
+        else:
+            body = str(spec.get("body", "")).encode("utf-8")
+        return HttpResponse(
+            status,
+            body,
+            str(spec.get("final_url") or url),
+            content_type=str(spec.get("content_type") or "text/html"),
+        )
+
+
+class LiveTransport(Transport):
+    def get(self, url: str, headers: dict[str, str]) -> HttpResponse:
+        import urllib.error
+        import urllib.request
+
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+                body = response.read(MAX_BODY_BYTES + 1)
+                ctype = response.headers.get("Content-Type", "")
+                return HttpResponse(response.status, body, response.geturl(), content_type=ctype)
+        except urllib.error.HTTPError as exc:
+            body = exc.read(MAX_BODY_BYTES + 1)
+            return HttpResponse(exc.code, body, url, content_type=exc.headers.get("Content-Type", ""))
+        except urllib.error.URLError as exc:
+            reason = str(exc.reason).casefold()
+            if "timed out" in reason or "timeout" in reason:
+                raise TimeoutError(reason)
+            if "name or service" in reason or "nodename" in reason or "gaierror" in reason:
+                raise OSError("name or service not known")
+            raise OSError("tls handshake failed")
