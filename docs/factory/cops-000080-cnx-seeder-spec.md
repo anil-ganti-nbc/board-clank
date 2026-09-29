@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | Mission | COPS-000080 |
-| Phase of this document | SPEC (rework of `300899c48ea67ad9759e6322d0923e367fe59907`) |
+| Phase of this document | SPEC v3 (rework of `b8c893951ef7e0169d11cab3c8e201a57d220a00`) |
 | Target | `anil-ganti-nbc/board-clank` |
 | Development base | `production-readiness-1b-odroid-coverage` at `613c3a13c0e52088eeb33d6266b6ca7b2b783000` |
 | Spec branch | `factory/cops-000080-cnx-seeder` |
@@ -78,7 +78,7 @@ BUILD adds one new package and one new console script. It does not add a subcomm
 python -m cnx_seeder.cli run --state-dir DIR --run-id ID --code-revision SHA [--roster PATH] [--now ISO8601] [--fixture DIR]
 python -m cnx_seeder.cli run --state-dir DIR --run-id ID --code-revision SHA --live [--roster PATH]
 python -m cnx_seeder.cli report --state-dir DIR
-python -m cnx_seeder.cli replay --state-dir DIR --run-id NEW_ID --code-revision SHA (--fixture DIR | --live)
+python -m cnx_seeder.cli replay --state-dir DIR --run-id NEW_ID --code-revision SHA [--from-run SOURCE_ID] (--fixture DIR | --live)
 ```
 
 - `--roster` defaults to `config/sources.yaml` and is opened read-only.
@@ -319,15 +319,22 @@ Fixture runs pass `--now` and `--code-revision`. Two fixture runs with the same 
 
 ### 3.3 Duplicate records on replay
 
-Replay of the same sample with a new `--run-id` means all of the following, and nothing stricter:
+`replay` does not read the live feed and does not fetch CNX article URLs again. It freezes the sample from a completed source run in the same state directory: `--from-run SOURCE_ID`, or, when that flag is omitted, the latest completed run other than the new `--run-id`. The frozen sample is that run's `article_urls_json` (the exact URL list, same order) and the stored response bodies and `content_sha256` values for the feed or listing fetch and for each of those article URLs.
 
-- Zero new rows in `qualified_candidates` (`new_qualified: 0`).
+Bodies live as files under `state_dir / "bodies" / "<content_sha256>.bin"`, written with `pathlib` when the source run fetched them. Replay reads those files. It does not GET `cnx-software.com`. A fixture or live feed that would now return different articles is ignored.
+
+A live replay (`--live`) may GET non-CNX OEM URLs that the source run already fetched (homepage and board surface). Those responses are new `fetches` rows for the new `run_id` only. They do not change classification. Fixture replay does not open sockets at all; it reuses stored bodies for OEM pages as well.
+
+Replay inserts nothing into `leads` or `qualified_candidates` and updates neither table. Existing lead rows and candidate rows stay byte-identical, including `reason_code`, `qualified`, `primary_url`, `homepage_url`, and `cnx_article_url`.
+
+"No duplicate records" for the acceptance re-run means all of the following, and nothing stricter:
+
+- Zero new rows in `qualified_candidates` (`new_qualified: 0`) and zero new rows in `leads`.
 - Zero duplicate `candidate_key` values. The column is the primary key, and the replay must not replace or clone an existing key.
-- Per-run `fetches` rows for the new `run_id` are allowed. `run_id` is `NOT NULL`. Uniqueness is `(run_id, url, attempt)`, so a retry is a second row of the same run, and a later run may store its own fetch of the same URL.
-- Per-run `article_sightings` and `lead_sightings` rows for the new `run_id` are allowed. Both primary keys start with `run_id`, so a sighting belongs to one run. The same `(candidate_key, cnx_article_url)` may appear again under the new run id. It must not appear twice under one run id.
+- The replay run's `article_urls_json` equals the source run's list. Its CNX `content_sha256` values equal the stored hashes. Those CNX rows, if copied into `fetches` for the new `run_id`, are marked outcome `reused` and are not network attempts.
+- Per-run OEM `fetches` rows for the new `run_id` are allowed on a live replay. `run_id` is `NOT NULL`. Uniqueness is `(run_id, url, attempt)`.
+- Per-run `article_sightings` and `lead_sightings` rows for the new `run_id` are allowed and must not alter lead or candidate rows. Both primary keys start with `run_id`. The same `(candidate_key, cnx_article_url)` may appear again under the new run id. It must not appear twice under one run id.
 - A row with a null `run_id` is a schema error, not a replay result.
-
-That is the meaning of "no duplicate records" for the acceptance re-run. The fetch log and the sighting log are allowed to grow by the new run's rows.
 
 ### 3.4 Code revision
 
@@ -438,7 +445,7 @@ Host denylist, matched by registrable-domain equality, reason as shown:
 | `cnx-software.com`, `wikipedia.org`, `medium.com`, `youtube.com`, `reddit.com`, `twitter.com`, `x.com`, `facebook.com`, `linkedin.com` | `media` | `media_or_marketplace` |
 | `github.io`, `gitlab.io`, `wordpress.com`, `blogspot.com`, `wixsite.com`, `myshopify.com` | `unresolved` | `platform_host` |
 
-The denylist is not sufficient for qualification. Section 6.2 is the positive `board_maker` rule. An unlisted storefront still fails that rule (test 30).
+The denylist is not sufficient for qualification. Section 6.2 is the positive `board_maker` rule. An unlisted storefront still fails that rule (test 29).
 
 A lead whose extracted subject is empty, or is only a product token (a token containing a digit, or a lone `pro` / `plus` / `max` / `ultra` / `zero` / `mini` / `lite`), is `single_product_name` / `single_product_name`, not a new OEM.
 
@@ -451,6 +458,8 @@ A qualified candidate needs a manufacturer-controlled primary domain and a first
 ### 6.1 Subject vendor extraction
 
 The parser never evaluates page text, never sends it to a model, and never treats it as configuration. The article title is stored in `article_title` and is not copied into `normalized_name`.
+
+Vendor extraction is a heuristic. A tie, an ambiguous brand, a masked span that leaves no subject, or any case these rules do not cleanly decide fails toward rejection. The lead stays out of `qualified_candidates` with `vendor_name_unresolved`, `ambiguous_primary`, `primary_domain_unresolved`, or `board_maker_unresolved`. The heuristic does not promote a guess into the qualified queue.
 
 Preparation:
 
@@ -502,7 +511,7 @@ From the RSS feed (section 7), keep item links whose parsed host is CNX and whos
 
 `is_cnx_host(host)` is true when the parsed hostname, lowercased, with one leading `www.` and a trailing dot removed, equals `cnx-software.com` or ends with `.cnx-software.com`. Subdomains such as `shop.cnx-software.com` and `www.cnx-software.com` are CNX. `notcnx-software.com` and `cnx-software.com.example` are not. The test is on the parsed host, not a substring of the URL.
 
-The function runs in the extractor and again in the insert function. A true result drops the URL as a primary, homepage, or board-surface candidate. The article URL may use a CNX host; that is the only column where a CNX host is stored. The `CHECK` constraints and the two triggers in section 3.1 reject a queue row that still carries a CNX primary, homepage, or domain. Test 31 covers the parser and a direct `INSERT`.
+The function runs in the extractor and again in the insert function. A true result drops the URL as a primary, homepage, or board-surface candidate. The article URL may use a CNX host; that is the only column where a CNX host is stored. The `CHECK` constraints and the two triggers in section 3.1 reject a queue row that still carries a CNX primary, homepage, or domain. Test 30 covers the parser and a direct `INSERT`.
 
 ### 6.5 Closed reason codes
 
@@ -534,7 +543,7 @@ Sample order:
 
 1. Honor robots for the feed host. If robots disallow the feed path, do not fetch it.
 2. If robots allow it, fetch the feed once. On HTTP 200, parse with `xml.etree.ElementTree` after rejecting a body that contains `<!doctype` or `<!entity` (casefold). Do not resolve external entities. Item descriptions are untrusted and go through the instruction lexicon; a matching item is skipped.
-3. If the feed returns a non-200 status, is malformed, or yields zero article links, fall back to the HTML listing. Do not concatenate feed items with listing items. `max_articles` applies to whichever source was used. `sample_source` records `feed` or `html`.
+3. Fallback to the HTML listing only when the feed fetch is HTTP 404, the feed body is malformed XML, or the feed yields zero article links. An access-control response on the feed does not fall back. Access-control statuses are 401, 403, 407, and 429. Record the feed fetch as `http_blocked`, set the run status to `blocked`, and stop. Do not request the HTML listing, a later listing page, or any article. 401, 403, and 407 are not retried. 429 uses the single retry in the bounds table and, if it is still 429, stops the same way. Any other feed failure (5xx after the retry budget, timeout, TLS, DNS) is recorded and also does not fall back. Do not concatenate feed items with listing items. `max_articles` applies to whichever source was actually used. `sample_source` records `feed` or `html`. A stopped access-control run records `sample_source=feed` and an empty article list.
 4. HTML pagination uses only a same-host link on an HTTP 200 listing page whose path matches `^/news/sbc/page/[0-9]+/?$`, and only while both caps allow it. If the seed listing is not HTTP 200, stop. Do not guess `/page/2/` to get around that result. The feed is a single URL; do not invent further feed pages.
 
 Robots:
@@ -548,11 +557,11 @@ Robots:
 
 The robots file read during SPEC allows `User-agent: *` except `/wp-admin/`, and sets `Crawl-delay: 60` only for Awario bots. Several named training crawlers are disallowed entirely. `CNXOemSeeder` is not one of them. The coordinator reports that this file allows `/news/sbc/` and `/news/sbc/feed/`. Each live run re-reads robots.txt and obeys the live file rather than this snapshot.
 
-When access is blocked (401, 403, 404, robots disallow, TLS or DNS failure, or the retry budget exhausted): write the `fetches` row for each attempt that was actually made, keep the lead unresolved with `http_blocked` or `robots_disallow` or `fetch_failed`, and continue only with hosts that are still allowed. Do not change the user agent, do not switch proxy, do not ignore robots, do not open a mirror, and do not read a cached copy from a third party.
+When access is blocked (401, 403, 404, robots disallow, TLS or DNS failure, or the retry budget exhausted): write the `fetches` row for each attempt that was actually made, keep the lead unresolved with `http_blocked` or `robots_disallow` or `fetch_failed`, and continue only with hosts that are still allowed. A blocked or access-control response on the feed is the exception in sample-order step 3: stop the run and do not open the HTML listing. Do not change the user agent, do not switch proxy, do not ignore robots, do not open a mirror, and do not read a cached copy from a third party.
 
 SPEC context, not an acceptance run: the Cursor VM received HTTP 403 for the HTML listing with user agent `CNXOemSeederSpecContext/0.1`. The acceptance `--live` run is performed on the coordinator's Windows host, which receives HTTP 200 for the listing and the feed. The run records whatever status that host actually gets. A blocked response is recorded. It is not retried with another agent string.
 
-Fixture mode performs no socket calls (test 37). The rate-limit test uses an injected clock and asserts the scheduled gap is at least 2.0 seconds. It does not sleep on the wall clock.
+Fixture mode performs no socket calls (test 36). The rate-limit test uses an injected clock and asserts the scheduled gap is at least 2.0 seconds. It does not sleep on the wall clock.
 
 ## 8. Acceptance tests
 
@@ -580,9 +589,9 @@ Each case below is one test (or one parametrized case). Expected queue effects a
 18. **Event and outbox separation.** A temp operational DB is seeded with one `sources` row, one `events` row, one `notifications` row (`channel = outbox`), one `canonical_observations` row, and one `novelty_evidence` row. `BOARD_CLANK_DB` points at that file. The seeder is run with a different `--state-dir`. The test recomputes counts and ordered-row sha256 for every `EXPECTED_TABLES` name. The diff is empty. `queue.sqlite` has none of those table names.
 19. **Import and path guard.** The AST checks and the refusal checks in section 2.4 pass, including the ban on `subprocess` and POSIX-only modules. Refusing the operational path does not create `data/board_clank.db`.
 20. **Deterministic output.** Two `run` invocations with the same `--fixture`, `--run-id`, `--now`, `--code-revision`, and `--state-dir` (the second is the no-op path) produce byte-identical `report.json`. A fresh state directory with the same arguments also produces that same byte string.
-21. **Replay idempotency.** Run A inserts one qualified candidate. Run B uses a new `--run-id`, the same fixture, and the same `--code-revision`. `new_qualified` is 0. `COUNT(*)` of `qualified_candidates` stays 1. That `candidate_key` occurs once. Run B may add `fetches`, `lead_sightings`, and `article_sightings` rows, and every one of those new rows has `run_id` equal to run B. Run A's rows are unchanged. No sighting primary key repeats inside one run. This is the duplicate-record rule in section 3.3.
+21. **Replay idempotency.** Run A inserts one qualified candidate from a fixture feed whose article URL list is U1. Before replay, replace that fixture feed with a different article URL U2. Replay uses a new `--run-id`, `--from-run` set to run A, and the same `--code-revision`. It does not request the feed URL, U1, or U2. The replay run's `article_urls_json` equals run A's list, and the CNX content hashes equal run A's stored hashes, read from `bodies/<sha256>.bin`. `new_qualified` is 0. `COUNT(*)` of `qualified_candidates` stays 1 and that `candidate_key` occurs once. A dump of `leads` and of `qualified_candidates` is byte-identical to the dump taken before replay. Run B may add OEM `fetches` only when `--live` is set, plus `lead_sightings` and `article_sightings` rows, and every one of those new rows has `run_id` equal to run B. Fixture replay adds no socket call. This is the rule in section 3.3.
 22. **Alias table covers the live roster.** The test parses `config/sources.yaml` read-only, asserts one alias row per vendor, and fails if a roster vendor is missing. It also asserts the table's role for Jetson is out of scope.
-23. **Caps.** A fixture feed of 50 item links keeps at most 20 articles and does not fetch the HTML listing. A fixture whose feed is HTTP 503 falls back to HTML. That HTML fixture links `/news/sbc/page/2/` and `/news/sbc/page/3/` and fetches at most 2 listing pages and at most 20 articles.
+23. **Caps.** A fixture feed of 50 item links keeps at most 20 articles and does not fetch the HTML listing. A fixture whose feed is HTTP 404 falls back to HTML. A fixture whose feed body is malformed XML falls back to HTML. A fixture whose feed is well-formed and has zero items falls back to HTML. That HTML fixture links `/news/sbc/page/2/` and `/news/sbc/page/3/` and fetches at most 2 listing pages and at most 20 articles. A fixture whose feed is HTTP 503 records the feed failure and does not request the HTML listing.
 24. **Robots disallow and HTTP 403 / 500.** A fixture robots file that disallows `/secret` records `robots_disallow` and the HTTP client mock shows zero fetches of that URL. A fixture HTTP 403 records `http_blocked`, sends the constant user agent, uses `attempt` 1 only, and does not send a second request with a different user agent. A fixture HTTP 500 is stored as `attempt` 1 and `attempt` 2 under `UNIQUE (run_id, url, attempt)`, same user agent, and is not tried a third time.
 25. **No operational DB creation.** With `BOARD_CLANK_DB` unset and `repo_root / "data" / "board_clank.db"` absent, a fixture run leaves that path absent.
 26. **Multi-article same OEM.** Two fixtures, titles `Acme Board X1 brings a new SBC` and `Hands on with the Acme Board X2`, each link to `https://acme.example/` and `https://acme.example/products/sbc` with the test 11 page bodies. Both extract normalized name `acme` and registrable domain `acme.example`. The queue contains one `qualified_candidates` row, one `candidate_key`, and two `article_sightings` rows with the two CNX article URLs. The qualified row's `cnx_article_url` remains the first article. The second article does not add a qualified row.
@@ -597,6 +606,7 @@ Each case below is one test (or one parametrized case). Expected queue effects a
 35. **Per-host minimum interval.** With an injected clock and two URLs on the same host, the second request's scheduled time is at least 2.0 seconds after the first. Two different hosts are not held to that gap. The test does not sleep on the wall clock.
 36. **Fixture mode makes zero network calls.** The test wraps `socket.socket` and `socket.create_connection` to count calls, runs a fixture `run` and a fixture `replay`, and asserts the count stays 0.
 37. **Copied path rules stay in sync.** Under a temp `BOARD_CLANK_DB`, under a temp `BOARD_CLANK_DATA_DIR` with `BOARD_CLANK_DB` unset, and with both unset, `cnx_seeder.paths.operational_db_path(repo_root)` and `board_clank.paths.default_db_path()` return the same path. The seeder module's AST does not import `board_clank`.
+38. **Feed access-control does not fall back.** A fixture feed of HTTP 403 records `http_blocked`, writes an empty article list, and the client mock shows no request to `https://www.cnx-software.com/news/sbc/` or to any `/news/sbc/page/` URL. The same holds for a feed of HTTP 401 and for a feed that stays HTTP 429 after the one allowed retry. `qualified_candidates` stays empty.
 
 Applicable full suite, after the focused tests, from the repo root:
 
@@ -636,10 +646,10 @@ The seventeen frozen keys stay as written. This table says how each one is shown
 | 10 | `reviewed_sha_equals_candidate_sha` | The SHA Sol reviewed, the SHA proposed for acceptance, `runs.code_revision` on the acceptance `--live` run, and `runs.code_revision` on the acceptance replay are the same 40-hex string. Test 31 locks the mechanism. A row stored as `UNKNOWN` fails this gate. |
 | 11 | `operational_source_registry_diff` | Before/after sha256 snapshots of both `sources.yaml` copies are equal to each other and equal to the pre-run digest. Roster shape from section 1 is unchanged. Test 17 is the automated form. |
 | 12 | `operational_db_event_outbox_diff` | Before/after count and ordered-row hashes for the operational tables in section 8 are equal, or the operational file is absent both times and was not created. Test 18 is the automated form. |
-| 13 | `replay_new_candidates` | Test 21 and the acceptance re-run. `new_qualified` is 0, `qualified_candidates` does not grow, and no `candidate_key` is duplicated. New fetch and sighting rows are allowed only when their `run_id` is the replay run (section 3.3). |
+| 13 | `replay_new_candidates` | Test 21 and the acceptance re-run. Replay reuses the source run's article URL list and stored CNX bodies and hashes. `new_qualified` is 0, `leads` and `qualified_candidates` are unchanged, and no `candidate_key` is duplicated. New OEM fetch and sighting rows are allowed only when their `run_id` is the replay run (section 3.3). |
 | 14 | `real_cnx_run_with_fetch_provenance` | The Windows acceptance `--live` run and its replay each store `code_revision` equal to the candidate SHA (gate 10). `report.json` for the live run records `sample_source`, the sample window, timestamps, article URLs, per-URL status, attempt, content hashes, robots decisions, `homepage_url`, `primary_url`, qualified rows, sightings, and rejected rows with reasons. A blocked listing is recorded as blocked. It is not retried with another agent string. The Cursor VM 403 is not this run. |
 | 15 | `observation_only_deployment` | See section 9. Verified only for an isolated seeder process with its own state directory, no change to the `board-clank` compose command, scheduler, or notification path. A host deploy that needs NAS or host authority stays `HUMAN_REQUIRED` until the operator runs the section 9 unit on `<BOARD_HOST>`. |
-| 16 | `natural_cycles` | Two firings of the section 9 timer on two different UTC dates, each with its own `soak-YYYYMMDD` run id, each recording the candidate SHA, and each followed by a qualified-row delta of zero against the previous candidate keys. A local sample or the Windows acceptance pair is not a natural cycle. |
+| 16 | `natural_cycles` | At least two natural cycles of the deployed observation-only seeder (`natural_cycles: at_least_2`). A local sample run is not a natural cycle. The section 9 timer is how those cycles are produced. This cell adds no pass rule beyond the contract key. |
 | 17 | `rollback_drill` | The section 9 rollback commands were actually run: the timer is disabled, only the seeder state directory was moved to quarantine, and the operational snapshots are still empty. Deleting a temp directory on a developer machine is the procedure check, not the host drill. |
 
 ## 9. Observation-only deployment and rollback
@@ -665,12 +675,12 @@ git fetch origin
 git checkout --detach <REVIEWED_SHA>
 if ((git rev-parse HEAD) -ne "<REVIEWED_SHA>") { throw "HEAD is not the reviewed SHA" }
 py -3.12 -m venv .venv-cnx-seeder
-.\.venv-cnx-seeder\Scripts\python.exe -m pip install --no-deps -e .
+.\.venv-cnx-seeder\Scripts\python.exe -m pip install -e .
 $env:CNX_SEEDER_CODE_REVISION = "<REVIEWED_SHA>"
 $env:CNX_SEEDER_STATE_DIR = "<REPO>\var\cnx-seeder"
 New-Item -ItemType Directory -Force -Path $env:CNX_SEEDER_STATE_DIR | Out-Null
 .\.venv-cnx-seeder\Scripts\python.exe -m cnx_seeder.cli run --live --state-dir $env:CNX_SEEDER_STATE_DIR --run-id accept-1 --code-revision <REVIEWED_SHA>
-.\.venv-cnx-seeder\Scripts\python.exe -m cnx_seeder.cli replay --live --state-dir $env:CNX_SEEDER_STATE_DIR --run-id accept-1-replay --code-revision <REVIEWED_SHA>
+.\.venv-cnx-seeder\Scripts\python.exe -m cnx_seeder.cli replay --live --state-dir $env:CNX_SEEDER_STATE_DIR --run-id accept-1-replay --from-run accept-1 --code-revision <REVIEWED_SHA>
 ```
 
 The state directory is `<REPO>\var\cnx-seeder`. It must not be `BOARD_CLANK_DB` and must not be a `board_clank.db` path. After both commands, `runs.code_revision` for `accept-1` and for `accept-1-replay` is `<REVIEWED_SHA>`, replay reports `new_qualified: 0`, and section 3.3 holds.
@@ -694,9 +704,9 @@ sudo install -d -o <SEEDER_USER> -m 0750 /var/lib/cnx-oem-seeder
 sudo -u <SEEDER_USER> git clone --no-checkout https://github.com/anil-ganti-nbc/board-clank.git /opt/cnx-oem-seeder/src
 sudo -u <SEEDER_USER> git -C /opt/cnx-oem-seeder/src fetch origin
 sudo -u <SEEDER_USER> git -C /opt/cnx-oem-seeder/src checkout --detach <REVIEWED_SHA>
-test "$(git -C /opt/cnx-oem-seeder/src rev-parse HEAD)" = "<REVIEWED_SHA>"
+test "$(sudo -u <SEEDER_USER> git -c safe.directory=/opt/cnx-oem-seeder/src -C /opt/cnx-oem-seeder/src rev-parse HEAD)" = "<REVIEWED_SHA>"
 sudo -u <SEEDER_USER> python3 -m venv /opt/cnx-oem-seeder/venv
-sudo -u <SEEDER_USER> /opt/cnx-oem-seeder/venv/bin/python -m pip install --no-deps -e /opt/cnx-oem-seeder/src
+sudo -u <SEEDER_USER> /opt/cnx-oem-seeder/venv/bin/python -m pip install -e /opt/cnx-oem-seeder/src
 ```
 
 State directory: `/var/lib/cnx-oem-seeder`. Code revision in the environment and on the command line: `<REVIEWED_SHA>`.
@@ -717,7 +727,7 @@ Environment=CNX_SEEDER_STATE_DIR=/var/lib/cnx-oem-seeder
 ExecStart=/bin/sh -c 'exec /opt/cnx-oem-seeder/venv/bin/python -m cnx_seeder.cli run --live --state-dir /var/lib/cnx-oem-seeder --code-revision "$CNX_SEEDER_CODE_REVISION" --run-id "soak-$(date -u +%%Y%%m%%d)"'
 ```
 
-Write `/etc/systemd/system/cnx-oem-seeder.timer` with this text. Cadence is one run per UTC day at 06:00. Gate 16 needs two such firings on two different UTC dates.
+Write `/etc/systemd/system/cnx-oem-seeder.timer` with this text. Cadence is one run per UTC day at 06:00. Gate 16 is at least two natural cycles of this timer (`at_least_2`). It does not add a further pass rule.
 
 ```
 [Unit]
@@ -740,12 +750,23 @@ sudo systemctl enable --now cnx-oem-seeder.timer
 sudo systemctl start cnx-oem-seeder.service
 ```
 
-The manual `start` is the first observed cycle only when the operator also lets the timer fire on a later UTC date. Two manual starts are not two natural cycles.
+A manual `start` is not itself a natural cycle. Natural cycles are firings of this timer (or of the cron line below when systemd is absent). Gate 16 counts at least two of those firings.
 
 If `<BOARD_HOST>` has no systemd, do not invent a second scheduler beside the following cron line. Install the same checkout, venv, state directory, and revision, then install this crontab entry for `<SEEDER_USER>`:
 
 ```
+# COPS-000080 cnx-oem-seeder
 0 6 * * * CNX_SEEDER_CODE_REVISION=<REVIEWED_SHA> CNX_SEEDER_STATE_DIR=/var/lib/cnx-oem-seeder /opt/cnx-oem-seeder/venv/bin/python -m cnx_seeder.cli run --live --state-dir /var/lib/cnx-oem-seeder --code-revision <REVIEWED_SHA> --run-id soak-$(date -u +\%Y\%m\%d)
+```
+
+Install that pair without dropping the rest of the user's crontab:
+
+```
+cron_tmp=$(mktemp)
+sudo crontab -u <SEEDER_USER> -l >"$cron_tmp" 2>/dev/null || true
+printf '%s\n' '# COPS-000080 cnx-oem-seeder' '0 6 * * * CNX_SEEDER_CODE_REVISION=<REVIEWED_SHA> CNX_SEEDER_STATE_DIR=/var/lib/cnx-oem-seeder /opt/cnx-oem-seeder/venv/bin/python -m cnx_seeder.cli run --live --state-dir /var/lib/cnx-oem-seeder --code-revision <REVIEWED_SHA> --run-id soak-$(date -u +\%Y\%m\%d)' >>"$cron_tmp"
+sudo crontab -u <SEEDER_USER> - <"$cron_tmp"
+rm -f "$cron_tmp"
 ```
 
 Use either the timer or the cron line, not both. The systemd timer is the handoff when systemd is present.
@@ -761,7 +782,11 @@ sudo systemctl reset-failed cnx-oem-seeder.service cnx-oem-seeder.timer || true
 ts=$(date -u +%Y%m%dT%H%M%SZ)
 sudo mkdir -p /var/quarantine
 sudo mv /var/lib/cnx-oem-seeder /var/quarantine/cnx-oem-seeder-$ts
-sudo crontab -u <SEEDER_USER> -l | grep -v cnx_seeder.cli | sudo crontab -u <SEEDER_USER> -
+cron_tmp=$(mktemp)
+if sudo crontab -u <SEEDER_USER> -l >"$cron_tmp" 2>/dev/null; then
+  awk 'BEGIN { skip=0 } /^# COPS-000080 cnx-oem-seeder$/ { skip=1; next } skip { skip=0; next } { print }' "$cron_tmp" | sudo crontab -u <SEEDER_USER> -
+fi
+rm -f "$cron_tmp"
 ```
 
 If the cron line was never installed, the last command may be skipped, and the session notes that. Do not remove `/app/data`, `board_clank.db`, or the Board container. Repeat the section 8 operational snapshots. The diff must be empty. Write `<BOARD_HOST>`, the unit names, `<REVIEWED_SHA>`, `/var/quarantine/cnx-oem-seeder-$ts`, and both snapshots into the ClankOps session.
