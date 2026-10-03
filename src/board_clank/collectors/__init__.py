@@ -4,6 +4,7 @@ Foundation 5A adds Hardkernel ODROID, Foundation 6A adds Pine64."""
 
 from board_clank.collectors.banana_pi import BananaPiProductAdapter
 from board_clank.collectors.base import CollectorAdapter, CollectorError
+from board_clank.collectors.friendlyelec import FriendlyElecProductAdapter
 from board_clank.collectors.mock import FixtureCollector, InertVendorAdapter, get_adapter
 from board_clank.collectors.odroid import OdroidProductAdapter
 from board_clank.collectors.orange_pi import OrangePiProductAdapter
@@ -16,6 +17,7 @@ __all__ = [
     "CollectorAdapter",
     "CollectorError",
     "FixtureCollector",
+    "FriendlyElecProductAdapter",
     "InertVendorAdapter",
     "OdroidProductAdapter",
     "OrangePiProductAdapter",

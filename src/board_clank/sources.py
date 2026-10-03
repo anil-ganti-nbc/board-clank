@@ -11,6 +11,7 @@ import yaml
 from board_clank.models import SourceRecord
 from board_clank.taxonomy import (
     PHASE1_VENDORS,
+    PHASE2_ADMITTED,
     PHASE2_PLACEHOLDERS,
     PromotionState,
     SourceAuthority,
@@ -65,7 +66,7 @@ def promoted_sources(path: str | None = None) -> list[SourceRecord]:
 def assert_foundation_0_roster(path: str | None = None) -> None:
     records = load_sources(path)
     phase1 = {row.vendor for row in records if not row.placeholder and not row.out_of_scope}
-    missing = set(PHASE1_VENDORS) - phase1
+    missing = set(PHASE1_VENDORS + PHASE2_ADMITTED) - phase1
     if missing:
         raise SourceRegistryError(f"phase-1 vendors missing from roster: {sorted(missing)}")
     if promoted_sources(path):

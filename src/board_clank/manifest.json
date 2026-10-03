@@ -24,7 +24,7 @@
       "state": "active"
     },
     "collection": {
-      "evidence": "six real source adapters exist; every source enabled=false",
+      "evidence": "seven real source adapters exist; every source enabled=false",
       "state": "supported_unconfigured"
     },
     "delivery": {
@@ -48,7 +48,7 @@
       "state": "active"
     },
     "replay": {
-      "evidence": "processed_run_receipts idempotency proven across six vendors",
+      "evidence": "processed_run_receipts idempotency proven across seven vendors",
       "state": "active"
     },
     "scheduler": {
@@ -97,7 +97,8 @@
     "radxa-product",
     "banana-pi-product",
     "hardkernel-odroid-product",
-    "pine64-product"
+    "pine64-product",
+    "friendlyelec-product"
   ],
   "versions": {
     "adapter_contract": "0.2",

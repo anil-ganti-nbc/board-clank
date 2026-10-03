@@ -450,7 +450,7 @@ def test_cli_fails_closed_on_unknown_source_and_collects_pine64(tmp_path: Path, 
     assert intel["promotion_state"] == "EXPERIMENTAL"
     # All six Phase-1 vendors are live-capable now; an unregistered source
     # must fail closed with refused JSON (not crash).
-    assert main(["--db", str(db), "collect", "--source", "friendlyelec-product", "--experimental-live"]) == 2
+    assert main(["--db", str(db), "collect", "--source", "milk-v-product", "--experimental-live"]) == 2
     refused = json.loads(capsys.readouterr().out)
     assert refused["status"] == "refused"
-    assert "friendlyelec" in refused["reason"]
+    assert "milk-v" in refused["reason"]

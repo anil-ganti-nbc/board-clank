@@ -89,6 +89,13 @@ def get_adapter(source_key: str, **kwargs):
             experimental_live=bool(kwargs.get("experimental_live")),
             corpus=str(kwargs.get("corpus") or "baseline"),
         )
+    if source_key in {"friendlyelec-product", "friendlyelec"}:
+        from board_clank.collectors.friendlyelec import FriendlyElecProductAdapter
+
+        return FriendlyElecProductAdapter(
+            experimental_live=bool(kwargs.get("experimental_live")),
+            corpus=str(kwargs.get("corpus") or "baseline"),
+        )
     vendor = source_key.replace("-product", "")
     if vendor not in ADAPTERS:
         raise KeyError(f"no foundation-0 adapter for {source_key}")

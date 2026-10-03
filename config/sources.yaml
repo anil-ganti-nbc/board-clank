@@ -88,18 +88,21 @@ sources:
     expected_variant_surface: ram+emmc+wireless
     notes: Official Pine64 devices catalogue (pine64.org/devices; category-gated scope - SBCs and compute modules only, phones/laptops/tablets/wearables/tools rejected; store.pine64.org and pine64.com are commerce-only, wiki and linux.pine64.org documentation-only, none ingested). Foundation 6A experimental PRODUCT adapter (final vendor); disabled by default; live fetch is manual --experimental-live only; not promoted.
 
-  # Phase-2 placeholders — documented, not activated.
-  - source_key: friendlyelec-placeholder
+  # Foundation 7A: manual experimental PRODUCT evidence only.
+  - source_key: friendlyelec-product
     vendor: friendlyelec
     plane: PRODUCT
-    authority: UNVERIFIED
-    base_urls: []
+    authority: FIRST_PARTY_CANONICAL
+    base_urls: [https://www.friendlyelec.com/]
     enabled: false
     registered_state: REGISTERED
     promotion_state: EXPERIMENTAL
-    placeholder: true
-    notes: Phase-2 placeholder. Not activated in Foundation 0.
+    placeholder: false
+    expected_identity_surface: Product heading and labelled CPU or Product Code
+    expected_variant_surface: Paired RAM/eMMC purchase rows; accessory controls excluded
+    notes: Foundation 7A PRODUCT adapter; disabled; manual --experimental-live only. Wiki and downloads documentation-only. No promotion or delivery.
 
+  # Remaining Phase-2 placeholders — not activated.
   - source_key: milk-v-placeholder
     vendor: milk-v
     plane: PRODUCT

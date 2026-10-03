@@ -1,0 +1,188 @@
+{
+  "captured_date": "2026-10-03",
+  "corpora": {
+    "baseline": {
+      "documents": [
+        {
+          "file": "html/product-320.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=320",
+          "raw_sha256": "d71c81eccb428b15792cad290913feec6449dcf47ba42ff96a4e296e0d9f6897",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-319.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=319",
+          "raw_sha256": "2ee97089eb428eb9433d2b5da952c0bb3efe5030814cb3d23c12881a33e4ebea",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-316.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=316",
+          "raw_sha256": "3eddcd8f6a246afd5c1813b44098051b5bb5fcecc05db9e2e05987501694d091",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-315.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=315",
+          "raw_sha256": "46ad1a540496f751209dac830a92af2dba6aed8136e2fab2e79d06ec2d873ac7",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-311.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=311",
+          "raw_sha256": "0acf683e9a0cda2786ff9380ddc1d16e1fc7801c3beeaa53ece1a57b6e67c7e0",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-309.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=309",
+          "raw_sha256": "ef79a907b192164ff6707bdee569ab431165335ba6bbf0e45b66bcae58cb2bf6",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-292.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=292",
+          "raw_sha256": "4a752982c9fefe129ef7f9d8ec05229b55254968f9cb084c374d479e3c5b34d3",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-304.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=304",
+          "raw_sha256": "22bf5586608bcfb510b9262ca1fe61515fd0091b1039e030c751f13ad2971788",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-291.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=291",
+          "raw_sha256": "debcdf2037d9c43c6fba218fd34f0a27d3386af8d1802823ebd34573dbf787de",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-296.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=296",
+          "raw_sha256": "dbcbdb714dfbb378eaeebec74ed86f0a72fc5bca6c67cac9d43a20d37717b8c6",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-290.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=290",
+          "raw_sha256": "e0a5531f6a8bc77d583bb283d3363fcdfa7a8d2cd3c4af00d2dc356a32937450",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-289.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=289",
+          "raw_sha256": "a9c8bea3efd9fd72df35ad5c11bd28577b661e1e6e0b8137aaacb47fe63b4d94",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-287.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=287",
+          "raw_sha256": "268e656baec16ac5a6f6afaf08a7c5ef25813ef687c9c3147d6cf4144065da6a",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-282.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=282",
+          "raw_sha256": "2b12fc4f2b6117c33de0172b28170138f1896143667f725589ce0b68f0ec250a",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-308.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=308",
+          "raw_sha256": "6b8e4a6ed9b500a4506068e7f5591f440a0650b90ce3b29a0a59bf5fbd2bf187",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-294.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=294",
+          "raw_sha256": "b7aef390e8d907487f17e63bda79bf6973665fa84523f2dfc1949048c4dcebb7",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-299.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=299",
+          "raw_sha256": "0c34b8f1fe8b5ba37eb276f7c0880d7bb877c84521e068289287fbdb91641e3d",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-280.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=280",
+          "raw_sha256": "879c199a33d83e03cc9fa7158cccbfc12a821f96e9c8a7a8802d5e55f77f96fc",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-151.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=151",
+          "raw_sha256": "554cb0992bdbd1773edd59401cda0cda4ebd79c93c673b2154bace3613342906",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-206.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=206",
+          "raw_sha256": "efa0a6f8092e880454f603295c2dd30e510e077fe267f1986271417f3d58d9a1",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-317.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=317",
+          "raw_sha256": "2ea6792f5885d680937ce0aeb129573c90348b0e541d93fc93fb81a7c979bf33",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-281.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=281",
+          "raw_sha256": "1f00fd1a9be1567ecd73e76ef0662a50a8c19559fd25870e998115453c72f461",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-298.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=298",
+          "raw_sha256": "186f977feeed42dad3a0766d9847228093d6cbe19360a48ee5098b8b7c64518a",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-318.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=318",
+          "raw_sha256": "a7fdbd04c24c9aa27890aaa3afba32651b2ce22bccf4de4b83d64e07575de031",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        },
+        {
+          "file": "html/product-188.html",
+          "page_url": "https://www.friendlyelec.com/index.php?route=product/product&product_id=188",
+          "raw_sha256": "35269671cbb1979ff77c29cafe93a9c752cb058db0deb0bc2ff29bc00db05a14",
+          "role": "PRODUCT",
+          "distillation": "h1, Product Code, labelled hardware rows, option labels; whitespace normalized"
+        }
+      ]
+    }
+  },
+  "secondary_roles": {
+    "wiki.friendlyelec.com": "DOCUMENTATION_ONLY",
+    "dl.friendlyelec.com": "REFERENCE/DOCUMENTATION_ONLY"
+  }
+}

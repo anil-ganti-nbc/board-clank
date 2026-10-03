@@ -164,8 +164,10 @@ PHASE1_VENDORS = (
     "pine64",
 )
 
+# Foundation 7A admits FriendlyELEC without changing the original Phase-1 roster.
+PHASE2_ADMITTED = ("friendlyelec",)
+
 PHASE2_PLACEHOLDERS = (
-    "friendlyelec",
     "milk-v",
     "beagleboard",
     "libre-computer",

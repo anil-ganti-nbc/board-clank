@@ -1,0 +1,153 @@
+Foundation 7A research checkpoint — 2026-10-03 — COPS-000092
+
+Baseline: 613c3a13c0e52088eeb33d6266b6ca7b2b783000
+Tree: 78cd4c7f158d51a4a128c3ed84845cd269659c0a
+Baseline full pytest: 268 passed in103.07s, actual process exit0.
+Tracked state clean; pre-existing .zcodeignore SHA256
+1898036e950c81ac0d4b5fc93c2e8eaabfdc9bffedcb3338baeb9cbdc4a49cfe.
+New branch foundation-7-friendlyelec-product; deployed NAS stays613c3a1.
+
+Research conducted before parser implementation. Local raw capture index:
+C:/Users/anil/Documents/Codex/2026-09-22/files-pasted-by-the-user-you/work/friendlyelec-research/capture.json
+51 first-party responses captured, no capture errors. This is research, not
+a collection run or proof of three-pass semantic stability.
+
+Surfaces observed:
+https://www.friendlyelec.com/
+https://www.friendlyelec.com/index.php?route=product/category&path=69
+https://www.friendlyelec.com/index.php?route=product/category&path=60
+Product route: index.php?route=product/product&product_id=NUMBER.
+Category69 is NanoPC & NanoPi; category60 CPU Module. Category69 has page2.
+Path query is navigation context, not identity. Product IDs are catalogue
+locators, not a license to merge names across historical revisions.
+Current identity is h1.title-product. Product Code supplies a separate named
+context; CPU/SoC rows supply labelled application-silicon evidence. Tables
+have CPU/Memory/RAM/Storage/Connectivity rows, sometimes repeated in two tabs.
+Price and Availability precede the option controls; repeated navigation,
+related items, image URLs and accessory labels are not identity evidence.
+
+Ordinary urllib default UA returned403 once; an honest identifying
+BoardClank-Research/0.1 UA returned200 for catalogue, product320, wiki and
+download index. No cookies/challenge bypass or TLS weakening was used.
+Repeated raw-body volatility and semantic stability still require measurement.
+Capture URLs were not redirected in the direct probe; browsing normalized
+query ordering and encoded route slashes. Final hosts must remain allowlisted.
+
+Observed tricky products (product_id):
+R28S320, M6V2319, NEO3 Plus316, T6 Plus315, R3S-LTS311, M5309,
+T6-LTS292, Zero2304, R6C291, R2S Plus296, R5C290, R6S289,
+R5S-LTS287, R2S282, R76S308, CM3588294, CM3588 Plus299,
+SOM-RK3399V2280; carrier298, kit281, heatsink317 and dock188 are rejects.
+
+Empirical identity decisions (conservative current PRODUCT identities):
+Keep distinct current first-party model headings distinct; do not strip Plus,
+LTS, C/S or V2. In particular R2S vs Plus have different onboard-storage
+evidence; CM3588 vs Plus have LPDDR4X vs LPDDR5. Product319 explicitly names
+M6V2, with a documentation comparison to M6. That does NOT establish a PCB
+revision token suitable for merging with M6. No numeric PCB-layer count or
+Linux LTS string may become a hardware revision. Current base R3S/R5S/T6 and
+older M6/NEO3 coverage still needs category/historical research; do not invent
+those pages or claim their current availability from download presence.
+
+Variant evidence must preserve paired configurations, not Cartesian products:
+R3S-LTS offers1GB/no-eMMC,2GB/no-eMMC,2GB/32GB with case alternatives.
+R5C offers2GB/no-eMMC and4GB/64GB. R76S offers3GB/no-eMMC and4GB/64GB.
+Optional SD cards, eMMC modules, Wi-Fi cards, cameras and case purchases are
+separate controls. They do not imply onboard hardware or distinct boards.
+M6V2 has8GB bare/case options but image-only specification content in the
+catalogue body: labelled table extraction must not fabricate missing fields.
+CM3588's carrier/kit offerings are not independent module identities.
+
+Natural disagreement exists: R5C, R5S-LTS and R6S selector eMMC offerings
+include64GB while generic specification prose lists other capacities. The
+corpus must retain this disagreement rather than silently combine matrices.
+Store availability is current stock evidence only, never launch/novelty.
+
+Silicon: CPU/SoC rows show Rockchip RK3528A, RK3566,RK3568B2,RK3576,
+RK3588,RK3588S. RTL8211F/RTL8111H Ethernet, RTL8822CE optional radio,
+HYM8563TS RTC and Mali GPU strings must never be application SoCs.
+
+Secondary surfaces studied, not PRODUCT ingestion:
+https://wiki.friendlyelec.com/wiki/index.php/NanoPi_M6V2
+Wiki has an M6V2/M6 comparison image and hardware documentation. Role remains
+DOCUMENTATION_ONLY; no silent fallback collector.
+https://dl.friendlyelec.com/ is a broad historical firmware index. Role remains
+REFERENCE/DOCUMENTATION_ONLY; neither support nor current-sale/launch proof.
+
+Initial generic audit: identity.py already vendor-scopes family and board keys;
+VariantDimensions supports RAM/storage/wireless/bundle; models support module
+type, unknown revisions and insufficient/conflicting evidence. Pipeline
+already implements source-scoped baselines, diagnostics and replay. No generic
+identity/pipeline redesign is justified. One registry guard explicitly demands
+every Phase2 vendor remain a placeholder; admission requires a narrowly scoped
+roster-policy update, not a domain-model change. Observer source_summary reads
+source rows dynamically; actual seventh-source compatibility remains to test.
+
+Follow-up research: category69 page2 captured; current catalogue did not expose
+separate base M6, R3S, R5S, NEO3 or T6 headings. They are not fabricated into
+PRODUCT inventory from download directories. Documentation was checked at:
+https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R3S
+https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R5S
+https://wiki.friendlyelec.com/wiki/index.php/NanoPi_NEO3
+https://wiki.friendlyelec.com/wiki/index.php/NanoPC-T6
+R3S documentation explicitly separates base and LTS layouts and offers a
+comparison. T6 documentation distinguishes old2301 and LTS2310 schematic/PCB
+resources. NEO3 documentation references RK3328 rather than Plus's RK3528A.
+These corroborate that suffixes cannot safely be discarded; documentation
+does not become PRODUCT observations. R5S/LTS and M6/V2 historical linkage is
+not converted into a shared board/revision without stronger PRODUCT proof.
+
+Corpus: 25 current product-page fragments, raw SHA256 and URLs in packaged
+fixture_data/friendlyelec_product/manifest.json. Includes SBCs, routing boards,
+R2S/Plus, CM3588/Plus, T6-LTS/Plus, R3S-LTS/R5S-LTS, M6V2, modules/SOM,
+paired selector matrices, built-in and optional wireless, natural selector-
+spec disagreement, and five accessory/carrier/kit rejects. Insufficient and
+contradictory labelled-silicon cases are explicit synthetic test mutations,
+not fabricated claims about first-party pages. Image-only M6V2 CPU evidence
+is recoverable from its labelled Product Code; no OCR guessing was needed.
+
+Implementation: full model heading is identity; family is the documented
+NanoPi/NanoPC/module grouping, never suffix similarity. PCB revision remains
+UNKNOWN. No identity/pipeline/schema changes. Registry policy admits the
+seventh vendor while preserving original PHASE1_VENDORS. Source summaries
+remain dynamic schema-v3 records; only truthful capability prose and source
+inventory in manifests change. No Diagnostic/Motherclank package is touched.
+
+Purchase options are evidence of paired commercial board configurations.
+Case alternatives collapse; standalone WiFi/eMMC/SD/PSU/display/camera options
+never multiply boards or onboard variants. Built-in wireless is distinguished
+from optional add-ons. Natural storage disagreement is explicitly reported
+in per-document evidence_warnings/spec_storage, rather than taking a product
+of incompatible lists. Availability and prices are deliberately UNKNOWN/not
+ingested in this tranche: stock and currency controls have not been proven
+to represent every paired SKU. This is not launch or current-support proof.
+
+Failure policy: missing/ambiguous page headings, empty index discovery and
+fetch/parser errors fail the entire source run atomically. Existing boards
+and conditions remain untouched; partial runs cannot falsely close a missing
+page's condition. This sacrifices partial-run progress, not integrity. A
+complete page with insufficient silicon emits the existing source-scoped
+diagnostic mechanism, with replay sightings rather than duplicate events.
+
+Carried debt: historical/base models absent from current PRODUCT discovery;
+image-only optional details, price/availability, ambiguous independent spec
+capacity lists and full historical revision linkage remain unclaimed. The
+legacy friendlyelec-placeholder row in an existing DB is not destructively
+migrated here. Any future deployment must reconcile that disabled historical
+row under a reviewed backup/migration tranche; this task uses fresh stores.
+Production remains the previously admitted SHA613c3a1, experimental/disabled.
+Final measured regression/soak/publish evidence is recorded in the closeout.
+
+Measured local gates: full hermetic pytest299passed in110.22s, actual exit0.
+All25 distilled pages reproduce the captured raw page's semantic draft output.
+Three-pass live proof (2026-10-03T07:34:08Z through approximately07:35Z):
+C:/Users/anil/Clanks/_Soak/friendlyelec-foundation7a-svkou5_i
+45URLs/45successful fetches per pass; no fetch/parser errors or redirects.
+33boards,3families,33revisions,45variants,11SoCs; no open diagnostic conditions.
+Baseline208silent events/208suppressed outbox rows. Replays each0events/0outbox.
+All45raw response hashes changed on each replay while semantic state remained
+stable. Integrity_check=ok. AdapterSHA256 used for all three passes:
+e5e714efa12c4db2aaaa964242d331f1de36dd02d533d52f564f182b2c770645.
+Conservatively rejected catalogue headings include ZeroPi, Smart4418,
+Tiny4412 and Smart6818: outside this explicitly researched NanoPi/NanoPC/CM/SOM
+identity grammar. Future coverage research must not silently widen the gate.
