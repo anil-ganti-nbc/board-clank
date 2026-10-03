@@ -343,9 +343,15 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
         "unverified_tables": verification["unverified_tables"],
     }
     if activate:
-        if target_path.exists():
-            target_path.unlink()
-        staging.replace(target_path)
+        if force:
+            # Same-directory replacement is atomic. A failure leaves both the
+            # old target and the independently verified staging image intact.
+            staging.replace(target_path)
+        else:
+            # Atomically publish only when absent; a late-created target must
+            # never be overwritten without explicit force. Retain staging on failure.
+            os.link(staging, target_path)
+            staging.unlink()
         report["activated"] = True
         report["staging_path"] = None
     return report
