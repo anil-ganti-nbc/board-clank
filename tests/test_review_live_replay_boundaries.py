@@ -296,3 +296,21 @@ def test_rollback_retry_keeps_original_input_immutable(store, monkeypatch):
     monkeypatch.setattr(pipeline, '_upsert_graph', upsert)
     assert pipeline.accept_run(request).status == 'accepted'
     assert request.model_dump(mode='json') == original
+
+
+@pytest.mark.parametrize("name", SIX)
+@pytest.mark.parametrize("empty_cpu", [False, True])
+def test_existing_adapter_diagnostic_hash_matches_pre_refresh_projection(name, empty_cpu, store):
+    from board_clank.models import content_hash
+    from board_clank.pipeline import _UnresolvedIdentity
+    from board_clank.taxonomy import EventType
+    draft = module(name).collect_corpus('baseline', run_id='old-projection', started_at=OBS).observations[0]
+    if empty_cpu: draft.raw_fields['cpu_evidence'] = []
+    identity = _UnresolvedIdentity(draft)
+    digest, state = Pipeline(store)._diagnostic_state(draft, identity, EventType.NOVELTY_UNRESOLVED, 'insufficient-evidence')
+    # Exact historical six-field projection before CPU retention was introduced.
+    expected = {'entity_key': identity.board_key, 'diagnostic_type': 'NOVELTY_UNRESOLVED',
+                'reason': 'insufficient-evidence',
+                'soc_candidates': sorted(str(x) for x in draft.raw_fields.get('soc_candidates') or []),
+                'marketing_name': draft.marketing_name, 'page_url': draft.page_url}
+    assert state == expected and digest == content_hash(expected)

@@ -1122,10 +1122,13 @@ class Pipeline:
             "soc_candidates": sorted(
                 str(item) for item in (draft.raw_fields.get("soc_candidates") or [])
             ),
-            "cpu_evidence": sorted(draft.raw_fields.get("cpu_evidence") or []),
             "marketing_name": draft.marketing_name,
             "page_url": draft.page_url,
         }
+        # Keep existing adapters' historical diagnostic hashes stable when no
+        # new labelled CPU evidence exists; meaningful new evidence is state.
+        if draft.raw_fields.get("cpu_evidence"):
+            state["cpu_evidence"] = sorted(draft.raw_fields["cpu_evidence"])
         return content_hash(state), state
 
     def _upsert_condition_row(
