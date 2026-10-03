@@ -246,7 +246,9 @@ def test_resolution_closes_condition_and_normal_novelty_laws_apply(pipeline: Pip
     live_new = store.all(
         "SELECT event_type FROM events WHERE event_type = 'NEW_BOARD' AND baseline_silent = 0"
     )
-    assert live_new  # normal first-seen admission path, not retroactive market-new
+    assert live_new == []  # resolution does not turn existing inventory into launch
+    birth = store.one("SELECT baseline_silent FROM events WHERE event_type='NEW_BOARD' AND entity_key='orange-pi:orange-pi-7'")
+    assert birth is not None and birth['baseline_silent']
     novelty_rows = {row["novelty_status"] for row in store.all("SELECT novelty_status FROM novelty_evidence")}
     assert not novelty_rows & {"NEWLY_ANNOUNCED", "NEWLY_AVAILABLE"}
 

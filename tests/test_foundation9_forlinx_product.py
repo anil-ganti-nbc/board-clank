@@ -2,18 +2,20 @@
 from collections import Counter
 import hashlib
 import json
+import re
 
 import pytest
 
-from board_clank.backup import create_backup, durable_state_snapshot, restore_backup, verify_backup
+from board_clank.backup import BackupError, DURABLE_TABLES, create_backup, durable_state_snapshot, restore_backup, verify_backup
 from board_clank.cli import main
 from board_clank.collectors import forlinx as f, get_adapter
 from board_clank.collectors.base import CollectorError
 from board_clank.observer import full_snapshot, source_summary
 from board_clank.pipeline import Pipeline
+from board_clank.models import CollectorRunRequest
 from board_clank.sources import assert_foundation_0_roster, load_sources
 from board_clank.store import Store
-from board_clank.taxonomy import PHASE1_VENDORS
+from board_clank.taxonomy import EntityKind, PHASE1_VENDORS
 
 OBS = '2026-10-03T00:00:00Z'
 MANIFEST = json.loads((f.CORPUS_DIR / 'manifest.json').read_text(encoding='utf-8'))
@@ -209,7 +211,7 @@ def test_nine_vendor_identity_and_diagnostic_isolation(pipeline, store, db_path)
     assert all(set(row) == set(observer_before[0]) for row in observer_before)
 
 
-@pytest.mark.parametrize('failure', ['fetch', 'parse'])
+@pytest.mark.parametrize('failure', ['fetch', 'parse', 'missing-ram'])
 def test_partial_live_failure_is_atomic(monkeypatch, pipeline, store, failure):
     pipeline.accept_run(collect('before'))
     tables = ('boards', 'board_variants', 'board_revisions', 'events', 'notifications', 'diagnostic_conditions', 'source_baselines')
@@ -222,6 +224,8 @@ def test_partial_live_failure_is_atomic(monkeypatch, pipeline, store, failure):
         body = lookup[url]
         if url == target and failure == 'parse':
             body = body.replace('product-cp', 'missing-hero')
+        if url == target and failure == 'missing-ram':
+            body = re.sub(r'<p[^>]*>\s*RAM:.*?</p>', '', body, flags=re.S)
         return {'text': body, 'requested_url': url, 'final_url': url}
     monkeypatch.setattr(f, 'fetch', fake)
     request = f.ForlinxProductAdapter(experimental_live=True).collect('failed-' + failure, OBS)
@@ -252,3 +256,105 @@ def test_schema_v3_observer_backup_restore_and_replay(pipeline, store, db_path, 
     assert restored.one('PRAGMA integrity_check')[0] == 'ok'
     assert not restored.all('PRAGMA foreign_key_check')
     restored.close()
+
+
+@pytest.mark.parametrize('label', ['CPU', 'Architecture', 'Frequency', 'RAM', 'ROM', 'System'])
+def test_actual_hero_absent_label_is_partial_not_unknown(label):
+    body = (f.CORPUS_DIR / entry('OK-MX9352-C')['file']).read_text(encoding='utf-8')
+    changed = re.sub(fr'<p[^>]*>\s*{label}:.*?</p>', '', body, flags=re.S)
+    assert changed != body
+    with pytest.raises(CollectorError, match='missing labelled'):
+        parse('OK-MX9352-C', changed)
+    # Explicitly present empty source fields are valid UNKNOWN evidence.
+    blank = re.sub(fr'(<p[^>]*>\s*{label}:).*?(</p>)', r'\1\2', body, flags=re.S)
+    drafts, _ = parse('OK-MX9352-C', blank)
+    assert drafts and label.lower() in drafts[0].raw_fields
+
+
+def one_product_request(run_id, draft):
+    return CollectorRunRequest(run_id=run_id, source_key=f.SOURCE_KEY,
+        collector_key=f.SOURCE_KEY, started_at=OBS, observations=[draft])
+
+
+def test_memory_option_edit_keeps_board_stable_but_scoped_evidence_visible(pipeline, store):
+    a = f.parse_product_html(synthetic(ram='2GB/4GB DDR4', rom='8GB/16GB eMMC'),
+        page_url=f.BASE + '/product/probe-999.html', observed_at=OBS, catalogue_model='OK999-C')[0][0]
+    b = f.parse_product_html(synthetic(ram='2GB/4GB/8GB DDR4', rom='8GB/16GB/32GB eMMC'),
+        page_url=a.page_url, observed_at=OBS, catalogue_model='OK999-C')[0][0]
+    assert a.canonical_payload(EntityKind.BOARD) == b.canonical_payload(EntityKind.BOARD)
+    assert a.canonical_payload(EntityKind.VARIANT) != b.canonical_payload(EntityKind.VARIANT)
+    assert a.raw_fields['rom'] != b.raw_fields['rom']
+    pipeline.accept_run(one_product_request('memory-inventory', a))
+    result = pipeline.accept_run(one_product_request('memory-options-edit', b))
+    assert result.status == 'accepted'
+    changed = store.all("SELECT entity_kind,event_type FROM events WHERE run_id='memory-options-edit'")
+    assert not [e for e in changed if e['entity_kind'] == 'BOARD']
+    # Existing pipeline records revision/variant state without inventing
+    # editorial events for unpaired option lists.
+    assert any('2GB/4GB/8GB DDR4' in r['payload_json'] for r in store.all(
+        "SELECT payload_json FROM canonical_observations WHERE entity_kind='VARIANT'"))
+    assert pipeline.accept_run(one_product_request('memory-options-repeat', b)).events == []
+
+
+def test_unresolved_cpu_options_transition_once_and_same_new_run_replay(pipeline, store):
+    body = (f.CORPUS_DIR / entry('OK3568-C')['file']).read_text(encoding='utf-8')
+    a = parse('OK3568-C', body)[0][0]
+    # The entire labelled option expression is retained, without a chip guess.
+    assert a.raw_fields['soc_candidates'] == [a.raw_fields['cpu']]
+    b = parse('OK3568-C', body.replace(a.raw_fields['cpu'], a.raw_fields['cpu'] + '/RK3568B'))[0][0]
+    assert a.evidence_insufficient and b.evidence_insufficient
+    pipeline.accept_run(one_product_request('cpu-options-baseline', a))
+    before = dict(store.one('SELECT * FROM diagnostic_conditions'))
+    request = one_product_request('cpu-options-edit', b)
+    result = pipeline.accept_run(request)
+    after = dict(store.one('SELECT * FROM diagnostic_conditions'))
+    assert before['state_hash'] != after['state_hash'] and after['transition_count'] == 1
+    assert result.events and store.count('boards') == 0
+    assert b.raw_fields['cpu'] in after['payload_json']
+    assert pipeline.accept_run(request).replayed
+    assert pipeline.accept_run(one_product_request('cpu-options-repeat', b)).events == []
+    assert store.one('SELECT transition_count FROM diagnostic_conditions')[0] == 1
+
+
+@pytest.mark.parametrize('model,expected', [('OK335xD', 'UNKNOWN'), ('OK1012A-C', '8GB eMMC'),
+                                          ('OKMX6UL-C1', '8GB eMMC')])
+def test_rom_media_groups_do_not_call_nand_or_qspi_emmc(model, expected):
+    draft = parse(model)[0][0]
+    assert draft.spec.emmc_options == expected
+    assert 'NandFlash' in draft.raw_fields['rom'] or 'QSPI' in draft.raw_fields['rom']
+    assert draft.variant.storage == 'UNKNOWN'
+    assert 'NandFlash' not in draft.spec.emmc_options and 'QSPI' not in draft.spec.emmc_options
+
+
+def test_backup_occurrence_coverage_and_genuine_legacy_v1(pipeline, store, db_path, tmp_path):
+    pipeline.accept_run(collect('coverage'))
+    assert store.count('observation_occurrences') > 0
+    actual = {r[0] for r in store.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+    assert set(DURABLE_TABLES) == actual
+    store.close()
+    backup = create_backup(db_path, tmp_path / 'coverage')
+    verified = verify_backup(backup.database_path, backup.metadata_path)
+    assert verified['metadata_coverage'] == 'COMPLETE' and not verified['unverified_tables']
+    legacy = dict(backup.metadata)
+    legacy['row_counts'] = {k: v for k, v in legacy['row_counts'].items() if k != 'observation_occurrences'}
+    legacy['durable_tables'] = [k for k in legacy['durable_tables'] if k != 'observation_occurrences']
+    legacy_path = tmp_path / 'genuine-legacy-v1.json'
+    legacy_path.write_text(json.dumps(legacy), encoding='utf-8')
+    verified = verify_backup(backup.database_path, legacy_path)
+    assert verified['metadata_coverage'] == 'LEGACY_PARTIAL'
+    assert verified['unverified_tables'] == ['observation_occurrences']
+    assert verified['row_counts']['observation_occurrences'] > 0
+    target = tmp_path / 'legacy-restored.sqlite'
+    report = restore_backup(backup.database_path, legacy_path, target, activate=True)
+    assert report['metadata_coverage'] == 'LEGACY_PARTIAL'
+    assert durable_state_snapshot(target) == durable_state_snapshot(db_path)
+    bad = dict(legacy)
+    bad['row_counts'] = {k: v for k, v in legacy['row_counts'].items() if k != 'boards'}
+    bad_path = tmp_path / 'arbitrary-subset.json'
+    bad_path.write_text(json.dumps(bad), encoding='utf-8')
+    with pytest.raises(BackupError, match='coverage'):
+        verify_backup(backup.database_path, bad_path)
+    bad = {**backup.metadata, 'row_counts': {**backup.metadata['row_counts'], 'observation_occurrences': 0}}
+    bad_path.write_text(json.dumps(bad), encoding='utf-8')
+    with pytest.raises(BackupError, match='row counts diverge'):
+        verify_backup(backup.database_path, bad_path)

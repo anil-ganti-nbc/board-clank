@@ -58,7 +58,20 @@ page presentation decoding, not access bypass. Hero-labelled facts are the
 bounded semantic projection; scripts/styles/images/contact/navigation are not.
 Keep meaningful model, processor options, architecture, clock, memory and OS.
 
-Generic schema/pipeline/identity/observer contracts fit this source. Only source
-wiring, package data, count prose and manifest roster need additive admission.
+Supplemental qualification reproduced inherited gaps: explicit existing or
+historical inventory discovered after a source baseline must suppress Board,
+revision and variant births without suppressing real existing-entity changes.
+The narrow shared birth-event repair leaves source baseline and transition
+logic intact. Backup coverage also includes observation_occurrences; genuine
+older format-1 metadata reports its exact partial coverage, while the restored
+database image remains checked by SHA, integrity and complete observed counts.
+All nine adapter fixture trees must ship in the wheel.
+
+Every current hero includes all six labels; absent labels fail atomically,
+whereas explicitly empty values remain UNKNOWN. Full ROM evidence stays raw;
+only comma-separated groups explicitly labelled eMMC populate emmc_options.
+Memory lists stay revision/variant-visible in spec, outside native Board facts.
+Unresolved CPU expressions populate the existing soc_candidates diagnostic
+contract without selecting a chip; meaningful option changes transition once.
 Every source remains REGISTERED/EXPERIMENTAL/disabled; schema remains v3.
 No deploy, enablement, scheduler, delivery, promotion or main merge authorized.

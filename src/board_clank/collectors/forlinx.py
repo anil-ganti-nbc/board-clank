@@ -119,8 +119,12 @@ def hero(html: str) -> tuple[str, dict[str, str]]:
             if key in fields:
                 raise CollectorError('duplicate labelled product field')
             fields[key] = match[2]
-    if 'cpu' not in fields or 'architecture' not in fields:
-        raise CollectorError('missing labelled CPU/architecture evidence')
+    # All six hero labels are present on every qualified current product,
+    # including old products with explicitly empty Architecture/RAM/ROM.
+    # An absent paragraph is a partial document, not manufacturer UNKNOWN.
+    missing = {'cpu', 'architecture', 'frequency', 'ram', 'rom', 'system'} - fields.keys()
+    if missing:
+        raise CollectorError('missing labelled product evidence: ' + ', '.join(sorted(missing)))
     return text(headings[0]), fields
 
 
@@ -159,6 +163,13 @@ def memory_pair(fields: dict[str, str]) -> VariantDimensions:
     return VariantDimensions()
 
 
+def emmc_options(rom: str) -> str:
+    """Retain explicitly labelled eMMC groups; NAND/QSPI are separate evidence."""
+    groups = [part.strip() for part in re.split(r'[,，;；]', rom)
+              if re.search(r'\beMMC\b', part, re.I)]
+    return ', '.join(groups) or UNKNOWN
+
+
 def parse_product_html(html: str, *, page_url: str, observed_at: str, catalogue_model: str | None = None):
     url = official_url(page_url)
     heading, fields = hero(html)
@@ -184,10 +195,16 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, catalogue_
         soc_marketing_name=soc, architecture=arch,
         spec=NormalizedSpec(soc=soc, soc_key=f'{vendor}:{slugify(soc)}' if soc != UNKNOWN else UNKNOWN,
             cpu_arch=arch.value, cpu_config=architecture or UNKNOWN, ram_type='/'.join(sorted(set(ram_types))) or UNKNOWN,
-            ram_options=fields.get('ram', UNKNOWN), emmc_options=fields.get('rom', UNKNOWN),
+            ram_options=fields.get('ram') or UNKNOWN, emmc_options=emmc_options(fields['rom']),
             supported_os=fields.get('system', UNKNOWN)),
-        native_fields={'model': name, 'product_url': url, 'product_summary': fields},
-        raw_fields=fields, page_url=url, evidence_insufficient=soc == UNKNOWN,
+        # RAM/ROM option lists remain in source evidence and scoped spec fields;
+        # duplicating them in native_fields would defeat Board-scope filtering.
+        native_fields={'model': name, 'product_url': url,
+                       'product_summary': {k: v for k, v in fields.items() if k not in {'ram', 'rom'}}},
+        # Preserve the complete labelled expression as meaningful candidate
+        # evidence. It is not a resolved chip or an invented alternative list.
+        raw_fields={**fields, 'soc_candidates': [fields['cpu']] if soc == UNKNOWN else []},
+        page_url=url, evidence_insufficient=soc == UNKNOWN,
         novelty=NoveltyEvidence(first_seen_at=observed_at, first_seen_source=SOURCE_KEY,
             novelty_status=NoveltyStatus.EXISTING_PRODUCT, novelty_basis='current-catalogue-not-launch'))
     info.update(status='resolved' if soc != UNKNOWN else 'insufficient', semantic_evidence=projection,

@@ -51,6 +51,18 @@ jobs:
           PY
       - name: Compile
         run: python -m compileall -q src
+      - name: Build and install wheel outside checkout
+        run: |
+          python -m pip wheel --no-deps --wheel-dir /tmp/board-wheel .
+          python -m pip install --no-deps --no-index --target /tmp/board-wheel-site /tmp/board-wheel/*.whl
+      - name: All nine adapters from installed wheel offline
+        env:
+          NO_PROXY: ""
+          HTTP_PROXY: "http://127.0.0.1:9"
+          HTTPS_PROXY: "http://127.0.0.1:9"
+          ALL_PROXY: "http://127.0.0.1:9"
+        working-directory: /tmp
+        run: python -I "$GITHUB_WORKSPACE/scripts/offline_wheel_probe.py" --site /tmp/board-wheel-site --db /tmp/installed-wheel-probe.sqlite
       - name: Tests with black-hole proxy
         env:
           NO_PROXY: "127.0.0.1,localhost,::1"

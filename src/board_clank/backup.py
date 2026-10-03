@@ -51,6 +51,7 @@ DURABLE_TABLES = (
     "board_revisions",
     "board_variants",
     "canonical_observations",
+    "observation_occurrences",
     "current_entity_observations",
     "collector_runs",
     "processed_run_receipts",
@@ -204,12 +205,34 @@ def _read_metadata(meta_path: Path) -> dict[str, Any]:
     return metadata
 
 
+def _metadata_coverage(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Accept complete metadata or the exact historical format-1 table scope."""
+    counts = metadata['row_counts']
+    current = set(DURABLE_TABLES)
+    legacy = current - {'observation_occurrences'}
+    if not isinstance(counts, dict) or set(counts) not in (current, legacy):
+        raise BackupError('backup metadata row-count table coverage is unsupported')
+    if any(type(value) is not int or value < 0 for value in counts.values()):
+        raise BackupError('backup metadata row counts must be nonnegative integers')
+    declared = metadata.get('durable_tables')
+    if declared is not None and (not isinstance(declared, list)
+            or any(not isinstance(table, str) for table in declared)
+            or len(declared) != len(set(declared)) or set(declared) != set(counts)):
+        raise BackupError('backup metadata durable_tables diverge from row-count coverage')
+    return {
+        'metadata_coverage': 'COMPLETE' if set(counts) == current else 'LEGACY_PARTIAL',
+        'verified_tables': [table for table in DURABLE_TABLES if table in counts],
+        'unverified_tables': [table for table in DURABLE_TABLES if table not in counts],
+    }
+
+
 def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, Any]:
     """Validate metadata completeness, SHA-256 and integrity. Read-only."""
     backup_path, meta_path = Path(backup_path), Path(meta_path)
     if not backup_path.exists() or not meta_path.exists():
         raise BackupError(f"backup artifact missing: {backup_path} / {meta_path}")
     metadata = _read_metadata(meta_path)
+    coverage = _metadata_coverage(metadata)
     digest = sha256_file(backup_path)
     if digest != metadata["sha256"]:
         raise BackupError(f"backup SHA-256 mismatch: metadata {metadata['sha256']} != actual {digest}")
@@ -223,7 +246,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
         con.close()
     if integrity != "ok":
         raise BackupError(f"backup failed integrity check: {integrity}")
-    if counts != metadata["row_counts"]:
+    if {table: counts[table] for table in coverage['verified_tables']} != metadata["row_counts"]:
         raise BackupError("backup row counts diverge from metadata")
     observed = inspect_path(backup_path)
     return {
@@ -233,6 +256,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
         "schema_version": observed.observed_version,
         "row_counts": counts,
         "metadata": metadata,
+        **coverage,
     }
 
 
@@ -295,7 +319,10 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
     if integrity != "ok":
         staging.unlink(missing_ok=True)
         raise BackupError(f"restored staging database failed integrity check: {integrity}")
-    if counts != metadata["row_counts"]:
+    # Compare the complete image observed by verify_backup, including rows
+    # that genuine legacy metadata did not declare. The full-image SHA also
+    # remains mandatory; legacy omission never becomes a full coverage claim.
+    if counts != verification["row_counts"]:
         staging.unlink(missing_ok=True)
         raise BackupError("restored staging row counts diverge from metadata")
     restored_digest = sha256_file(staging)
@@ -315,6 +342,7 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
         "backup_code_revision": metadata["code_revision"],
         "row_counts": counts,
         "durable_state": durable_state_snapshot(staging),
+        **{key: verification[key] for key in ('metadata_coverage', 'verified_tables', 'unverified_tables')},
     }
     if activate:
         if target_path.exists():

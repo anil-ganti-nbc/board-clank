@@ -27,7 +27,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-board_clank = ["py.typed", "schema.sql", "sources.yaml", "fixture_data/*.json", "fixture_data/rpi_product/*", "fixture_data/rpi_product/html/*", "fixture_data/friendlyelec_product/*", "fixture_data/friendlyelec_product/html/*", "fixture_data/khadas_product/*", "fixture_data/khadas_product/html/*", "fixture_data/forlinx_product/*", "fixture_data/forlinx_product/html/*"]
+board_clank = ["py.typed", "schema.sql", "sources.yaml", "manifest.json", "fixture_data/*.json", "fixture_data/*/*", "fixture_data/*/html/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

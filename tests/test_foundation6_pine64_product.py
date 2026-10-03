@@ -283,8 +283,10 @@ def test_historical_first_sighting_is_not_market_new(pipeline: Pipeline, store: 
     before = store.count("boards")
     pipeline.accept_run(collect_corpus("historical", run_id="p64-h", started_at="2026-09-23T02:00:00+00:00"))
     live = _live_types(store)
-    assert "HISTORICAL_DISCOVERY" in live
-    assert "FIRST_SEEN_BY_CLANK" in live
+    assert "HISTORICAL_DISCOVERY" not in live
+    assert "FIRST_SEEN_BY_CLANK" not in live
+    births = store.all("SELECT baseline_silent FROM events WHERE run_id='p64-h'")
+    assert births and all(row['baseline_silent'] for row in births)
     # The late-discovered historical Ox64 is born, but never market-new.
     assert "NEW_BOARD" not in live
     assert store.count("boards") == before + 1

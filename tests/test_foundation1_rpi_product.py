@@ -203,8 +203,10 @@ def test_historical_after_baseline_is_first_seen_not_market_new(pipeline: Pipeli
     pi3 = store.one("SELECT board_key FROM boards WHERE board_slug = 'raspberry-pi-3-model-b'")
     assert pi3 is not None
     types = _live_types(store)
-    assert "FIRST_SEEN_BY_CLANK" in types
-    assert "HISTORICAL_DISCOVERY" in types
+    assert "FIRST_SEEN_BY_CLANK" not in types
+    assert "HISTORICAL_DISCOVERY" not in types
+    births = store.all("SELECT baseline_silent FROM events WHERE run_id='rpi-hist'")
+    assert births and all(row['baseline_silent'] for row in births)
     assert "NEW_BOARD" not in types
     novelty = store.one(
         "SELECT novelty_status FROM novelty_evidence WHERE entity_key = ?",

@@ -564,6 +564,14 @@ class Pipeline:
         baseline: bool,
     ) -> list[EventRecord]:
         events: list[EventRecord] = []
+        # A later first observation of known inventory is still inventory,
+        # not launch/variant chronology. Silence only births: real transitions
+        # on previously observed entities retain their ordinary policy below.
+        inventory_known = draft.historical_known or draft.novelty.novelty_status in {
+            NoveltyStatus.EXISTING_PRODUCT, NoveltyStatus.HISTORICAL,
+        }
+        birth_silent = baseline or inventory_known
+        audit = "baseline-inventory" if baseline else ("known-inventory" if inventory_known else "live-admission")
         if kind is EntityKind.BOARD:
             events.append(
                 self._make_event(
@@ -574,7 +582,7 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
+                    birth_silent,
                     {"plane": draft.plane.value, "page_url": draft.page_url},
                 )
             )
@@ -602,7 +610,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"plane": draft.plane.value},
                     )
                 )
@@ -617,10 +625,10 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
+                    birth_silent,
                     {
                         "plane": draft.plane.value,
-                        "audit": "baseline-inventory" if baseline else "live-admission",
+                        "audit": audit,
                     },
                 )
             )
@@ -635,7 +643,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"revision_kind": identity.revision_kind.value, "revision_token": identity.revision_token},
                     )
                 )
@@ -649,8 +657,8 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
-                    {**draft.variant.as_dict(), "audit": "baseline-inventory" if baseline else "live-admission"},
+                    birth_silent,
+                    {**draft.variant.as_dict(), "audit": audit},
                 )
             )
             if draft.variant.ram != UNKNOWN:
@@ -663,7 +671,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"ram": draft.variant.ram},
                     )
                 )
@@ -677,7 +685,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"storage": draft.variant.storage},
                     )
                 )
@@ -691,7 +699,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"region": draft.variant.region},
                     )
                 )

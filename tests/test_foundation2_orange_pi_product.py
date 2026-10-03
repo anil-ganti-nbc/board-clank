@@ -383,8 +383,10 @@ def test_config_storefront_page_is_a_variant_not_a_new_board(pipeline: Pipeline,
     assert store.count("board_variants") == variants_before + 1
     assert "NEW_BOARD" not in _live_types(store)
     live = _live_types(store)
-    assert "NEW_VARIANT" in live
-    assert "RAM_VARIANT_ADDED" in live
+    assert "NEW_VARIANT" not in live
+    assert "RAM_VARIANT_ADDED" not in live
+    births = store.all("SELECT baseline_silent FROM events WHERE run_id='opi-32gb' AND event_type IN ('NEW_VARIANT','RAM_VARIANT_ADDED')")
+    assert births and all(row['baseline_silent'] for row in births)
     five = store.one("SELECT board_key FROM boards WHERE board_slug = 'orange-pi-5'")
     rams = {
         row["ram"]
@@ -403,12 +405,13 @@ def test_expanded_corpus_is_replay_stable_without_board_churn(pipeline: Pipeline
     # The 32GB page joined the same run; the board did not fork.
     five_rows = store.all("SELECT board_key FROM boards WHERE board_slug = 'orange-pi-5'")
     assert len(five_rows) == 1
-    # 5 Max is a genuine post-baseline discovery in this corpus: exactly one
-    # live NEW_BOARD, and it is the only new board of the run.
+    # Explicit existing-product discovery is durable inventory, not launch.
     new_boards = store.all(
         "SELECT entity_key FROM events WHERE event_type = 'NEW_BOARD' AND baseline_silent = 0"
     )
-    assert [row["entity_key"] for row in new_boards] == ["orange-pi:orange-pi-5-max"]
+    assert new_boards == []
+    birth = store.one("SELECT baseline_silent FROM events WHERE run_id='opi-exp-1' AND event_type='NEW_BOARD' AND entity_key='orange-pi:orange-pi-5-max'")
+    assert birth is not None and birth['baseline_silent']
     events_after_first = store.count("events")
     pipeline.accept_run(collect_corpus("expanded", run_id="opi-exp-2", started_at="2026-09-22T03:00:00+00:00"))
     assert store.count("boards") == boards

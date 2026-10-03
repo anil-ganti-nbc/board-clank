@@ -30,6 +30,8 @@ def main():
         root.mkdir(parents=True, exist_ok=False)
     else:
         assert (root / f'pass-{args.ordinal - 1}.json').exists(), 'previous accepted pass required'
+        previous = json.loads((root / f'pass-{args.ordinal - 1}.json').read_text(encoding='utf-8'))
+        assert previous['status'] == 'accepted', 'previous pass was not accepted'
     pass_dir = root / f'pass-{args.ordinal}'
     pass_dir.mkdir(exist_ok=False)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
@@ -61,7 +63,8 @@ def main():
         'adapter_sha256': hashlib.sha256(Path(forlinx.__file__).read_bytes()).hexdigest(),
         'status': result.status, 'baseline': result.baseline, 'counts': {t: store.count(t) for t in (
             'boards', 'board_families', 'board_revisions', 'board_variants', 'socs', 'diagnostic_conditions',
-            'diagnostic_sightings', 'events', 'notifications', 'collector_runs', 'processed_run_receipts')},
+            'diagnostic_sightings', 'events', 'notifications', 'collector_runs', 'processed_run_receipts',
+            'observation_occurrences')},
         'events_added': len(events), 'outbox_added': result.notifications,
         'event_types': dict(Counter(e['event_type'] for e in events)),
         'all_new_events_silent': all(e['baseline_silent'] for e in events),
@@ -92,10 +95,12 @@ def main():
         (root / 'observer.json').write_text(json.dumps(observer, indent=2), encoding='utf-8')
         backup = create_backup(db, root / 'backup')
         restored = root / 'restored.sqlite'
-        restore_backup(backup.database_path, backup.metadata_path, restored, activate=True)
+        restore_report = restore_backup(backup.database_path, backup.metadata_path, restored, activate=True)
         assert durable_state_snapshot(restored) == durable_state_snapshot(db)
         replay_store = Store(restored)
+        restored_before = durable_state_snapshot(restored)
         assert Pipeline(replay_store).accept_run(request).replayed
+        assert durable_state_snapshot(restored) == restored_before
         later = request.model_copy(deep=True)
         later.run_id = 'forlinx-restored-new-run'
         replay = Pipeline(replay_store).accept_run(later)
@@ -103,6 +108,8 @@ def main():
         replay_store.close()
         (root / 'readiness.json').write_text(json.dumps({'observer_read_only': True, 'schema': 3,
             'backup': str(backup.database_path), 'backup_sha256': backup.sha256,
+            'metadata_coverage': restore_report['metadata_coverage'],
+            'durable_tables': sorted(restored_before),
             'restored_receipt_replay': True, 'restored_new_run_noop': True}, indent=2), encoding='utf-8')
     print('FORLINX_MANUAL_PASS_ACCEPTED', args.ordinal, flush=True)
 
