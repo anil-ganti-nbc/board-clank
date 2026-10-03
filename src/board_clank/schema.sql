@@ -274,3 +274,5 @@ CREATE INDEX IF NOT EXISTS idx_diagnostic_conditions_source_status
     ON diagnostic_conditions(source_key, status);
 CREATE INDEX IF NOT EXISTS idx_diagnostic_sightings_run
     ON diagnostic_sightings(run_id);
+
+CREATE INDEX IF NOT EXISTS idx_events_code_revision ON events(code_revision);
