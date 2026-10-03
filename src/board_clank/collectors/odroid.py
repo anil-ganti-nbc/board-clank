@@ -35,7 +35,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.error import HTTPError, URLError
 
 from board_clank.collectors.base import CollectorAdapter, CollectorError
@@ -713,6 +713,15 @@ def _assert_official_url(url: str) -> str:
     return url
 
 
+class _BoundedRedirect(HTTPRedirectHandler):
+    max_redirections = 5
+    max_repeats = 2
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _assert_official_url(newurl)  # reject BEFORE following any redirect
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch_official(url: str, *, timeout: int = 30) -> str:
     return fetch_official_meta(url, timeout=timeout)["text"]
 
@@ -724,11 +733,11 @@ def fetch_official_meta(url: str, *, timeout: int = 30) -> dict[str, Any]:
         headers={"User-Agent": "board-clank/0.1.0 (+experimental-manual-hardkernel-odroid-product)"},
         method="GET",
     )
-    with urlopen(request, timeout=timeout) as response:  # noqa: S310 - host allowlisted above
+    with build_opener(_BoundedRedirect()).open(request, timeout=timeout) as response:
+        final = _assert_official_url(response.geturl())
         raw = response.read()
         charset = response.headers.get_content_charset() or "utf-8"
         text = raw.decode(charset, errors="replace")
-        final = response.geturl()
         return {
             "requested_url": url,
             "final_url": final,
@@ -791,7 +800,7 @@ class OdroidProductAdapter(CollectorAdapter):
 
         try:
             meta = record_fetch(SHOP_URL)
-            _drafts, info = parse_product_html(meta["text"], page_url=SHOP_URL, observed_at=started_at)
+            _drafts, info = parse_product_html(meta["text"], page_url=meta["final_url"], observed_at=started_at)
             info["raw_body_hash"] = meta["raw_body_hash"]
             info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
             diagnostics["documents"].append(info)
@@ -803,11 +812,13 @@ class OdroidProductAdapter(CollectorAdapter):
             for url in in_scope:
                 try:
                     page_meta = record_fetch(url)
-                    drafts, page_info = parse_product_html(page_meta["text"], page_url=url, observed_at=started_at)
+                    drafts, page_info = parse_product_html(page_meta["text"], page_url=page_meta["final_url"], observed_at=started_at)
                 except CollectorError as exc:
                     diagnostics["parser_errors"].append(str(exc))
                     diagnostics["documents"].append({"page_url": url, "status": "error"})
-                    continue
+                    raise
+                if page_info.get("status") in {"error", "parser-error"}:
+                    raise CollectorError(f"required product parser failed for {url}")
                 page_info["raw_body_hash"] = page_meta["raw_body_hash"]
                 page_info["semantic_evidence_hash"] = page_meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(page_info)
@@ -825,14 +836,15 @@ class OdroidProductAdapter(CollectorAdapter):
 
             return CollectorRunRequest(
                 run_id=run_id, source_key=SOURCE_KEY, collector_key=COLLECTOR_KEY,
-                started_at=started_at, observations=observations, ok=True,
+                started_at=started_at, observations=observations, ok=bool(observations),
+                error=None if observations else "required collection yielded no observations",
                 fixture_scenario=None, diagnostics=diagnostics,
             )
         except Exception as exc:  # noqa: BLE001
             return CollectorRunRequest(
                 run_id=run_id, source_key=SOURCE_KEY, collector_key=COLLECTOR_KEY,
-                started_at=started_at, observations=observations, ok=bool(observations),
-                error=None if observations else f"experimental live fetch failed: {exc}",
+                started_at=started_at, observations=[], ok=False,
+                error=f"experimental live fetch failed: {exc}",
                 diagnostics=diagnostics,
             )
 

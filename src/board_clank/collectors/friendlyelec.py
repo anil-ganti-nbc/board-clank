@@ -25,6 +25,14 @@ INDEXES = [BASE + 'index.php?route=product/category&path=' + c for c in ('69', '
 SOC = re.compile(r'\b(RK\d{4}[A-Z0-9]*|H[23568]|A64|S5P\d+|Exynos\d+|S905[A-Z0-9]*)\b', re.I)
 
 
+def _soc_vendor(soc: str) -> str:
+    if soc.startswith('RK'): return 'rockchip'
+    if soc in {'H2','H3','H5','H6','H8','A64'}: return 'allwinner'
+    if soc.startswith(('S5P', 'EXYNOS')): return 'samsung'
+    if soc.startswith('S905'): return 'amlogic'
+    return UNKNOWN
+
+
 def text(html: str) -> str:
     return re.sub(r'\s+', ' ', unescape(re.sub(r'<[^>]+>', ' ', html))).strip()
 
@@ -105,12 +113,9 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     code = re.search(r'Product Code\s*:\s*(.*?)</li>', html, re.S | re.I)
     if not candidates and code:
         candidates = sorted({m.upper() for m in SOC.findall(text(code[1]))})
+    cpu_evidence = sorted(set(cpu or ([text(code[1])] if code else [])))
     soc = candidates[0] if len(candidates) == 1 else UNKNOWN
-    vendor = 'rockchip' if soc.startswith('RK') else ('allwinner' if soc in {'H2','H3','H5','H6','H8','A64'} else UNKNOWN)
-    if soc.startswith(('S5P', 'EXYNOS')):
-        vendor = 'samsung'
-    elif soc.startswith('S905'):
-        vendor = 'amlogic'
+    vendor = _soc_vendor(soc)
     ramrows = ' '.join(r for r in rows if re.match(r'^(Memory|RAM)\b', r, re.I))
     storage = ' '.join(r for r in rows if re.match(r'^Storage\b', r, re.I))
     ramtype = re.findall(r'\b(?:LP)?DDR[345]X?\b', ramrows, re.I)
@@ -154,7 +159,9 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                 emmc_options=','.join(sorted({x[1] for x in pairs})), wifi=wireless,
                 bluetooth=bt[1] if bt else UNKNOWN,
                 microsd='yes' if re.search('MicroSD', storage, re.I) else UNKNOWN),
-            native_fields={'heading': name, 'page_url': url}, raw_fields={'paired_options': sorted(pairs)},
+            native_fields={'heading': name, 'page_url': url}, raw_fields={'paired_options': sorted(pairs),
+                'cpu_evidence': cpu_evidence,
+                'soc_candidates': sorted(f'{_soc_vendor(candidate)}:{slugify(candidate)}' for candidate in candidates)},
             page_url=url, historical_known=historical_known,
             novelty=NoveltyEvidence(first_seen_at=observed_at, first_seen_source=SOURCE_KEY,
                 novelty_status=NoveltyStatus.EXISTING_PRODUCT, novelty_basis='first-party-catalogue-not-launch'),

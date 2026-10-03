@@ -40,6 +40,28 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def _input_receipt(request: CollectorRunRequest) -> str:
+    """Immutable admission evidence; recapture clocks and transport prose are excluded.
+
+    Preserve observation order/multiplicity and every remaining field, including
+    unresolved evidence and editorial dates. The run ID is the receipt key.
+    """
+    observations = []
+    for draft in request.observations:
+        payload = draft.model_dump(mode="json")
+        payload.pop("observed_at", None)
+        if payload["price"] is not None:
+            payload["price"].pop("observed_at", None)
+        payload["novelty"].pop("first_seen_at", None)
+        payload["raw_fields"].pop("html_excerpt", None)
+        observations.append(payload)
+    return "product-input-v1:" + content_hash({
+        "source_key": request.source_key, "collector_key": request.collector_key,
+        "ok": request.ok, "fixture_scenario": request.fixture_scenario,
+        "observations": observations,
+    })
+
+
 @dataclass
 class RunResult:
     run_id: str
@@ -132,17 +154,27 @@ class Pipeline:
     def _accept_run(self, request: CollectorRunRequest, *, fixture_source: str | None = None) -> RunResult:
         # Authority validation precedes receipt lookup, failed-run writes and all mutations.
         self._validate_admission_source(request, fixture_source=fixture_source)
+        # Fingerprint the collector input before identity resolution. Recapture
+        # chronology and transport diagnostics do not affect semantic admission.
+        # Admission operates on a copy so same-object replay retains that input.
+        receipt_hash = _input_receipt(request)
         existing = self.store.one(
-            "SELECT run_id FROM processed_run_receipts WHERE run_id = ?",
+            "SELECT source_key, receipt_hash FROM processed_run_receipts WHERE run_id = ?",
             (request.run_id,),
         )
         if existing:
+            if existing["source_key"] != request.source_key or existing["receipt_hash"] != receipt_hash:
+                raise ValueError("run ID collision or unverifiable legacy receipt; exact replay refused")
             return RunResult(
                 run_id=request.run_id,
                 status="replayed",
                 replayed=True,
                 diagnostics=dict(request.diagnostics or {}),
             )
+
+        if self.store.one("SELECT run_id FROM collector_runs WHERE run_id=?", (request.run_id,)):
+            raise ValueError("run ID already belongs to an attempt without an accepted receipt")
+        request = request.model_copy(deep=True)
 
         if not request.ok:
             self.store.execute(
@@ -163,7 +195,10 @@ class Pipeline:
             )
             self.store.execute(
                 "INSERT INTO run_errors(run_id, source_key, message, created_at) VALUES (?, ?, ?, ?)",
-                (request.run_id, request.source_key, request.error or "collector failed", _now()),
+                (request.run_id, request.source_key,
+                 canonical_json({"format": "collector-failure-v1", "error": request.error or "collector failed",
+                                 "diagnostics": request.diagnostics}) if request.diagnostics
+                 else request.error or "collector failed", _now()),
             )
             self.store.commit()
             return RunResult(
@@ -214,14 +249,6 @@ class Pipeline:
             resolved_keys = self._reconcile_diagnostic_conditions(request, baseline=baseline)
             event_keys.extend(resolved_keys)
             notification_count = self._count_notifications(event_keys)
-            receipt_hash = content_hash(
-                {
-                    "run_id": request.run_id,
-                    "source_key": request.source_key,
-                    "observation_count": len(request.observations),
-                    "event_keys": event_keys,
-                }
-            )
             self.store.execute(
                 """
                 INSERT INTO processed_run_receipts(run_id, source_key, receipt_hash, accepted_at, observation_count, event_count)
@@ -1095,6 +1122,7 @@ class Pipeline:
             "soc_candidates": sorted(
                 str(item) for item in (draft.raw_fields.get("soc_candidates") or [])
             ),
+            "cpu_evidence": sorted(draft.raw_fields.get("cpu_evidence") or []),
             "marketing_name": draft.marketing_name,
             "page_url": draft.page_url,
         }

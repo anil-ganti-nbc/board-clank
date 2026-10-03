@@ -14,6 +14,7 @@ from pathlib import Path
 ISOLATED_PROOF = r'''
 import json
 import sys
+from email.parser import Parser
 from pathlib import Path
 install, execution = (Path(arg).resolve() for arg in sys.argv[1:])
 sys.path.insert(0, str(install))
@@ -30,6 +31,9 @@ from board_clank.manifest import load_manifest, validate_manifest
 from board_clank.backup import create_backup, restore_backup, durable_state_snapshot, verify_backup
 from board_clank.observer import full_snapshot
 from board_clank.taxonomy import PHASE1_VENDORS, PHASE2_ADMITTED
+metadata_file, = install.glob('board_clank-*.dist-info/METADATA')
+metadata = Parser().parsestr(metadata_file.read_text(encoding='utf-8'))
+assert load_manifest()['architecture']['python'] == metadata['Requires-Python'] == '>=3.12'
 modules = (raspberry_pi, orange_pi, radxa, banana_pi, odroid, pine64, friendlyelec, khadas)
 for module in modules:
     assert module.CORPUS_DIR.resolve().is_relative_to(install), module.CORPUS_DIR

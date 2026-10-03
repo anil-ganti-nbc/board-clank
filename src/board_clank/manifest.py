@@ -66,7 +66,7 @@ def build_manifest() -> dict[str, Any]:
             "domain": "SBC board/vendor inventory and novelty (first-party PRODUCT plane)",
             "operator": "anil-ganti-nbc",
         },
-        "architecture": {"python": ">=3.11", "storage": "sqlite"},
+        "architecture": {"python": ">=3.12", "storage": "sqlite"},
         "capabilities": [
             "discovery",
             "identity",
@@ -108,7 +108,7 @@ def build_manifest() -> dict[str, Any]:
             },
             "replay": {
                 "state": "active",
-                "evidence": "processed_run_receipts idempotency proven across eight vendors",
+                "evidence": "versioned semantic input receipts authenticate replay across eight vendors; legacy unverifiable receipts refuse replay",
             },
             "deployment": {
                 "state": "unknown_or_unverified",

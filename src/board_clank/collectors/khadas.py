@@ -172,6 +172,13 @@ def _configuration_blocks(product):
     return {m[1].lower(): content[m.end():matches[i+1].start() if i+1<len(matches) else len(content)] for i,m in enumerate(matches)}
 
 
+def _cpu_evidence(html):
+    """Retain labelled processor clauses, including unknown/ambiguous evidence."""
+    blocks = re.findall(r'<(?:p|li|tr)\b[^>]*>(.*?)</(?:p|li|tr)>', html, re.S | re.I) or [html]
+    return sorted({text(block) for block in blocks
+                   if re.search(r'\b(?:CPU|SoC|processor|SBC|Cortex)\b', text(block), re.I)})
+
+
 def parse_product_html(html, *, page_url, observed_at, marketing=None):
     url = official_url(page_url)
     product = product_data(html, url)
@@ -183,8 +190,10 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
         raise CollectorError('product lacks matching current family/marketing evidence')
     description = text(product['description'])
     candidates = silicon(description)
+    cpu_evidence = _cpu_evidence(product['description'])
     if not candidates:
         candidates = silicon(marketing['description'])
+        cpu_evidence = sorted(set(cpu_evidence + _cpu_evidence(marketing['description'])))
     vendor, soc = candidates[0] if len(candidates)==1 else (UNKNOWN, UNKNOWN)
     blocks = _configuration_blocks(product)
     selections = {}
@@ -221,7 +230,9 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
             wireless=wifi[0] if len(set(wifi))==1 else UNKNOWN,
             bundle=bundle, sku=item.get('sku') or UNKNOWN)
         evidence = {'selections': chosen, 'sku': item.get('sku'), 'price': item.get('price'),
-                    'stock': item.get('inventory', {}).get('status', UNKNOWN), 'visible': item.get('isVisible')}
+                    'stock': item.get('inventory', {}).get('status', UNKNOWN), 'visible': item.get('isVisible'),
+                    'cpu_evidence': cpu_evidence,
+                    'soc_candidates': sorted(f'{v}:{slugify(s)}' for v,s in candidates)}
         projection['items'].append(evidence)
         if not item.get('isVisible', False):
             continue

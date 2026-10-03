@@ -1,6 +1,6 @@
 {
   "architecture": {
-    "python": ">=3.11",
+    "python": ">=3.12",
     "storage": "sqlite"
   },
   "backup_restore": {
@@ -48,7 +48,7 @@
       "state": "active"
     },
     "replay": {
-      "evidence": "processed_run_receipts idempotency proven across eight vendors",
+      "evidence": "versioned semantic input receipts authenticate replay across eight vendors; legacy unverifiable receipts refuse replay",
       "state": "active"
     },
     "scheduler": {
