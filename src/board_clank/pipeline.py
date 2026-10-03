@@ -161,29 +161,37 @@ class Pipeline:
             raise ValueError('run ID already belongs to an attempt without an accepted receipt')
         request = request.model_copy(deep=True)
         if not request.ok:
-            self.store.execute(
-                """
-                INSERT INTO collector_runs(run_id, source_key, collector_key, started_at, finished_at, status, fixture_scenario, error)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    request.run_id,
-                    request.source_key,
-                    request.collector_key,
-                    request.started_at,
-                    _now(),
-                    "failed",
-                    request.fixture_scenario,
-                    request.error,
-                ),
-            )
-            self.store.execute(
-                "INSERT INTO run_errors(run_id, source_key, message, created_at) VALUES (?, ?, ?, ?)",
-                (request.run_id, request.source_key, canonical_json({
-                    'format': 'collector-failure-v1', 'error': request.error or 'collector failed',
-                    'diagnostics': request.diagnostics}) if request.diagnostics else request.error or 'collector failed', _now()),
-            )
-            self.store.commit()
+            # Serialize the full diagnostic before any durable write. Both audit
+            # rows then commit together, or neither survives an insert failure.
+            message = (canonical_json({
+                'format': 'collector-failure-v1', 'error': request.error or 'collector failed',
+                'diagnostics': request.diagnostics}) if request.diagnostics else request.error or 'collector failed')
+            try:
+                self.store.begin()
+                self.store.execute(
+                    """
+                    INSERT INTO collector_runs(run_id, source_key, collector_key, started_at, finished_at, status, fixture_scenario, error)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        request.run_id,
+                        request.source_key,
+                        request.collector_key,
+                        request.started_at,
+                        _now(),
+                        "failed",
+                        request.fixture_scenario,
+                        request.error,
+                    ),
+                )
+                self.store.execute(
+                    "INSERT INTO run_errors(run_id, source_key, message, created_at) VALUES (?, ?, ?, ?)",
+                    (request.run_id, request.source_key, message, _now()),
+                )
+                self.store.commit()
+            except Exception:
+                self.store.rollback()
+                raise
             return RunResult(
                 run_id=request.run_id,
                 status="failed",

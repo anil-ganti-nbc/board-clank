@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from board_clank._version import EXPECTED_SCHEMA_VERSION
@@ -78,6 +79,68 @@ def _user_tables(con: sqlite3.Connection) -> list[str]:
     return [row[0] for row in rows]
 
 
+def _quoted(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _table_structure(con: sqlite3.Connection, table: str) -> dict[str, object]:
+    """Read material structure; ignore physical column order and SQLite FK ids."""
+    columns = {
+        row[1]: (str(row[2]).upper(), row[3], row[4], row[5])
+        for row in con.execute(f"PRAGMA table_info({_quoted(table)})")
+    }
+    foreign_keys: dict[int, list[tuple[object, ...]]] = {}
+    for row in con.execute(f"PRAGMA foreign_key_list({_quoted(table)})"):
+        foreign_keys.setdefault(row[0], []).append(tuple(row)[1:])
+    keys = {tuple(sorted(group)) for group in foreign_keys.values()}
+    indexes = {}
+    for row in con.execute(f"PRAGMA index_list({_quoted(table)})"):
+        columns_in_key = tuple(
+            (part[2], part[3], part[4])
+            for part in con.execute(f"PRAGMA index_xinfo({_quoted(row[1])})")
+            if part[5]
+        )
+        indexes[row[1]] = (row[2], row[3], row[4], columns_in_key)
+    sql = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+    return {"columns": columns, "foreign_keys": keys, "indexes": indexes,
+            "autoincrement": bool(sql and "AUTOINCREMENT" in str(sql[0]).upper())}
+
+
+@lru_cache(maxsize=1)
+def _expected_structure() -> dict[str, dict[str, object]]:
+    # Build the packaged v3 contract in memory. No target Store or migration is invoked.
+    con = sqlite3.connect(":memory:")
+    try:
+        con.executescript(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+        if set(_user_tables(con)) != set(EXPECTED_TABLES):
+            raise ValueError("packaged schema table contract is inconsistent")
+        return {table: _table_structure(con, table) for table in EXPECTED_TABLES}
+    finally:
+        con.close()
+
+
+def _structural_issues(con: sqlite3.Connection) -> list[str]:
+    issues = []
+    for table, expected in _expected_structure().items():
+        actual = _table_structure(con, table)
+        for column, shape in expected["columns"].items():
+            if actual["columns"].get(column) != shape:
+                issues.append(f"{table}.{column}: required column/type/nullability/default/key differs")
+        if not expected["foreign_keys"].issubset(actual["foreign_keys"]):
+            issues.append(f"{table}: required foreign-key contract differs")
+        if expected["autoincrement"] != actual["autoincrement"]:
+            issues.append(f"{table}: required row-id allocation differs")
+        actual_indexes = set(actual["indexes"].values())
+        for name, shape in expected["indexes"].items():
+            # Constraint autoindex names are SQLite implementation details. Explicit
+            # canonical indexes retain their names as well as their material keys.
+            if (shape[1] in ("pk", "u") and shape not in actual_indexes) or (
+                shape[1] == "c" and actual["indexes"].get(name) != shape
+            ):
+                issues.append(f"{table}.{name}: required index/uniqueness differs")
+    return issues
+
+
 def inspect_compatibility(con: sqlite3.Connection) -> CompatibilityReport:
     try:
         check = con.execute("PRAGMA quick_check").fetchone()
@@ -150,6 +213,22 @@ def inspect_compatibility(con: sqlite3.Connection) -> CompatibilityReport:
             "marker at expected version but expected tables are missing",
             observed_version=observed,
             missing_tables=missing,
+            present_tables=tables,
+        )
+    try:
+        issues = _structural_issues(con)
+    except (sqlite3.Error, OSError, ValueError) as exc:
+        return CompatibilityReport(
+            CompatibilityState.UNKNOWN,
+            f"schema structure could not be verified: {exc}",
+            observed_version=observed,
+            present_tables=tables,
+        )
+    if issues:
+        return CompatibilityReport(
+            CompatibilityState.PARTIAL,
+            "schema-v3 structure differs: " + "; ".join(issues[:10]),
+            observed_version=observed,
             present_tables=tables,
         )
     return CompatibilityReport(

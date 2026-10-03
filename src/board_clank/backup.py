@@ -249,6 +249,10 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
     if {table: counts[table] for table in coverage['verified_tables']} != metadata["row_counts"]:
         raise BackupError("backup row counts diverge from metadata")
     observed = inspect_path(backup_path)
+    if observed.state.name != "COMPATIBLE":
+        raise BackupError(
+            f"backup schema is not compatible ({observed.state.value}): {observed.reason}"
+        )
     return {
         "verified": True,
         "sha256": digest,
