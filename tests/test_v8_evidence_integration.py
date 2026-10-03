@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from board_clank.backup import create_backup, restore_backup, sha256_file
+from board_clank.backup import (
+    BackupError, create_backup, durable_state_snapshot, restore_backup, sha256_file, verify_backup,
+)
 from board_clank.cli import main
 from board_clank.collectors import get_adapter
 from board_clank.collectors.radxa_documentation import (
@@ -151,3 +153,99 @@ def test_reference_diagnostics_cannot_close_any_product_condition(store):
     for run, html in (("reference-bad", HTML.replace("id=hardware-design", "id=wrong")), ("reference-good", HTML)):
         accept_documentation(store, html, run_id=run, observed_at=OBS)
         assert [tuple(row) for row in store.all("SELECT * FROM diagnostic_conditions WHERE source_key='pine64-product'")] == before
+
+
+@pytest.mark.parametrize("forged", ["documentation-plane", "mixed-source", "durable-plane", "durable-authority", "missing-row", "registered-state", "unknown-source"])
+def test_generic_source_and_plane_consistency_fail_before_all_writes(store, forged):
+    request = get_adapter("radxa-product").collect("invalid-source-binding", OBS)
+    if forged == "documentation-plane":
+        request.observations[0].plane = SourcePlane.DOCUMENTATION
+    elif forged == "mixed-source":
+        request.observations[0].source_key = "orange-pi-product"
+    elif forged == "durable-plane":
+        store.execute("UPDATE sources SET plane='DOCUMENTATION' WHERE source_key='radxa-product'")
+        request.observations[0].plane = SourcePlane.DOCUMENTATION
+    elif forged == "durable-authority":
+        store.execute("UPDATE sources SET authority='UNVERIFIED' WHERE source_key='radxa-product'")
+    elif forged == "missing-row":
+        store.execute("DELETE FROM sources WHERE source_key='radxa-product'")
+    elif forged == "registered-state":
+        store.execute("UPDATE sources SET registered_state='UNREGISTERED' WHERE source_key='radxa-product'")
+    else:
+        request.source_key = "unknown-product"
+        for draft in request.observations:
+            draft.source_key = request.source_key
+    store.commit()
+    before = snapshot(store)
+    with pytest.raises(ValueError):
+        Pipeline(store).accept_run(request)
+    assert snapshot(store) == before
+    request.ok = False  # failed attempts and receipt paths cannot bypass source validation
+    with pytest.raises(ValueError):
+        Pipeline(store).accept_run(request)
+    assert snapshot(store) == before
+
+
+def test_unregistered_legacy_fixtures_require_explicit_narrow_entry(store):
+    from board_clank.fixtures import load_scenario, scenario_to_request
+    pipeline = Pipeline(store)
+    for scenario in ("E", "F", "M"):
+        request = scenario_to_request(load_scenario(scenario))[-1]
+        before = snapshot(store)
+        with pytest.raises(ValueError, match="unregistered source"):
+            pipeline.accept_run(request)
+        assert snapshot(store) == before
+        assert pipeline.accept_fixture_run(request).status == "accepted"
+    request = scenario_to_request(load_scenario("F"))[0]
+    request.run_id = "fixture-forgery"
+    request.fixture_scenario = "E"
+    before = snapshot(store)
+    with pytest.raises(ValueError, match="fixture scenario"):
+        pipeline.accept_fixture_run(request)
+    assert snapshot(store) == before
+    request.fixture_scenario = "F"
+    request.source_key = "arbitrary-documentation"
+    for draft in request.observations:
+        draft.source_key = request.source_key
+    with pytest.raises(ValueError, match="unregistered source"):
+        pipeline.accept_fixture_run(request)
+    assert snapshot(store) == before
+
+
+def test_backup_metadata_occurrences_and_legacy_v1_coverage(store, db_path, tmp_path):
+    seed_eight(store)
+    accept_documentation(store, HTML, run_id="backup-reference", observed_at=OBS)
+    backup = create_backup(db_path, tmp_path / "backup", name="coverage")
+    count = store.count("observation_occurrences")
+    assert count > 7 and backup.metadata["row_counts"]["observation_occurrences"] == count
+    assert "observation_occurrences" in backup.metadata["durable_tables"]
+    verified = verify_backup(backup.database_path, backup.metadata_path)
+    assert verified["metadata_coverage"] == "COMPLETE" and verified["unverified_tables"] == []
+    assert "observation_occurrences" in durable_state_snapshot(db_path)
+    restored = restore_backup(backup.database_path, backup.metadata_path, tmp_path / "current.db", activate=True)
+    assert restored["metadata_coverage"] == "COMPLETE"
+    assert restored["row_counts"]["observation_occurrences"] == count
+    assert restored["durable_state"] == durable_state_snapshot(db_path)
+    legacy = json.loads(backup.metadata_path.read_text(encoding="utf-8"))
+    legacy["row_counts"].pop("observation_occurrences")
+    legacy["durable_tables"].remove("observation_occurrences")
+    legacy_path = tmp_path / "legacy-v1.meta.json"
+    legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
+    verified = verify_backup(backup.database_path, legacy_path)
+    assert verified["metadata_coverage"] == "LEGACY_PARTIAL"
+    assert verified["unverified_tables"] == ["observation_occurrences"]
+    legacy_restore = restore_backup(backup.database_path, legacy_path, tmp_path / "legacy-restored.db", activate=True)
+    assert legacy_restore["metadata_coverage"] == "LEGACY_PARTIAL"
+    assert legacy_restore["unverified_tables"] == ["observation_occurrences"]
+    assert durable_state_snapshot(tmp_path / "legacy-restored.db") == durable_state_snapshot(db_path)
+    legacy["row_counts"].pop("boards")  # only the genuine old v1 coverage set is accepted
+    legacy["durable_tables"].remove("boards")
+    legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
+    with pytest.raises(BackupError, match="coverage"):
+        verify_backup(backup.database_path, legacy_path)
+    wrong = dict(backup.metadata)
+    wrong["row_counts"] = dict(wrong["row_counts"], observation_occurrences=count + 1)
+    wrong_path = tmp_path / "wrong-occurrences.meta.json"
+    wrong_path.write_text(json.dumps(wrong), encoding="utf-8")
+    with pytest.raises(BackupError, match="row counts"):
+        verify_backup(backup.database_path, wrong_path)

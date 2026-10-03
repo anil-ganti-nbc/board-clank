@@ -4,3 +4,6 @@ iniconfig==2.1.0
 packaging==25.0
 pluggy==1.6.0
 pytest==8.4.2
+
+# Archive-built wheel qualification backend; installed before hermetic network denial.
+setuptools==83.0.0

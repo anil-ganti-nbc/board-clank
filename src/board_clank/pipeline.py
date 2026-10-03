@@ -74,17 +74,62 @@ class Pipeline:
     def __init__(self, store: Store) -> None:
         self.store = store
 
-    def accept_run(self, request: CollectorRunRequest) -> RunResult:
-        # Registered supporting sources belong to their own reference admission.
-        # Reject before receipt lookup or any writes, even with a forged PRODUCT draft.
-        from board_clank.sources import supporting_sources
+    def accept_fixture_run(self, request: CollectorRunRequest) -> RunResult:
+        """Explicit synthetic scenario path; never grants authority to a registered source.
 
-        declared_supporting = {source.source_key for source in supporting_sources()}
+        Only the three historical unregistered test sources are allowed. Their
+        name/plane/collector/scenario binding is fixed, with no generic unknown-source bypass.
+        """
+        fixture_bindings = {
+            "pine64-commerce": ("E", SourcePlane.COMMERCE),
+            "radxa-docs": ("F", SourcePlane.DOCUMENTATION),
+            "third-party-discovery": ("M", SourcePlane.DISCOVERY_ONLY),
+        }
+        binding = fixture_bindings.get(request.source_key)
+        if binding is not None:
+            scenario, plane = binding
+            if request.collector_key != "fixture" or request.fixture_scenario != scenario:
+                raise ValueError("unregistered source requires its explicit fixture scenario")
+            if any(draft.plane is not plane for draft in request.observations):
+                raise ValueError("fixture source plane mismatch")
+        return self._accept_run(request, fixture_source=request.source_key if binding else None)
+
+    def accept_run(self, request: CollectorRunRequest) -> RunResult:
+        return self._accept_run(request)
+
+    def _validate_admission_source(self, request: CollectorRunRequest, *, fixture_source: str | None) -> None:
+        from board_clank.sources import load_sources
+
+        declared = {row.source_key: row for row in load_sources()}
         source_keys = {request.source_key, *(draft.source_key for draft in request.observations)}
-        for source_key in source_keys:
-            source = self.store.one("SELECT authority FROM sources WHERE source_key=?", (source_key,))
-            if source_key in declared_supporting or (source is not None and source["authority"] == SourceAuthority.FIRST_PARTY_SUPPORTING.value):
+        # Dedicated supporting namespaces remain blocked even with a forged DB row.
+        for key in source_keys:
+            row = self.store.one("SELECT * FROM sources WHERE source_key=?", (key,))
+            trusted = declared.get(key)
+            if ((trusted is not None and trusted.authority is SourceAuthority.FIRST_PARTY_SUPPORTING)
+                    or (row is not None and row["authority"] == SourceAuthority.FIRST_PARTY_SUPPORTING.value)):
                 raise ValueError("supporting evidence cannot enter PRODUCT admission")
+        if any(draft.source_key != request.source_key for draft in request.observations):
+            raise ValueError("draft source key must match request source")
+        trusted = declared.get(request.source_key)
+        durable = self.store.one("SELECT * FROM sources WHERE source_key=?", (request.source_key,))
+        if trusted is None:
+            if request.source_key != fixture_source or durable is not None:
+                raise ValueError("unregistered source cannot enter PRODUCT admission")
+            return
+        if (trusted.registered_state != "REGISTERED" or trusted.placeholder or trusted.out_of_scope
+                or trusted.plane is not SourcePlane.PRODUCT
+                or trusted.authority is not SourceAuthority.FIRST_PARTY_CANONICAL):
+            raise ValueError("source does not have canonical PRODUCT authority")
+        if durable is None or any(durable[field] != getattr(trusted, field) for field in
+                                 ("vendor", "plane", "authority", "registered_state")):
+            raise ValueError("registered source provenance differs from trusted registry")
+        if any(draft.plane is not trusted.plane for draft in request.observations):
+            raise ValueError("draft plane must match registered source plane")
+
+    def _accept_run(self, request: CollectorRunRequest, *, fixture_source: str | None = None) -> RunResult:
+        # Authority validation precedes receipt lookup, failed-run writes and all mutations.
+        self._validate_admission_source(request, fixture_source=fixture_source)
         existing = self.store.one(
             "SELECT run_id FROM processed_run_receipts WHERE run_id = ?",
             (request.run_id,),
@@ -574,6 +619,12 @@ class Pipeline:
         baseline: bool,
     ) -> list[EventRecord]:
         events: list[EventRecord] = []
+        # Catalogue inventory first discovered after source baseline is still
+        # pre-existing evidence, not a dated market launch. Silence births only;
+        # genuine transitions on already known entities retain their own policy.
+        birth_silent = baseline or draft.historical_known or draft.novelty.novelty_status in {
+            NoveltyStatus.EXISTING_PRODUCT, NoveltyStatus.HISTORICAL,
+        }
         if kind is EntityKind.BOARD:
             events.append(
                 self._make_event(
@@ -584,7 +635,7 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
+                    birth_silent,
                     {"plane": draft.plane.value, "page_url": draft.page_url},
                 )
             )
@@ -612,7 +663,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"plane": draft.plane.value},
                     )
                 )
@@ -627,10 +678,10 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
+                    birth_silent,
                     {
                         "plane": draft.plane.value,
-                        "audit": "baseline-inventory" if baseline else "live-admission",
+                        "audit": "baseline-inventory" if baseline else ("known-inventory" if birth_silent else "live-admission"),
                     },
                 )
             )
@@ -645,7 +696,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"revision_kind": identity.revision_kind.value, "revision_token": identity.revision_token},
                     )
                 )
@@ -659,8 +710,8 @@ class Pipeline:
                     identity,
                     UNKNOWN,
                     payload_hash,
-                    baseline,
-                    {**draft.variant.as_dict(), "audit": "baseline-inventory" if baseline else "live-admission"},
+                    birth_silent,
+                    {**draft.variant.as_dict(), "audit": "baseline-inventory" if baseline else ("known-inventory" if birth_silent else "live-admission")},
                 )
             )
             if draft.variant.ram != UNKNOWN:
@@ -673,7 +724,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"ram": draft.variant.ram},
                     )
                 )
@@ -687,7 +738,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"storage": draft.variant.storage},
                     )
                 )
@@ -701,7 +752,7 @@ class Pipeline:
                         identity,
                         UNKNOWN,
                         payload_hash,
-                        baseline,
+                        birth_silent,
                         {"region": draft.variant.region},
                     )
                 )

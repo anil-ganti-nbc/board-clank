@@ -29,9 +29,11 @@ the supporting collector. Its existing explicit isolated qualification module
 remains the entry point. A supporting source key in either a generic request
 or one of its drafts fails before any writes. The firewall checks declared
 supporting keys as well as durable supporting authority, so a forged PRODUCT
-plane or changed durable authority cannot grant PRODUCT admission. Existing
-unregistered Foundation-0 fixture semantics are retained; the new registered
-source does not broaden that historical fixture contract.
+plane or changed durable authority cannot grant PRODUCT admission. Historical E/F/M synthetic scenario semantics remain available only through
+an explicit fixture admission method, with fixed source, plane, collector and
+scenario bindings. Generic unknown sources refuse; fixture mode cannot bypass
+registered-source authority. Every draft source must match its request source,
+and registered planes and durable authority must match the trusted registry.
 
 ## Evidence boundaries
 
@@ -60,7 +62,11 @@ Todd's existing parser, ambiguity, raw-response-byte, partial-failure and typed
 event proofs remain in the full suite. Schema and migrations are unchanged.
 
 The merge resolves package-data semantically by retaining FriendlyELEC,
-Khadas and documentation fixture assets, and explicitly packages the manifest.
+Khadas and documentation fixture assets, and explicitly packages the manifest. Review rework packages all eight PRODUCT
+corpora (manifest and HTML) and the documentation provenance manifest. An exact
+Git-archive wheel is built and exercised in an isolated process, including all
+eight offline adapters, the documentation module, replay, observer and restore;
+repository fixture and editable import fallbacks are forbidden.
 Both CI workflow branch triggers include `integration-v8-evidence-plane` so the
 exact pushed candidate runs hermetic tests, non-root container checks and Fleet
 Laws. Qualification evidence is retained outside this worktree under
@@ -69,3 +75,31 @@ Laws. Qualification evidence is retained outside this worktree under
 No final acceptance is asserted here. Full pytest process evidence, isolated
 live reference receipts and exact-SHA CI must be followed by independent review
 and canonical ClankOps gates before this Mission can complete.
+
+
+## Independent-review rework
+
+The exact `2531db26b9edac3fed097074f91ccd917488e7c6` candidate received
+REQUEST_CHANGES. Its original qualification receipts remain historical. The
+rework addresses wheel corpus coverage, generic source/plane consistency,
+occurrence coverage in standard backup verification, and honest decoded-text
+versus raw-response hashes. No finding was waived.
+
+New v1 backup metadata enumerates `observation_occurrences`; standard state
+snapshots include it. Genuine older v1 metadata lacking only that table remains
+restorable, with explicit `LEGACY_PARTIAL` metadata coverage and an unverified
+occurrence-table declaration. SHA-256/integrity still protect the full image.
+A reduced metadata list omitting any other durable table is rejected.
+
+`parse_hardware` now exposes `decoded_text_sha256`, while HTTP fetch metadata
+retains `raw_sha256` computed before decoding. The decoded presentation hash is
+excluded from semantic diagnostic identity. BOM and non-UTF8 regressions prove
+raw-byte preservation without overclaiming the parser hash.
+
+The supervisor also authorized an inherited novelty repair under the standing
+`FIRST_SEEN != novelty` law: `_birth_events` uses a local silence decision for
+EXISTING_PRODUCT, HISTORICAL, or explicitly historical inventory. This silences
+delayed first-observed Board, revision and variant births after source baseline.
+Source-baseline state and actual existing-entity transitions remain unchanged;
+`UNKNOWN` chronology remains unknown. Eight actual adapter corpora and explicit
+variant/revision stress cases test delayed inventory and genuine live transitions.

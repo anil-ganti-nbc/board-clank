@@ -51,6 +51,7 @@ DURABLE_TABLES = (
     "board_revisions",
     "board_variants",
     "canonical_observations",
+    "observation_occurrences",
     "current_entity_observations",
     "collector_runs",
     "processed_run_receipts",
@@ -204,6 +205,22 @@ def _read_metadata(meta_path: Path) -> dict[str, Any]:
     return metadata
 
 
+def _metadata_coverage(metadata: dict[str, Any]) -> dict[str, Any]:
+    """v1 artifacts before occurrence enumeration remain valid, with explicit partial coverage."""
+    current = set(DURABLE_TABLES)
+    legacy = current - {"observation_occurrences"}
+    counts = metadata["row_counts"]
+    if not isinstance(counts, dict) or set(counts) not in (current, legacy):
+        raise BackupError("backup metadata durable-table coverage is incomplete or unknown")
+    tables = metadata.get("durable_tables")
+    if tables is not None and (not isinstance(tables, list) or set(tables) != set(counts)
+                               or len(tables) != len(set(tables))):
+        raise BackupError("backup metadata durable_tables differs from row_counts")
+    return {"metadata_coverage": "COMPLETE" if set(counts) == current else "LEGACY_PARTIAL",
+            "verified_tables": [table for table in DURABLE_TABLES if table in counts],
+            "unverified_tables": [table for table in DURABLE_TABLES if table not in counts]}
+
+
 def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, Any]:
     """Validate metadata completeness, SHA-256 and integrity. Read-only."""
     backup_path, meta_path = Path(backup_path), Path(meta_path)
@@ -223,7 +240,8 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
         con.close()
     if integrity != "ok":
         raise BackupError(f"backup failed integrity check: {integrity}")
-    if counts != metadata["row_counts"]:
+    coverage = _metadata_coverage(metadata)
+    if {table: counts[table] for table in coverage["verified_tables"]} != metadata["row_counts"]:
         raise BackupError("backup row counts diverge from metadata")
     observed = inspect_path(backup_path)
     return {
@@ -233,6 +251,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
         "schema_version": observed.observed_version,
         "row_counts": counts,
         "metadata": metadata,
+        **coverage,
     }
 
 
@@ -295,7 +314,7 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
     if integrity != "ok":
         staging.unlink(missing_ok=True)
         raise BackupError(f"restored staging database failed integrity check: {integrity}")
-    if counts != metadata["row_counts"]:
+    if {table: counts[table] for table in verification["verified_tables"]} != metadata["row_counts"]:
         staging.unlink(missing_ok=True)
         raise BackupError("restored staging row counts diverge from metadata")
     restored_digest = sha256_file(staging)
@@ -315,6 +334,9 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
         "backup_code_revision": metadata["code_revision"],
         "row_counts": counts,
         "durable_state": durable_state_snapshot(staging),
+        "metadata_coverage": verification["metadata_coverage"],
+        "verified_tables": verification["verified_tables"],
+        "unverified_tables": verification["unverified_tables"],
     }
     if activate:
         if target_path.exists():

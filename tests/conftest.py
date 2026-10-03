@@ -29,4 +29,4 @@ def pipeline(store: Store) -> Pipeline:
 
 def run_scenario(pipeline: Pipeline, letter: str):
     payload = load_scenario(letter)
-    return [pipeline.accept_run(req) for req in scenario_to_request(payload)]
+    return [pipeline.accept_fixture_run(req) for req in scenario_to_request(payload)]

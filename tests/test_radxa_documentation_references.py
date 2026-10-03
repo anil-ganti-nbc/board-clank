@@ -251,6 +251,44 @@ def test_live_capture_preserves_exact_response_bytes_and_hash_on_windows(tmp_pat
     assert destination.stat().st_size == meta['size']
 
 
+@pytest.mark.parametrize("charset", ["utf-8-sig", "windows-1252"])
+def test_decoded_text_hash_does_not_claim_raw_byte_provenance(tmp_path, monkeypatch, seeded, charset):
+    import hashlib
+    from email.message import Message
+    decoded = HTML.replace('<body>', '<body><nav>café</nav>')
+    raw = decoded.encode(charset, errors="xmlcharrefreplace")
+    headers = Message()
+    headers['Content-Type'] = 'text/html; charset=' + charset
+    class Response:
+        url = DOCS_URL
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def read(self, limit): return raw
+    response = Response()
+    response.headers = headers
+    class Opener:
+        def open(self, *args, **kwargs): return response
+    monkeypatch.setattr('board_clank.collectors.radxa_documentation.build_opener', lambda *args: Opener())
+    destination = tmp_path / 'encoded-response.html'
+    text, meta = fetch_page(DOCS_URL, capture_to=destination)
+    assert destination.read_bytes() == raw
+    assert meta['raw_sha256'] == hashlib.sha256(raw).hexdigest()
+    claims, info = parse_hardware(text)
+    assert len(claims) == 7 and 'raw_body_hash' not in info
+    assert info['decoded_text_sha256'] == hashlib.sha256(text.encode('utf-8')).hexdigest()
+    assert info['decoded_text_sha256'] != meta['raw_sha256']
+    assert info['semantic_hash'] == parse_hardware(HTML)[1]['semantic_hash']
+    _accept(seeded, 'raw-distinct', text)
+    assert _accept(seeded, 'raw-original', HTML)['events'] == []
+    bad = text.replace('id=hardware-design', 'id=wrong')
+    _accept(seeded, 'encoded-unresolved', bad)
+    state = seeded.one('SELECT state_hash,transition_count FROM diagnostic_conditions WHERE source_key=?', (SOURCE_KEY,))
+    _accept(seeded, 'original-unresolved', HTML.replace('id=hardware-design', 'id=wrong'))
+    later = seeded.one('SELECT state_hash,transition_count FROM diagnostic_conditions WHERE source_key=?', (SOURCE_KEY,))
+    assert tuple(state) == tuple(later)  # presentation hash is excluded from diagnostic identity
+
+
 @pytest.mark.parametrize("assignment",["vendor='orange-pi'","plane='PRODUCT'","enabled=1","promotion_state='PROMOTED'","authority='UNVERIFIED'"])
 def test_source_validation_never_repairs_or_bypasses_unapproved_state(seeded: Store,assignment: str):
     seeded.execute(f"UPDATE sources SET {assignment} WHERE source_key=?",(SOURCE_KEY,))

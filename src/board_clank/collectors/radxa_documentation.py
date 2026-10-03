@@ -220,7 +220,7 @@ def parse_hardware(html: str, *, page_url: str = DOCS_URL) -> tuple[list[Revisio
         "model": MODEL, "errors": sorted(set(p.errors)), "ignored_models": p.ignored_models,
         "artifact_crosslinks": sorted(set(p.panel_artifacts)),
         "semantic_hash": content_hash([c.payload() for c in sorted(claims, key=lambda c: c.hardware_label)]),
-        "raw_body_hash": hashlib.sha256(html.encode("utf-8")).hexdigest(),
+        "decoded_text_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
     }
     return claims, info
 
@@ -313,7 +313,7 @@ def _diagnostic(store: Store, run_id: str, observed_at: str, info: dict, unresol
     key = "reference-diagnostic:" + SOURCE_KEY
     row = store.one("SELECT * FROM diagnostic_conditions WHERE condition_key=?", (key,))
     if unresolved:
-        state = content_hash({k: v for k, v in info.items() if k != "raw_body_hash"})
+        state = content_hash({k: v for k, v in info.items() if k != "decoded_text_sha256"})
         payload = canonical_json(info)
         if row is None:
             store.execute(
