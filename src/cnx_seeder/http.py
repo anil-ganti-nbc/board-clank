@@ -6,6 +6,7 @@ import hashlib
 import ipaddress
 import json
 import socket
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -374,7 +375,23 @@ class Fetcher:
             self.history.append(record)
             return [record]
         if decision == "robots_unavailable":
-            return []
+            moment = self.clock.now
+            record = FetchRecord(
+                url=url,
+                attempt=1,
+                fetched_at=stamp(moment),
+                http_status=None,
+                body=b"",
+                content_sha256=None,
+                byte_length=0,
+                elapsed_ms=0,
+                robots_decision="robots_unavailable",
+                outcome="blocked",
+                error="robots_unavailable",
+                final_url=url,
+            )
+            self.history.append(record)
+            return [record]
         records: list[FetchRecord] = []
         for attempt in range(1, MAX_RETRIES + 2):
             record = self._once(url, robots_decision="allow", skip_robots=False)
@@ -403,6 +420,8 @@ class Fetcher:
         last = records[-1]
         if last.http_status in _REDIRECT_STATUSES and last.location and last.error is None:
             nxt = urljoin(url, last.location)
+            if urlsplit(url).scheme == "https" and urlsplit(nxt).scheme == "http":
+                return records + [self._refused(nxt, "https_downgrade")]
             return records + self._follow(nxt, left=left - 1, seen=seen)
         return records
 
@@ -453,23 +472,120 @@ class FixtureTransport(Transport):
         )
 
 
+class _DeadlineFile:
+    """File object that re-arms the remaining wall-clock budget on every read."""
+
+    def __init__(self, raw, sock: "_DeadlineSocket") -> None:
+        self._raw = raw
+        self._sock = sock
+
+    def read(self, *args, **kwargs):
+        self._sock._arm()
+        return self._raw.read(*args, **kwargs)
+
+    def readline(self, *args, **kwargs):
+        self._sock._arm()
+        return self._raw.readline(*args, **kwargs)
+
+    def readinto(self, *args, **kwargs):
+        self._sock._arm()
+        return self._raw.readinto(*args, **kwargs)
+
+    def close(self) -> None:
+        return self._raw.close()
+
+    def flush(self) -> None:
+        return self._raw.flush()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = self.readline()
+        if not line:
+            raise StopIteration
+        return line
+
+    @property
+    def closed(self):
+        return self._raw.closed
+
+
+class _DeadlineSocket:
+    """Socket wrapper whose timeout is the remaining request deadline."""
+
+    def __init__(self, sock, deadline: float) -> None:
+        self._sock = sock
+        self._deadline = deadline
+
+    def _remain(self) -> float:
+        left = self._deadline - time.monotonic()
+        if left <= 0:
+            raise TimeoutError("timeout")
+        return left
+
+    def _arm(self) -> None:
+        self._sock.settimeout(self._remain())
+
+    def __getattr__(self, name: str):
+        return getattr(self._sock, name)
+
+    def recv(self, *args, **kwargs):
+        self._arm()
+        return self._sock.recv(*args, **kwargs)
+
+    def recv_into(self, *args, **kwargs):
+        self._arm()
+        return self._sock.recv_into(*args, **kwargs)
+
+    def send(self, *args, **kwargs):
+        self._arm()
+        return self._sock.send(*args, **kwargs)
+
+    def sendall(self, *args, **kwargs):
+        self._arm()
+        return self._sock.sendall(*args, **kwargs)
+
+    def makefile(self, *args, **kwargs):
+        self._arm()
+        return _DeadlineFile(self._sock.makefile(*args, **kwargs), self)
+
+    def close(self) -> None:
+        return self._sock.close()
+
+    def getpeername(self):
+        return self._sock.getpeername()
+
+    def settimeout(self, value) -> None:
+        return self._sock.settimeout(value)
+
+
 def _pinned_get(dest: Destination, headers: dict[str, str], connect) -> HttpResponse:
     """Connect to the validated address. http.client does not follow redirects."""
     import http.client
     import ssl
 
-    sock = connect((dest.pin_ip, dest.port), TIMEOUT_SECONDS)
+    deadline = time.monotonic() + TIMEOUT_SECONDS
+    remain = deadline - time.monotonic()
+    if remain <= 0:
+        raise TimeoutError("timeout")
+    sock = connect((dest.pin_ip, dest.port), remain)
     conn: http.client.HTTPConnection | None = None
     try:
         peer = sock.getpeername()[0]
         if ip_blocked(peer) or not _same_ip(peer, dest.pin_ip):
             raise DestinationRejected("private_address")
+        remain = deadline - time.monotonic()
+        if remain <= 0:
+            raise TimeoutError("timeout")
+        sock.settimeout(remain)
         if dest.scheme == "https":
             sock = ssl.create_default_context().wrap_socket(sock, server_hostname=dest.hostname)
+        sock = _DeadlineSocket(sock, deadline)
         if dest.scheme == "https":
-            conn = http.client.HTTPSConnection(dest.hostname, dest.port, timeout=TIMEOUT_SECONDS)
+            conn = http.client.HTTPSConnection(dest.hostname, dest.port, timeout=remain)
         else:
-            conn = http.client.HTTPConnection(dest.hostname, dest.port, timeout=TIMEOUT_SECONDS)
+            conn = http.client.HTTPConnection(dest.hostname, dest.port, timeout=remain)
         conn.sock = sock
         conn.request("GET", dest.target, headers=headers)
         response = conn.getresponse()

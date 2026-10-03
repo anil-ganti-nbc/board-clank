@@ -300,6 +300,17 @@ def test_07_false_oem_silicon(tmp_path: Path) -> None:
     lead2 = con2.execute("SELECT * FROM leads").fetchone()
     assert lead2["classification"] == "soc_vendor"
     assert lead2["qualified"] == 0
+    nxp = tmp_path / "nxp"
+    con3 = _one(
+        nxp,
+        "NXP FRDM i.MX 95 board",
+        _plain("NXP FRDM i.MX 95 board", [("https://www.nxp.com/design/frdm", "nxp")]),
+        slug="nxp",
+    )
+    lead3 = con3.execute("SELECT * FROM leads").fetchone()
+    assert lead3["classification"] == "soc_vendor"
+    assert lead3["reason_code"] == "soc_vendor"
+    assert lead3["qualified"] == 0
 
 
 def test_08_false_oem_reseller_and_distributor(tmp_path: Path) -> None:
@@ -1403,7 +1414,7 @@ _SAMPLE_PAGES = (
         "https://www.cnx-software.com/2026/08/11/nxp-frdm-imx95-pro-i-mx-95-board-features-10gbe-faster-6400-mt-s-lpddr5-memory-dual-m-2-expansion/",
         "NXP FRDM-IMX95-PRO i.MX 95 board features 10GbE, faster 6400 MT/s LPDDR5 memory",
         "nxp",
-        "board_maker",
+        "soc_vendor",
         "nxp.com",
     ),
 )
@@ -1490,7 +1501,10 @@ def test_41_article_body_picks_vendor_not_share_widgets(tmp_path: Path) -> None:
         assert lead["normalized_name"] == vendor
         assert lead["classification"] == classification
         assert lead["primary_domain"] == domain
-        if domain is None:
+        if classification == "soc_vendor":
+            assert lead["reason_code"] == "soc_vendor"
+            assert lead["qualified"] == 0
+        elif domain is None:
             assert lead["primary_url"] is None
             assert lead["qualified"] == 0
         else:
@@ -1514,8 +1528,8 @@ def test_41_article_body_picks_vendor_not_share_widgets(tmp_path: Path) -> None:
     assert lumenix["primary_domain"] == "lumenix.example"
     assert lumenix["primary_url"] == lumenix_product
     qualified = list(con.execute("SELECT * FROM qualified_candidates"))
-    assert len(qualified) >= 3
-    assert {row["normalized_name"] for row in qualified} == {"forlinx", "nxp", "lumenix"}
+    assert len(qualified) >= 2
+    assert {row["normalized_name"] for row in qualified} == {"forlinx", "lumenix"}
     assert len({row["candidate_key"] for row in qualified}) == len(qualified)
     for row in qualified:
         assert row["primary_domain"] not in PRIMARY_BLOCK
@@ -1741,6 +1755,9 @@ def test_44_connects_to_validated_ip(monkeypatch: pytest.MonkeyPatch) -> None:
             def getpeername(self) -> tuple[str, int]:
                 return ("10.0.0.1", addr[1])
 
+            def settimeout(self, _value: float) -> None:
+                return None
+
             def close(self) -> None:
                 return None
 
@@ -1777,7 +1794,7 @@ def test_44_redirect_to_private_ip(monkeypatch: pytest.MonkeyPatch) -> None:
         "https://ok.example/robots.txt": HttpResponse(
             200, b"User-agent: *\nAllow: /\n", "https://ok.example/robots.txt", content_type="text/plain"
         ),
-        start: HttpResponse(302, b"", start, content_type="text/html", location="http://127.0.0.1/secret"),
+        start: HttpResponse(302, b"", start, content_type="text/html", location="https://127.0.0.1/secret"),
     }
     calls, transport = _scripted(routes)
     records = Fetcher(transport, VirtualClock(parse_stamp(NOW))).fetch(start)
@@ -1916,6 +1933,18 @@ def test_47_stored_urls_drop_tracking_params(tmp_path: Path) -> None:
     assert "token" not in fetch["url"]
     logged = [item["url"] for item in _calls(fix)]
     assert any("utm_source=cnx" in item for item in logged)
+    run = con.execute("SELECT listing_url, article_urls_json FROM runs").fetchone()
+    for stored in [run["listing_url"], *json.loads(run["article_urls_json"])]:
+        query = parse_qs(urlsplit(stored).query)
+        assert "utm_source" not in query and "utm_medium" not in query
+        assert "token" not in query and "key" not in query and "sig" not in query
+    report = json.loads((state / "report.json").read_text(encoding="utf-8"))
+    for stored in [report["runs"][0]["listing_url"], *report["runs"][0]["article_urls"]]:
+        query = parse_qs(urlsplit(stored).query)
+        assert "utm_source" not in query
+        assert "token" not in query
+        assert "key" not in query
+        assert "sig" not in query
 
 
 def test_48_sample_fixtures_keep_skeleton_without_article_prose() -> None:
@@ -1940,3 +1969,126 @@ def test_48_sample_fixtures_keep_skeleton_without_article_prose() -> None:
     mix = (_CNX_FIXTURES / "article-01-aaeon-mix.html").read_text(encoding="utf-8")
     assert 'href="https://www.aaeon.com/en/product/detail/industrial_motherboards_mix-ptlwv1"' in mix
     assert ">product page</a>" in mix
+
+
+@pytest.mark.parametrize("status", [301, 404])
+def test_49_oem_robots_non_200_reason(tmp_path: Path, status: int) -> None:
+    extra = {
+        "https://acme.example/robots.txt": {"status": status, "body": "no", "content_type": "text/plain"},
+        "https://acme.example/": {"status": 200, "body": ACME_HOME, "content_type": "text/html"},
+        "https://acme.example/products/sbc": {"status": 200, "body": ACME_PROD, "content_type": "text/html"},
+    }
+    con = _one(
+        tmp_path,
+        "Acme Board X1 brings a new SBC",
+        _plain("Acme Board X1 brings a new SBC", ACME_LINKS),
+        extra=extra,
+    )
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    assert lead["reason_code"] == "robots_unavailable"
+    assert lead["reason_code"] in REASON_CODES
+    assert lead["qualified"] == 0
+    logged = [item["url"] for item in _calls(tmp_path / "fix")]
+    assert "https://acme.example/robots.txt" in logged
+    assert "https://acme.example/" not in logged
+    assert "https://acme.example/products/sbc" not in logged
+
+
+def test_49_oem_timeout_reason(tmp_path: Path) -> None:
+    extra = {
+        "https://acme.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://acme.example/": {"error": "timeout"},
+        "https://acme.example/products/sbc": {"error": "timeout"},
+    }
+    con = _one(
+        tmp_path,
+        "Acme Board X1 brings a new SBC",
+        _plain("Acme Board X1 brings a new SBC", ACME_LINKS),
+        extra=extra,
+    )
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    assert lead["reason_code"] == "fetch_failed"
+    assert lead["qualified"] == 0
+
+
+def test_50_https_to_http_redirect_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_connect(monkeypatch)
+    start = "https://ok.example/start"
+    insecure = "http://ok.example/insecure"
+    routes = {
+        "https://ok.example/robots.txt": HttpResponse(
+            200, b"User-agent: *\nAllow: /\n", "https://ok.example/robots.txt", content_type="text/plain"
+        ),
+        start: HttpResponse(301, b"", start, content_type="text/html", location=insecure),
+    }
+    calls, transport = _scripted(routes)
+    records = Fetcher(transport, VirtualClock(parse_stamp(NOW))).fetch(start)
+    assert records[-1].error == "https_downgrade"
+    assert insecure not in calls
+    assert all(not item.startswith("http://") for item in calls)
+
+
+def test_51_slow_drip_hits_total_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    import time
+
+    from cnx_seeder.bounds import TIMEOUT_SECONDS
+    from cnx_seeder.http import _DeadlineSocket
+
+    now = {"t": 0.0}
+    monkeypatch.setattr(time, "monotonic", lambda: now["t"])
+
+    class _Sock:
+        def settimeout(self, value: float) -> None:
+            self.timeout = value
+
+        def recv(self, _n: int) -> bytes:
+            now["t"] += TIMEOUT_SECONDS
+            return b"x"
+
+    wrapped = _DeadlineSocket(_Sock(), TIMEOUT_SECONDS)
+    assert wrapped.recv(1) == b"x"
+    with pytest.raises(TimeoutError):
+        wrapped.recv(1)
+
+
+def test_52_psl_digest_verified_at_load(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cnx_seeder import normalize
+
+    monkeypatch.setattr(normalize, "PSL_SHA256", "0" * 64)
+    with pytest.raises(RuntimeError, match="digest mismatch"):
+        normalize._load_suffixes()
+
+
+def test_53_package_data_includes_seeder_files() -> None:
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'cnx_seeder = ["data/*"]' in text
+    assert "cnx-oem-seeder" in text
+    from cnx_seeder.aliases import TABLE_PATH, load_alias_table
+    from cnx_seeder.normalize import _PSL_PATH
+
+    assert TABLE_PATH.is_file()
+    assert _PSL_PATH.is_file()
+    assert load_alias_table()
+
+
+def test_54_soc_partner_wording_is_not_reseller(tmp_path: Path) -> None:
+    body = _page(
+        "DEBIX T62P Board and SOM Board. NXP i.MX processors.",
+        [("https://www.nxp.com/products/imx", "NXP")],
+    )
+    extra = {
+        "https://debix.example/robots.txt": {"status": 200, "body": ROBOTS, "content_type": "text/plain"},
+        "https://debix.example/": {"status": 200, "body": body, "content_type": "text/html"},
+        "https://debix.example/product/t62p": {"status": 200, "body": body, "content_type": "text/html"},
+    }
+    con = _one(
+        tmp_path,
+        "DEBIX T62P-01 industrial SBC",
+        _plain("DEBIX T62P-01 industrial SBC", [("https://debix.example/product/t62p", "product page")]),
+        extra=extra,
+    )
+    lead = con.execute("SELECT * FROM leads").fetchone()
+    assert lead["classification"] != "reseller"
+    assert lead["reason_code"] != "reseller"
+    assert lead["qualified"] == 0
+    assert lead["reason_code"] in REASON_CODES

@@ -96,8 +96,17 @@ class _PublicSuffixes:
         return ".".join(labels[-(len(best) + 1) :])
 
 
+def _psl_bytes() -> bytes:
+    crlf, cr, lf = bytes([13, 10]), bytes([13]), bytes([10])
+    return _PSL_PATH.read_bytes().replace(crlf, lf).replace(cr, lf)
+
+
 def _load_suffixes() -> _PublicSuffixes:
-    return _PublicSuffixes(_PSL_PATH.read_text(encoding="utf-8"))
+    raw = _psl_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != PSL_SHA256:
+        raise RuntimeError("public suffix list digest mismatch")
+    return _PublicSuffixes(raw.decode("utf-8"))
 
 
 _SUFFIXES = _load_suffixes()

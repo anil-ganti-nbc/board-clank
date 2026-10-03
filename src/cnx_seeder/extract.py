@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 from xml.etree import ElementTree
 
 from cnx_seeder.bounds import ARTICLE_PATH_RE, LISTING_PAGE_RE
-from cnx_seeder.classify import DENYLIST
+from cnx_seeder.classify import DENYLIST, SOC_DOMAINS, SOC_NAMES
 from cnx_seeder.normalize import host_of, is_cnx_host, normalize_tokens, registrable_domain
 
 _INSTRUCTION = (
@@ -737,6 +737,8 @@ def other_manufacturer_evidence(
             token = normalize_tokens(match)
             if not token or token == subject or (subject and token[0] == subject[0]):
                 continue
+            if token in SOC_NAMES or any(ch.isdigit() for ch in token[0]):
+                continue
             listings.add(token[0])
         for name in alias_names:
             if not name or name == subject:
@@ -750,6 +752,8 @@ def other_manufacturer_evidence(
                 continue
             domain = registrable_domain(host)
             if domain == own_domain or domain in DENYLIST or _blocked_primary(domain):
+                continue
+            if domain in SOC_DOMAINS:
                 continue
             domains.add(domain)
     if len(listings) >= 2:

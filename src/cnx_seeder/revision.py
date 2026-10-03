@@ -30,6 +30,15 @@ def _resolve_git_dir(repo_root: Path) -> Path | None:
     return Path(raw) if Path(raw).is_absolute() else (repo_root / raw)
 
 
+def _common_git_dir(git_dir: Path) -> Path:
+    marker = git_dir / "commondir"
+    if not marker.is_file():
+        return git_dir
+    raw = _read_text(marker).strip()
+    path = Path(raw) if Path(raw).is_absolute() else (git_dir / raw)
+    return path.resolve()
+
+
 def _sha_from_gitdir(git_dir: Path) -> str | None:
     head_path = git_dir / "HEAD"
     if not head_path.is_file():
@@ -43,11 +52,15 @@ def _sha_from_gitdir(git_dir: Path) -> str | None:
     parts = Path(ref).parts
     if ref.startswith("/") or ".." in parts or Path(ref).is_absolute():
         return None
-    ref_file = git_dir.joinpath(*parts)
-    if ref_file.is_file():
-        value = _read_text(ref_file).strip()
-        return value if SHA_RE.fullmatch(value) else None
-    packed = git_dir / "packed-refs"
+    search = [git_dir, _common_git_dir(git_dir)]
+    for root in search:
+        ref_file = root.joinpath(*parts)
+        if ref_file.is_file():
+            value = _read_text(ref_file).strip()
+            return value if SHA_RE.fullmatch(value) else None
+    packed = _common_git_dir(git_dir) / "packed-refs"
+    if not packed.is_file():
+        packed = git_dir / "packed-refs"
     if not packed.is_file():
         return None
     for line in _read_text(packed).splitlines():

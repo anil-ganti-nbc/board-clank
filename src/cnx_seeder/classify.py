@@ -12,6 +12,7 @@ SOC_NAMES = frozenset(
         ("qualcomm",),
         ("intel",),
         ("amd",),
+        ("nxp",),
     }
 )
 SOC_DOMAINS = frozenset(
@@ -22,6 +23,7 @@ SOC_DOMAINS = frozenset(
         "mediatek.com",
         "intel.com",
         "amd.com",
+        "nxp.com",
     }
 )
 DENYLIST: dict[str, tuple[str, str]] = {
@@ -68,6 +70,7 @@ REASON_CODES = frozenset(
         "media_or_marketplace",
         "platform_host",
         "robots_disallow",
+        "robots_unavailable",
         "http_blocked",
         "fetch_failed",
         "primary_domain_unresolved",

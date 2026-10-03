@@ -46,7 +46,15 @@ from cnx_seeder.http import (
     parse_stamp,
     stamp,
 )
-from cnx_seeder.normalize import candidate_key, host_of, is_cnx_host, lead_key, normalize_tokens, registrable_domain
+from cnx_seeder.normalize import (
+    candidate_key,
+    host_of,
+    is_cnx_host,
+    lead_key,
+    normalize_tokens,
+    public_url,
+    registrable_domain,
+)
 from cnx_seeder.report import write_report
 from cnx_seeder.roster import RosterError, assert_alias_coverage, load_roster
 from cnx_seeder.store import Queue
@@ -140,6 +148,8 @@ def _blocked_reason(records: list[FetchRecord]) -> str:
     last = records[-1]
     if last.error == "robots_disallow" or last.robots_decision == "disallow":
         return "robots_disallow"
+    if last.error == "robots_unavailable" or last.robots_decision == "robots_unavailable":
+        return "robots_unavailable"
     if last.http_status in ACCESS_CONTROL_STATUSES or last.error == "http_blocked":
         return "http_blocked"
     return "fetch_failed"
@@ -181,6 +191,7 @@ def _verify(
     planned = planned[:MAX_OEM_FETCHES_PER_LEAD]
     pages: list[tuple[FetchRecord, ParsedPage]] = []
     surface_attempt: FetchRecord | None = None
+    fetch_failure: str | None = None
     for url in planned:
         if url in cache:
             records = cache[url]
@@ -193,6 +204,8 @@ def _verify(
             surface_attempt = records[-1] if records else None
         ok = _last_ok(records)
         if ok is None or ok.error == "body_cap":
+            if fetch_failure is None:
+                fetch_failure = _blocked_reason(records)
             continue
         if not (ok.final_url or ok.url).startswith("https://"):
             continue
@@ -286,6 +299,16 @@ def _verify(
         return Decision(
             "unresolved",
             "board_surface_unresolved",
+            homepage_url=homepage_url,
+            homepage_host=homepage_host,
+            primary_domain=domain,
+            normalized_name=name,
+            discovered_name=name,
+        )
+    if fetch_failure and not pages:
+        return Decision(
+            "unresolved",
+            fetch_failure,
             homepage_url=homepage_url,
             homepage_host=homepage_host,
             primary_domain=domain,
@@ -570,10 +593,10 @@ def run_sample(
             ALIAS_TABLE_VERSION,
             roster.sha256,
             sample_source,
-            listing_url,
+            public_url(listing_url),
             start_s,
             end_s,
-            json.dumps([item.url for item in articles]),
+            json.dumps([public_url(item.url) for item in articles]),
             MAX_LISTING_PAGES,
             MAX_ARTICLES,
             "running",
