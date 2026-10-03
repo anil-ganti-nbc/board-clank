@@ -14,7 +14,7 @@ from board_clank.collectors.orange_pi import collect_corpus as orange_corpus
 from board_clank.collectors.radxa import collect_corpus
 from board_clank.collectors.radxa_documentation import (
     DOCS_URL, KIND, SOURCE_KEY, _BoundedRedirect, _url, accept_documentation,
-    main, parse_hardware, record_fetch_failure, register_source, source_definition,
+    fetch_page, main, parse_hardware, record_fetch_failure, register_source, source_definition,
 )
 from board_clank.compatibility import inspect_path
 from board_clank.models import EventRecord, content_hash
@@ -229,6 +229,26 @@ def test_cross_host_redirect_is_rejected_before_following():
     from urllib.request import Request
     with pytest.raises(CollectorError):
         _BoundedRedirect().redirect_request(Request(DOCS_URL),None,302,'Found',{},'https://evil.test/')
+
+
+def test_live_capture_preserves_exact_response_bytes_and_hash_on_windows(tmp_path: Path,monkeypatch):
+    from email.message import Message
+    raw = '<html>Radxa\r\nμ\n</html>'.encode('utf-8')
+    headers = Message(); headers['Content-Type']='text/html; charset=utf-8'
+    class Response:
+        url=DOCS_URL; status=200
+        def __enter__(self): return self
+        def __exit__(self,*args): pass
+        def read(self,limit): return raw
+    response = Response(); response.headers=headers
+    class Opener:
+        def open(self,*args,**kwargs): return response
+    monkeypatch.setattr('board_clank.collectors.radxa_documentation.build_opener',lambda *args:Opener())
+    destination=tmp_path/'response.html'
+    text,meta=fetch_page(DOCS_URL,capture_to=destination)
+    assert text.encode('utf-8') == destination.read_bytes() == raw
+    assert sha256_file(destination) == meta['raw_sha256']
+    assert destination.stat().st_size == meta['size']
 
 
 @pytest.mark.parametrize("assignment",["vendor='orange-pi'","plane='PRODUCT'","enabled=1","promotion_state='PROMOTED'","authority='UNVERIFIED'"])

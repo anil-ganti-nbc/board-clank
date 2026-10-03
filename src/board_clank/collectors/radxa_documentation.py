@@ -444,7 +444,7 @@ class _BoundedRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch_page(url: str, *, product: bool = False) -> tuple[str, dict]:
+def fetch_page(url: str, *, product: bool = False, capture_to: Path | None = None) -> tuple[str, dict]:
     _url(url, product=product)
     opener = build_opener(_BoundedRedirect())
     with opener.open(Request(url,headers={"User-Agent":"board-clank/0.1 (manual-isolated-reference-poc)"}),timeout=30) as r:
@@ -457,6 +457,10 @@ def fetch_page(url: str, *, product: bool = False) -> tuple[str, dict]:
         text = raw.decode(r.headers.get_content_charset() or "utf-8",errors="strict")
         meta = {"requested_url":url,"final_url":r.url,"status":r.status,"headers":dict(r.headers),
                 "raw_sha256":hashlib.sha256(raw).hexdigest(),"size":len(raw)}
+    if capture_to is not None:
+        # Preserve the actual response bytes. Windows text-mode writes change
+        # line endings and cannot substantiate the response's raw-body hash.
+        capture_to.write_bytes(raw)
     return text,meta
 
 
@@ -514,8 +518,7 @@ def main(argv: list[str] | None = None) -> int:
             with Store(db) as seed:
                 sync_sources_to_store(seed)
                 if args.experimental_live:
-                    product_html,product_meta = fetch_page(PRODUCT_URL,product=True)
-                    (capture/"product.html").write_text(product_html,encoding="utf-8")
+                    product_html,product_meta = fetch_page(PRODUCT_URL,product=True,capture_to=capture/"product.html")
                     (capture/"product-fetch.json").write_text(canonical_json(product_meta)+"\n",encoding="utf-8")
                 else:
                     product_html = _FIXTURE.with_name("rock5b-product-seed.html").read_text(encoding="utf-8")
@@ -530,14 +533,14 @@ def main(argv: list[str] | None = None) -> int:
             _validate_sources(store)
             if args.experimental_live:
                 try:
-                    html,meta = fetch_page(DOCS_URL)
+                    html,meta = fetch_page(DOCS_URL,capture_to=capture/"documentation.html")
                 except (CollectorError, OSError, ValueError) as e:
                     record_fetch_failure(store,run_id=args.run_id,observed_at=now,error=str(e))
                     raise
             else:
                 html = _FIXTURE.read_text(encoding="utf-8")
                 meta = {"mode":"offline-fixture","file":str(_FIXTURE)}
-            (capture/"documentation.html").write_text(html,encoding="utf-8")
+                (capture/"documentation.html").write_text(html,encoding="utf-8")
             (capture/"fetch.json").write_text(canonical_json(meta)+"\n",encoding="utf-8")
             result = accept_documentation(store,html,run_id=args.run_id,observed_at=now)
         from board_clank.observer import full_snapshot

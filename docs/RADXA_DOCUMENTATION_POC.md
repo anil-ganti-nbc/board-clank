@@ -40,6 +40,8 @@ Omit `--experimental-live` for deterministic packaged fixtures and use a distinc
 
 No scheduler, source enablement, promotion, delivery, production/NAS access, push or deployment. All retained captures and DBs belong to the isolated qualification workspace.
 
+Live capture persistence writes the original HTTP response bytes directly. It never uses a Windows text-mode write to substantiate a raw-body hash. A byte/hash equality regression covers mixed CRLF/LF and UTF-8 text. Qualification must compare every saved live page's SHA-256 and size to its HTTP metadata before considering the capture qualified.
+
 ## Fixture provenance
 
 `fixtures/radxa_documentation/rock5b-hardware.html` is the actual 2026-10-03 first-party Hardware Design section reduced by removing unrelated content and adding HTML/body wrappers. It retains both model tabs for firewall qualification. Source and original hash are in its manifest. Radxa Computer (Shenzhen) Co., Ltd. publishes the documentation under CC BY 4.0; attribution and changes are recorded there. The offline PRODUCT seed is copied unchanged from the exact common-base Radxa fixture (`rock5_5b.html`, first-party URL and 2026-09-22 observation recorded in that corpus). Packaged fixture copies match the repository corpus. Adversarial/cosmetic/new-reference variants are explicit offline test transformations, not claimed upstream changes.
