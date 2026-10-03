@@ -164,8 +164,8 @@ PHASE1_VENDORS = (
     "pine64",
 )
 
-# Foundations 7A/8A admit FriendlyELEC/Khadas without changing Phase-1.
-PHASE2_ADMITTED = ("friendlyelec", "khadas")
+# Foundations 7A/8A/9A admit FriendlyELEC/Khadas/Forlinx without changing Phase-1.
+PHASE2_ADMITTED = ("friendlyelec", "khadas", "forlinx")
 
 PHASE2_PLACEHOLDERS = (
     "milk-v",

@@ -204,3 +204,17 @@ sources:
     placeholder: true
     out_of_scope: true
     notes: Explicitly out of scope for Foundation 0 pending a later SOM/devkit domain decision.
+
+  # Foundation 9A: first-party SBC catalogue, manual experimental only.
+  - source_key: forlinx-product
+    vendor: forlinx
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls: [https://www.forlinx.net/product-list-2.html]
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: false
+    expected_identity_surface: Current explicit SBC card plus exactly matching product hero model
+    expected_variant_surface: One conservative memory configuration; independent option lists remain UNKNOWN
+    notes: Foundation 9A disabled PRODUCT adapter. FET SoMs, MCU-only boards, unclassified EVM, embedded computers, accessories, kits, accelerators and Jetson excluded. No promotion, scheduler or delivery.

@@ -24,7 +24,7 @@
       "state": "active"
     },
     "collection": {
-      "evidence": "eight real source adapters exist; every source enabled=false",
+      "evidence": "nine real source adapters exist; every source enabled=false",
       "state": "supported_unconfigured"
     },
     "delivery": {
@@ -48,7 +48,7 @@
       "state": "active"
     },
     "replay": {
-      "evidence": "processed_run_receipts idempotency proven across eight vendors",
+      "evidence": "processed_run_receipts idempotency proven across nine vendors",
       "state": "active"
     },
     "scheduler": {
@@ -99,7 +99,8 @@
     "hardkernel-odroid-product",
     "pine64-product",
     "friendlyelec-product",
-    "khadas-product"
+    "khadas-product",
+    "forlinx-product"
   ],
   "versions": {
     "adapter_contract": "0.2",

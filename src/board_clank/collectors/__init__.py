@@ -6,6 +6,7 @@ from board_clank.collectors.banana_pi import BananaPiProductAdapter
 from board_clank.collectors.base import CollectorAdapter, CollectorError
 from board_clank.collectors.friendlyelec import FriendlyElecProductAdapter
 from board_clank.collectors.khadas import KhadasProductAdapter
+from board_clank.collectors.forlinx import ForlinxProductAdapter
 from board_clank.collectors.mock import FixtureCollector, InertVendorAdapter, get_adapter
 from board_clank.collectors.odroid import OdroidProductAdapter
 from board_clank.collectors.orange_pi import OrangePiProductAdapter
@@ -20,6 +21,7 @@ __all__ = [
     "FixtureCollector",
     "FriendlyElecProductAdapter",
     "KhadasProductAdapter",
+    "ForlinxProductAdapter",
     "InertVendorAdapter",
     "OdroidProductAdapter",
     "OrangePiProductAdapter",

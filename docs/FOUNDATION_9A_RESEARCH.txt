@@ -1,0 +1,64 @@
+Foundation 9A empirical research, 2026-10-03, before adapter implementation.
+Mission COPS-000097; Session 01a101a0-4c2d-749c-bf67-d86668fdc1e4.
+Isolated branch foundation-9-forlinx-product starts exactly at
+7a3c2a409721fd25917522b3edb862755c2523d4, tree
+054cffecabf0602134bf28f9c230e9b756eb2a84; tracked and untracked state clean,
+no upstream at start. Canonical checkout's untracked .zcodeignore untouched.
+
+First-party current route: https://www.forlinx.net/product-list-2.html.
+Its actual page links six catalogue pages, not a predeclared product count.
+Its title is Single Board Computer. Product cards contain explicitly classified
+model headings and direct /product/<slug>-<id>.html links. Current direct HTML
+already differs from cached web search: OK3576J-UP5 and OK3588J-UP5 appear.
+Fetch current catalogue pagination and cards on each live run; no frozen list.
+Direct page-1 alias fetch returned 200; its card identities exactly equal the
+root catalogue capture (page1-alias-verification.json). Fetch root once per run.
+Only linked card headings explicitly saying Single Board Computer can authorize
+scope. The unrelated AM62L32 Local EVM card is unclassified and is rejected.
+
+Product hero div.product-cp supplies h3 model heading and labelled CPU,
+Architecture, Frequency, RAM, ROM, System paragraphs. Require the exact model
+to agree with the current catalogue card; navigation, internal SoM tables,
+related-product mentions and documentation do not authorize another identity.
+Product paths are scoped by actual catalogue linkage, not permissive URL names.
+No third-party/store/docs/community/news evidence enters this adapter.
+Raw bytes, URL/final URL/status/size/SHA256 captures retained outside worktree:
+C:/Users/anil/Clanks/_Reconciliation/board-foundation9-forlinx/research.
+Ordinary identifying HTTPS urllib requests; no browser/challenge bypass.
+One initial catalogue request timed out; retained evidence and bounded retry.
+
+Exact OK model tokens preserve -C/-C1/-C2/-C3/-UP4/-UP5/-S/-S12 distinctions.
+No suffix becomes a PCB revision; no merge based on shared SoC or similar names.
+SoM+carrier products explicitly marketed as complete SBCs are SBC identities;
+their embedded FET SoM never becomes another Board. Bare carrier, kit, accessory,
+embedded computer, accelerator and NVIDIA Jetson scope remain excluded.
+OK1052-C and OK1061-S have Cortex-M-only application surfaces (i.MXRT MCUs);
+they are outside the application-SBC admission policy despite catalogue naming.
+Secondary M33/M7/M4/M0, RISC-V E907/DSP and GPU/PMIC/PHY/codec/WiFi chips are
+never application soc_key. CPU extraction uses only the labelled hero CPU row.
+
+Current silicon includes NXP i.MX/LS, TI AM, Rockchip RK/RV, Allwinner T/A,
+Renesas RZ/G2L, StarFive JH7110, Nuvoton MA35D1, Samsung S5P families.
+Explicit CPU alternatives RK3568J/RK3568, RV1126B/RV1126BJ, AM62x variants,
+and Quad/QuadLite do not justify selecting one or inventing a composite chip.
+Keep alternatives in semantic/native evidence; unresolved application silicon
+stays UNKNOWN with stable source-scoped diagnostic sightings, no false minting.
+
+RAM and ROM are independently enumerated options, not configuration bindings.
+Order sections inspected contain quote forms and Alibaba/contact instructions,
+not a first-party SKU/configuration matrix. Retain exact option evidence, emit
+one conservative variant; dimensions resolve only when both memory quantities
+are unique and unconditional. No Cartesian product or external shop inference.
+No dates, stock, prices, launch novelty or undocumented revision is inferred.
+
+Cloudflare email-obfuscation is applied to strings containing @, including
+CPU core clock labels. Decode those public data-cfemail strings before semantic
+projection so random XOR masks do not create clock/spec churn. This is ordinary
+page presentation decoding, not access bypass. Hero-labelled facts are the
+bounded semantic projection; scripts/styles/images/contact/navigation are not.
+Keep meaningful model, processor options, architecture, clock, memory and OS.
+
+Generic schema/pipeline/identity/observer contracts fit this source. Only source
+wiring, package data, count prose and manifest roster need additive admission.
+Every source remains REGISTERED/EXPERIMENTAL/disabled; schema remains v3.
+No deploy, enablement, scheduler, delivery, promotion or main merge authorized.
