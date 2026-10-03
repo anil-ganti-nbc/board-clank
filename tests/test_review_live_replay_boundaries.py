@@ -69,7 +69,7 @@ def test_redirect_rejected_before_following_and_final_body_read(name, destinatio
 
 
 @pytest.mark.parametrize("name", SIX)
-def test_allowed_final_url_is_actual_parser_provenance(name, monkeypatch):
+def test_validated_final_url_is_actual_parser_provenance(name, monkeypatch):
     mod = module(name)
     initial, final = (d["page_url"] for d in documents(mod))
     body = (mod.CORPUS_DIR / documents(mod)[1]["file"]).read_bytes()
@@ -90,7 +90,7 @@ def test_allowed_final_url_is_actual_parser_provenance(name, monkeypatch):
 
 
 @pytest.mark.parametrize("name", SIX)
-@pytest.mark.parametrize("failure", ["fetch", "parser"])
+@pytest.mark.parametrize("failure", ["fetch", "parser", "index-redirect", "wrong-role", "empty-drafts", "blank-body"])
 @pytest.mark.parametrize("with_open_condition", [False, True])
 def test_one_detail_success_then_required_failure_is_atomic(name, failure, with_open_condition, store, monkeypatch):
     mod = module(name)
@@ -110,9 +110,15 @@ def test_one_detail_success_then_required_failure_is_atomic(name, failure, with_
     real_parse = mod.parse_product_html
     def parse(text, *, page_url, observed_at, **kwargs):
         if page_url not in html:
-            return [], {"status": "lead-index", "lead_hrefs": [good, bad]}
+            return [], {"status": "lead-index", "lead_hrefs": [good, bad], "evidence_roles": ["DISCOVERY"]}
         if page_url == bad and failure == "parser":
             raise CollectorError("required parser outage")
+        if page_url == bad and failure == "blank-body":
+            return real_parse("", page_url=page_url, observed_at=observed_at)
+        if page_url == bad and failure == "wrong-role":
+            return [], {"status": "lead-index", "page_url": page_url}
+        if page_url == bad and failure == "empty-drafts":
+            return [], {"status": "resolved", "page_url": page_url}
         drafts, info = real_parse(text, page_url=page_url, observed_at=observed_at, **kwargs)
         assert drafts
         parsed.append(page_url)
@@ -122,7 +128,14 @@ def test_one_detail_success_then_required_failure_is_atomic(name, failure, with_
     def fetch(url):
         if url == bad and failure == "fetch":
             raise CollectorError("required fetch outage")
-        return {"requested_url": url, "final_url": url, "text": html.get(url, "<html>index</html>"),
+        if url == bad and failure == "index-redirect":
+            manifest = json.loads((mod.CORPUS_DIR/'manifest.json').read_text(encoding='utf-8'))
+            corpus = 'pip-live-sim' if name == 'raspberry_pi' else 'baseline'
+            index = next(d for d in manifest['corpora'][corpus]['documents'] if d['role'] == 'lead')
+            return {"requested_url": url, "final_url": index['page_url'],
+                    "text": (mod.CORPUS_DIR/index['file']).read_text(encoding='utf-8'),
+                    "raw_body_hash": "index-raw", "semantic_evidence_hash": "index-semantic"}
+        return {"requested_url": url, "final_url": good if url == bad and failure == "other-model" else url, "text": html.get(url, "<html>index</html>"),
                 "raw_body_hash": "fixture-raw", "semantic_evidence_hash": "fixture-semantic"}
     monkeypatch.setattr(mod, "fetch_official_meta", fetch)
     monkeypatch.setattr(mod, "parse_product_html", parse)
@@ -314,3 +327,132 @@ def test_existing_adapter_diagnostic_hash_matches_pre_refresh_projection(name, e
                 'soc_candidates': sorted(str(x) for x in draft.raw_fields.get('soc_candidates') or []),
                 'marketing_name': draft.marketing_name, 'page_url': draft.page_url}
     assert state == expected and digest == content_hash(expected)
+
+
+@pytest.mark.parametrize("name", SIX)
+@pytest.mark.parametrize("swap", ["detail-to-index", "index-to-detail"])
+def test_selected_document_redirect_target_is_rejected_before_following(name, swap, monkeypatch):
+    mod = module(name)
+    manifest = json.loads((mod.CORPUS_DIR/'manifest.json').read_text(encoding='utf-8'))
+    corpus = 'pip-live-sim' if name == 'raspberry_pi' else 'baseline'
+    index = next(d['page_url'] for d in manifest['corpora'][corpus]['documents'] if d['role'] == 'lead')
+    one, two = (d['page_url'] for d in documents(mod))
+    initial, final = (index, one) if swap == 'index-to-detail' else (one, index if swap == 'detail-to-index' else two)
+    with pytest.raises(CollectorError, match='URL/role'):
+        mod._BoundedRedirect(initial).redirect_request(Request(initial), None, 302, '', {}, final)
+    reads = []
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def geturl(self): return final
+        def read(self): reads.append(True); return b"wrong selected document"
+    monkeypatch.setattr(mod, 'build_opener', lambda *args: SimpleNamespace(open=lambda *a, **kw: Response()))
+    with pytest.raises(CollectorError, match='URL/role'): mod.fetch_official_meta(initial)
+    assert reads == []
+
+
+@pytest.mark.parametrize("name", SIX)
+@pytest.mark.parametrize("bad_index", ["redirect-to-detail", "wrong-parser-role"])
+def test_required_index_keeps_discovery_role_or_fails_without_writes(name, bad_index, store, monkeypatch):
+    mod = module(name)
+    detail = documents(mod)[0]
+    real_parse = mod.parse_product_html
+    def fetch(url):
+        return {'requested_url': url, 'final_url': detail['page_url'] if bad_index == 'redirect-to-detail' else url,
+                'text': (mod.CORPUS_DIR/detail['file']).read_text(encoding='utf-8'),
+                'raw_body_hash': 'raw', 'semantic_evidence_hash': 'semantic'}
+    def parse(text, *, page_url, observed_at):
+        drafts, _ = real_parse(text, page_url=detail['page_url'], observed_at=observed_at)
+        return drafts, {'status': 'resolved', 'page_url': page_url}
+    monkeypatch.setattr(mod, 'fetch_official_meta', fetch)
+    monkeypatch.setattr(mod, 'parse_product_html', parse)
+    before = snapshot(store)
+    req = get_adapter(mod.SOURCE_KEY, experimental_live=True).collect('bad-index', OBS)
+    assert not req.ok and not req.observations
+    assert Pipeline(store).accept_run(req).status == 'failed'
+    after = snapshot(store)
+    for table in ('collector_runs','run_errors'): before.pop(table); after.pop(table)
+    assert after == before
+
+
+@pytest.mark.parametrize("pcn_failure", ["redirect-index", "redirect-detail", "wrong-parser-role"])
+def test_required_rpi_pcn_failure_discards_previous_success(pcn_failure, store, monkeypatch):
+    mod = module('raspberry_pi')
+    docs = documents(mod)
+    good, second = (d['page_url'] for d in docs)
+    pcn = 'https://pip.raspberrypi.com/categories/560-pcn'
+    real_parse = mod.parse_product_html
+    parsed = []
+    def fetch(url):
+        final = mod.PIP_COMPUTERS_URL if url == pcn and pcn_failure == 'redirect-index' else (
+            good if url == pcn and pcn_failure == 'redirect-detail' else url)
+        doc = next((d for d in docs if d['page_url'] == url), None)
+        return {'requested_url': url, 'final_url': final,
+                'text': (mod.CORPUS_DIR/doc['file']).read_text(encoding='utf-8') if doc else '<html>index or PCN</html>',
+                'raw_body_hash': 'raw', 'semantic_evidence_hash': 'semantic'}
+    def parse(text, *, page_url, observed_at):
+        if page_url in (mod.PIP_COMPUTERS_URL, mod.PIP_MODULES_URL):
+            return [], {'status': 'lead-index', 'lead_hrefs': [good, second], 'evidence_roles': ['DISCOVERY']}
+        if page_url == pcn:
+            return [], {'status': 'lead-index', 'page_url': page_url}
+        drafts, info = real_parse(text, page_url=page_url, observed_at=observed_at)
+        parsed.append(page_url)
+        info['lead_hrefs'] = [pcn] if page_url == second else []
+        return drafts, info
+    monkeypatch.setattr(mod, 'fetch_official_meta', fetch); monkeypatch.setattr(mod, 'parse_product_html', parse)
+    before = snapshot(store)
+    req = get_adapter(mod.SOURCE_KEY, experimental_live=True).collect('bad-pcn', OBS)
+    assert parsed == [good, second] and not req.ok and not req.observations
+    assert req.diagnostics['parser_errors']
+    assert Pipeline(store).accept_run(req).status == 'failed'
+    after = snapshot(store)
+    for table in ('collector_runs','run_errors'): before.pop(table); after.pop(table)
+    assert after == before
+
+
+def test_required_rpi_uncertainty_is_retained_as_diagnostic_evidence(store, monkeypatch):
+    mod = module('raspberry_pi')
+    detail = documents(mod)[0]
+    real_parse = mod.parse_product_html
+    body = (mod.CORPUS_DIR/'html/conflicting-identity.html').read_text(encoding='utf-8')
+    def fetch(url):
+        return {'requested_url': url,'final_url': url,'text': body,'raw_body_hash':'raw','semantic_evidence_hash':'semantic'}
+    def parse(text, *, page_url, observed_at):
+        if page_url in (mod.PIP_COMPUTERS_URL, mod.PIP_MODULES_URL):
+            return [], {'status':'lead-index','lead_hrefs':[detail['page_url']], 'evidence_roles':['DISCOVERY']}
+        drafts, info = real_parse(text, page_url=page_url, observed_at=observed_at)
+        info['lead_hrefs'] = []
+        return drafts, info
+    monkeypatch.setattr(mod,'fetch_official_meta',fetch); monkeypatch.setattr(mod,'parse_product_html',parse)
+    req = get_adapter(mod.SOURCE_KEY, experimental_live=True).collect('uncertain-rpi', OBS)
+    assert req.ok and req.observations and req.observations[0].identity_conflict
+    assert Pipeline(store).accept_run(req).status == 'accepted'
+    assert store.count('boards') == 0 and store.count('diagnostic_conditions') == 2
+
+
+@pytest.mark.parametrize("name", SIX)
+def test_empty_real_index_body_fails_required_discovery_coverage(name, store, monkeypatch):
+    mod = module(name)
+    monkeypatch.setattr(mod, 'fetch_official_meta', lambda url: {
+        'requested_url': url, 'final_url': url, 'text': '', 'raw_body_hash': 'empty', 'semantic_evidence_hash': 'empty'})
+    before = snapshot(store)
+    request = get_adapter(mod.SOURCE_KEY, experimental_live=True).collect('empty-index', OBS)
+    assert not request.ok and not request.observations and request.diagnostics['parser_errors']
+    assert Pipeline(store).accept_run(request).status == 'failed'
+    after = snapshot(store)
+    for table in ('collector_runs','run_errors'): before.pop(table); after.pop(table)
+    assert after == before
+
+
+def test_each_rpi_index_requires_in_scope_product_coverage(monkeypatch):
+    mod = module('raspberry_pi')
+    good = documents(mod)[0]['page_url']
+    monkeypatch.setattr(mod, 'fetch_official_meta', lambda url: {
+        'requested_url':url,'final_url':url,'text':'index','raw_body_hash':'raw','semantic_evidence_hash':'semantic'})
+    def parse(text, *, page_url, observed_at):
+        return [], {'status':'lead-index','evidence_roles':['DISCOVERY'],
+                    'lead_hrefs':[good] if page_url == mod.PIP_COMPUTERS_URL else ['https://pip.raspberrypi.com/categories/560-pcn']}
+    monkeypatch.setattr(mod, 'parse_product_html', parse)
+    request = get_adapter(mod.SOURCE_KEY, experimental_live=True).collect('pcn-only-index', OBS)
+    assert not request.ok and not request.observations
+    assert 'no in-scope PRODUCT discovery coverage' in request.error

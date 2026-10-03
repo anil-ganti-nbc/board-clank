@@ -808,11 +808,41 @@ def _assert_official_url(url: str) -> str:
     return url
 
 
+def _document_role(url: str) -> str:
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/")
+    if parsed.netloc in PIP_HOSTS:
+        if path in {"", "/categories/505-computers", "/categories/616-modules"}: return "lead-index"
+        if path.endswith("-pcn") or path.endswith("/pcn"): return "pip-pcn"
+        return "product"
+    return "lead-index" if path == "/products" else "product"
+
+
+def _assert_document_url(requested: str, final: str) -> str:
+    """Preserve selected discovery/change route and PRODUCT document role.
+
+    Allowed PRODUCT-to-PRODUCT redirects retain actual final URL provenance.
+    Discovery indexes and PCN links must keep their selected coverage route.
+    """
+    _assert_official_url(final)
+    expected = _document_role(requested)
+    if expected != _document_role(final) or (expected in {"lead-index", "pip-pcn"}
+            and urlparse(requested).path.rstrip("/") != urlparse(final).path.rstrip("/")):
+        raise CollectorError(f"selected document redirect changed URL/role: {requested} -> {final}")
+    return final
+
+
 class _BoundedRedirect(HTTPRedirectHandler):
     max_redirections = 5
     max_repeats = 2
 
+    def __init__(self, expected_url: str | None = None):
+        super().__init__()
+        self.expected_url = expected_url
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if self.expected_url is not None:
+            _assert_document_url(self.expected_url, newurl)
         _assert_official_url(newurl)  # reject BEFORE following any redirect
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -828,8 +858,8 @@ def fetch_official_meta(url: str, *, timeout: int = 20) -> dict[str, Any]:
         headers={"User-Agent": "board-clank/0.1.0 (+experimental-manual-raspberry-pi-product)"},
         method="GET",
     )
-    with build_opener(_BoundedRedirect()).open(request, timeout=timeout) as response:
-        final = _assert_official_url(response.geturl())
+    with build_opener(_BoundedRedirect(url)).open(request, timeout=timeout) as response:
+        final = _assert_document_url(url, response.geturl())
         raw = response.read()
         charset = response.headers.get_content_charset() or "utf-8"
         text = raw.decode(charset, errors="replace")
@@ -893,6 +923,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
         def record_fetch(url: str) -> dict[str, Any]:
             try:
                 meta = fetch_official_meta(url)
+                _assert_document_url(url, meta["final_url"])
                 rec = {k: v for k, v in meta.items() if k != "text"}
                 rec["ok"] = True
                 diagnostics["fetches"].append(rec)
@@ -909,6 +940,11 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                 info["raw_body_hash"] = meta["raw_body_hash"]
                 info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(info)
+                if (info.get("status") != "lead-index" or not info.get("lead_hrefs")
+                    or "DISCOVERY" not in info.get("evidence_roles", [])):
+                    diagnostics["parser_errors"].append("required index did not retain discovery role")
+                    raise CollectorError("required index did not retain discovery role")
+                before_index = len(leads)
                 for lead in info.get("lead_hrefs") or []:
                     if _is_pcn_url(lead):
                         continue
@@ -916,6 +952,9 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                         leads.append(lead)
                     else:
                         diagnostics["rejected"].append({"url": lead, "reason": "out-of-scope-or-non-board"})
+                if len(leads) == before_index:
+                    diagnostics["parser_errors"].append("required index had no in-scope PRODUCT discovery coverage")
+                    raise CollectorError("required index had no in-scope PRODUCT discovery coverage")
             leads = sorted(set(leads))
             diagnostics["leads"] = leads
             diagnostics["candidate_references"] = len(leads)
@@ -928,8 +967,16 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                     diagnostics["parser_errors"].append(str(exc))
                     diagnostics["documents"].append({"page_url": url, "status": "error"})
                     raise
-                if page_info.get("status") in {"error", "parser-error"}:
-                    raise CollectorError(f"required product parser failed for {url}")
+                status = page_info.get("status")
+                accepted_roles = {"resolved", "resolved-identity", "identity-conflict", "insufficient-evidence"}
+                deliberate_rejection = (status == "ignored-non-computer"
+                                        and page_info.get("heading") not in {None, "", UNKNOWN}
+                                        and page_info.get("scope") == "NON_BOARD_CATALOGUE_ITEM"
+                                        and bool(page_info.get("reason")) and not drafts)
+                if not deliberate_rejection and (status not in accepted_roles or not drafts):
+                    diagnostics["parser_errors"].append(f"required detail lost product role: {url}: {status}")
+                    diagnostics["documents"].append(page_info)
+                    raise CollectorError(f"required detail lost product role: {url}: {status}")
                 page_info["raw_body_hash"] = meta["raw_body_hash"]
                 page_info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(page_info)
@@ -942,6 +989,10 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                         _pcn_drafts, pcn_info = parse_product_html(
                             pcn_meta["text"], page_url=pcn_meta["final_url"], observed_at=started_at
                         )
+                        if (pcn_info.get("status") != "pip-pcn"
+                                or "CHANGE_EVIDENCE" not in pcn_info.get("evidence_roles", [])
+                                or not pcn_info.get("pcns")):
+                            raise CollectorError(f"required PCN lost change-evidence role: {href}")
                         pcn_info["raw_body_hash"] = pcn_meta["raw_body_hash"]
                         pcn_info["semantic_evidence_hash"] = pcn_meta["semantic_evidence_hash"]
                         diagnostics["pcn_pages"].append(pcn_info)
@@ -955,6 +1006,8 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                         existing = list(draft.raw_fields.get("pcns") or [])
                         merged = list(dict.fromkeys(existing + pcn_titles))
                         draft.raw_fields["pcns"] = merged
+                    observations.extend(drafts)
+                elif status in {"identity-conflict", "insufficient-evidence"}:
                     observations.extend(drafts)
 
             try:
