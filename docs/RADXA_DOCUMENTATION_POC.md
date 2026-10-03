@@ -10,7 +10,7 @@ Hardware revision labels remain literal source assertions. V1.42 and V1.423 can 
 
 ## Semantic namespace contract
 
-The additive `EntityKind.DOCUMENTATION_REFERENCE` makes typed EventRecord validation honest. The DB schema remains v3. Reference keys use `reference:<source>:<sha256(canonical page, linked Board, hardware label)>`; identity keys are separate. Canonical/reference-current/occurrence rows use this entity kind, and carry an existing Board link plus UNKNOWN revision/variant links. They never enter `boards`, `board_revisions`, `board_variants`, novelty or PRODUCT current rows.
+The additive `EntityKind.DOCUMENTATION_REFERENCE` makes typed EventRecord validation honest. This is a generic model contract addition. The DB schema remains v3. Reference keys use `reference:<source>:<sha256(canonical page, linked Board, hardware label)>`; identity keys are separate. Canonical/reference-current/occurrence rows use this entity kind, and carry an existing Board link plus UNKNOWN revision/variant links. They never enter `boards`, `board_revisions`, `board_variants`, novelty or PRODUCT current rows.
 
 New and changed documentary evidence records only NEW_REFERENCE audit events, always `baseline_silent=1`, with `market_novelty=false` and UNKNOWN effective dates. No notification row is created. Stable content adds sightings, exact successful replay writes nothing, and conflicting run-ID reuse is refused. Historical discoveries after source baseline remain silent. Missing headings/pages do not imply removal/EOL and do not delete old reference state. Changed notes or newly explicit labels are retained as documentary transitions, never current FIELD_CHANGED/BOARD_REVISION/NEW_BOARD.
 
@@ -38,7 +38,7 @@ python -m board_clank.collectors.radxa_documentation --qualification-root '..\ev
 
 Omit `--experimental-live` for deterministic packaged fixtures and use a distinct new qualification root. Live fetches are bounded GETs with strict first-party redirect checks. HTTP/header/native metadata is retained alongside semantic hashes, without treating Last-Modified as hardware chronology. Failed documentation fetches record failed attempts and errors, without baselines, receipts, entity mutation or diagnostic closure.
 
-No scheduler, source enablement, promotion, delivery, production/NAS access, push or deployment. All retained captures and DBs belong to the isolated qualification workspace.
+No scheduler, source enablement, promotion, delivery, production/NAS access or deployment. All retained captures and DBs belong to the isolated qualification workspace. A subsequent explicit user instruction authorizes a normal push of this isolated branch after qualification; no integration, main/Astra push or PR is authorized.
 
 Live capture persistence writes the original HTTP response bytes directly. It never uses a Windows text-mode write to substantiate a raw-body hash. A byte/hash equality regression covers mixed CRLF/LF and UTF-8 text. Qualification must compare every saved live page's SHA-256 and size to its HTTP metadata before considering the capture qualified.
 
