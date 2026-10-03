@@ -55,8 +55,22 @@ def load_sources(path: str | None = None) -> list[SourceRecord]:
     return records
 
 
+def product_sources(path: str | None = None) -> list[SourceRecord]:
+    """Canonical PRODUCT sources only; supporting references cannot satisfy this contract."""
+    return [row for row in load_sources(path) if row.plane is SourcePlane.PRODUCT
+            and row.authority is SourceAuthority.FIRST_PARTY_CANONICAL
+            and not row.placeholder and not row.out_of_scope]
+
+
+def supporting_sources(path: str | None = None) -> list[SourceRecord]:
+    """Separately declared supporting evidence; no PRODUCT identity authority."""
+    return [row for row in load_sources(path) if row.plane is not SourcePlane.PRODUCT
+            and row.authority is SourceAuthority.FIRST_PARTY_SUPPORTING
+            and not row.placeholder and not row.out_of_scope]
+
+
 def phase1_sources(path: str | None = None) -> list[SourceRecord]:
-    return [row for row in load_sources(path) if row.vendor in PHASE1_VENDORS and not row.placeholder]
+    return [row for row in product_sources(path) if row.vendor in PHASE1_VENDORS]
 
 
 def promoted_sources(path: str | None = None) -> list[SourceRecord]:
@@ -65,7 +79,7 @@ def promoted_sources(path: str | None = None) -> list[SourceRecord]:
 
 def assert_foundation_0_roster(path: str | None = None) -> None:
     records = load_sources(path)
-    phase1 = {row.vendor for row in records if not row.placeholder and not row.out_of_scope}
+    phase1 = {row.vendor for row in product_sources(path)}
     missing = set(PHASE1_VENDORS + PHASE2_ADMITTED) - phase1
     if missing:
         raise SourceRegistryError(f"phase-1 vendors missing from roster: {sorted(missing)}")

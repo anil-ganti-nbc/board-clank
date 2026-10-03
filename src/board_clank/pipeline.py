@@ -75,6 +75,16 @@ class Pipeline:
         self.store = store
 
     def accept_run(self, request: CollectorRunRequest) -> RunResult:
+        # Registered supporting sources belong to their own reference admission.
+        # Reject before receipt lookup or any writes, even with a forged PRODUCT draft.
+        from board_clank.sources import supporting_sources
+
+        declared_supporting = {source.source_key for source in supporting_sources()}
+        source_keys = {request.source_key, *(draft.source_key for draft in request.observations)}
+        for source_key in source_keys:
+            source = self.store.one("SELECT authority FROM sources WHERE source_key=?", (source_key,))
+            if source_key in declared_supporting or (source is not None and source["authority"] == SourceAuthority.FIRST_PARTY_SUPPORTING.value):
+                raise ValueError("supporting evidence cannot enter PRODUCT admission")
         existing = self.store.one(
             "SELECT run_id FROM processed_run_receipts WHERE run_id = ?",
             (request.run_id,),

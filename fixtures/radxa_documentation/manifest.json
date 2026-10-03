@@ -1,0 +1,17 @@
+{
+  "source_url": "https://docs.radxa.com/en/rock5/rock5b/download",
+  "observed_at": "2026-10-03T07:16:03.787506+00:00",
+  "original_raw_sha256": "d2f968391902c42b34730497f6079d877bb41cf44baa3f6256ce5f9d1083e89d",
+  "fixture_role": "Reduced actual Hardware Design section, retaining both tabs and their explicit model boundaries",
+  "license": "CC BY 4.0",
+  "attribution": "Radxa Computer (Shenzhen) Co., Ltd.; https://docs.radxa.com/en/license",
+  "changes": "Removed unrelated page sections, navigation and transport markup; wrapped retained section in HTML/body. No hardware claim text invented.",
+  "product_seed": {
+    "source_url": "https://radxa.com/products/rock5/5b/",
+    "observed_at": "2026-09-22T00:00:00+00:00",
+    "common_base": "613c3a13c0e52088eeb33d6266b6ca7b2b783000",
+    "copied_from": "fixtures/radxa_product/html/rock5_5b.html",
+    "sha256": "4bc895b9377f866d00d3f920dcd02be21bbdf77f859d650d4eb29f4c5576eef0",
+    "changes": "None; existing common-base PRODUCT fixture copied for packaged offline seeding"
+  }
+}

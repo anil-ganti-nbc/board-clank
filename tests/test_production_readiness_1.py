@@ -408,7 +408,7 @@ def test_observer_surface_is_read_only_and_complete(tmp_path: Path) -> None:
         assert entry["evidence"]
     assert snapshot["capability_states"]["delivery"]["state"] == "unsupported_by_policy"
     assert snapshot["capability_states"]["scheduler"]["state"] == "unsupported_by_policy"
-    assert len(snapshot["source_summary"]) == 16  # six real + placeholders registered by fixtures
+    assert len(snapshot["source_summary"]) == 17  # eight PRODUCT + one supporting + eight placeholders
 
 
 def test_observer_never_upgrades_unknown(tmp_path: Path) -> None:

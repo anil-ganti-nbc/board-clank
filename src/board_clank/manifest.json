@@ -24,7 +24,7 @@
       "state": "active"
     },
     "collection": {
-      "evidence": "eight real source adapters exist; every source enabled=false",
+      "evidence": "eight PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
       "state": "supported_unconfigured"
     },
     "delivery": {
@@ -100,6 +100,17 @@
     "pine64-product",
     "friendlyelec-product",
     "khadas-product"
+  ],
+  "supporting_sources": [
+    {
+      "authority": "FIRST_PARTY_SUPPORTING",
+      "enabled": false,
+      "plane": "DOCUMENTATION",
+      "promotion_state": "EXPERIMENTAL",
+      "registered_state": "REGISTERED",
+      "source_key": "radxa-rock5b-documentation-poc",
+      "vendor": "radxa"
+    }
   ],
   "versions": {
     "adapter_contract": "0.2",

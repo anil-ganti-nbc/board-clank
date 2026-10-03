@@ -143,6 +143,8 @@ class EntityKind(StrEnum):
     REVISION = "REVISION"
     VARIANT = "VARIANT"
     SOC = "SOC"
+    # Supporting source claim linked to a Board; never a Board/revision identity.
+    DOCUMENTATION_REFERENCE = "DOCUMENTATION_REFERENCE"
 
 
 class CompatibilityState(StrEnum):

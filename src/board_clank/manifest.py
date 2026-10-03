@@ -22,6 +22,8 @@ from board_clank._version import (
     SOURCE_REVISION,
 )
 
+from board_clank.sources import product_sources, supporting_sources
+
 MANIFEST_VERSION = 1
 ADAPTER_CONTRACT_VERSION = "0.2"  # Observer Adapter Surface Contract v0.2
 BACKUP_FORMAT_VERSION_LABEL = 1
@@ -39,6 +41,11 @@ CAPABILITY_STATES = frozenset(
 
 MANIFEST_PATH = Path(__file__).resolve().parents[2] / "manifest.json"
 PACKAGED_MANIFEST_PATH = Path(__file__).resolve().parent / "manifest.json"
+
+
+def _supporting_declarations() -> list[dict[str, Any]]:
+    fields = ("source_key", "vendor", "plane", "authority", "enabled", "registered_state", "promotion_state")
+    return [{key: row.model_dump(mode="json")[key] for key in fields} for row in supporting_sources()]
 
 
 def build_manifest() -> dict[str, Any]:
@@ -73,7 +80,7 @@ def build_manifest() -> dict[str, Any]:
         "capability_states": {
             "collection": {
                 "state": "supported_unconfigured",
-                "evidence": "eight real source adapters exist; every source enabled=false",
+                "evidence": "eight PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
             },
             "health": {
                 "state": "active",
@@ -118,6 +125,7 @@ def build_manifest() -> dict[str, Any]:
             "friendlyelec-product",
             "khadas-product",
         ],
+        "supporting_sources": _supporting_declarations(),
         "scheduler_authority": "NONE",
         "notification_authority": "NONE",
         "persistence": {
@@ -163,6 +171,7 @@ REQUIRED_FIELDS = (
     "capabilities",
     "capability_states",
     "sources",
+    "supporting_sources",
     "scheduler_authority",
     "notification_authority",
     "persistence",
@@ -207,6 +216,11 @@ def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     for source in manifest["sources"]:
         if not isinstance(source, str) or not source.endswith("-product"):
             raise ManifestError(f"malformed source key: {source}")
+    canonical = {row.source_key for row in product_sources()}
+    if len(manifest["sources"]) != len(set(manifest["sources"])) or set(manifest["sources"]) != canonical:
+        raise ManifestError("PRODUCT sources must match the canonical PRODUCT registry")
+    if manifest["supporting_sources"] != _supporting_declarations():
+        raise ManifestError("supporting sources must match the separate supporting registry")
     return {
         "valid": True,
         "clank_id": manifest["clank_id"],
@@ -214,6 +228,7 @@ def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         "schema_version": manifest["versions"]["schema"],
         "capability_count": len(manifest["capabilities"]),
         "source_count": len(manifest["sources"]),
+        "supporting_source_count": len(manifest["supporting_sources"]),
     }
 
 

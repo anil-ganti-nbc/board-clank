@@ -204,3 +204,16 @@ sources:
     placeholder: true
     out_of_scope: true
     notes: Explicitly out of scope for Foundation 0 pending a later SOM/devkit domain decision.
+
+  # COPS-000096: supporting references have a separate entity namespace.
+  - source_key: radxa-rock5b-documentation-poc
+    vendor: radxa
+    plane: DOCUMENTATION
+    authority: FIRST_PARTY_SUPPORTING
+    base_urls: [https://docs.radxa.com/en/rock5/rock5b/download]
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    expected_identity_surface: REFERENCE_TO_BOARD; explicit model + official artifact path + existing PRODUCT
+    expected_variant_surface: NONE
+    notes: Registered supporting ROCK 5B reference source; disabled; isolated manual qualification only; no PRODUCT admission, promotion or delivery.
