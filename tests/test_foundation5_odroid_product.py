@@ -321,8 +321,9 @@ def test_historical_discovery_is_not_market_new(pipeline: Pipeline, store: Store
     pipeline.accept_run(collect_corpus("baseline", run_id="od-1", started_at="2026-09-23T01:00:00+00:00"))
     pipeline.accept_run(collect_corpus("historical", run_id="od-h", started_at="2026-09-23T02:00:00+00:00"))
     live = _live_types(store)
-    assert "HISTORICAL_DISCOVERY" in live
-    assert "FIRST_SEEN_BY_CLANK" in live
+    historical_audits = store.all("SELECT event_type,baseline_silent FROM events WHERE run_id=\"od-h\"")
+    assert {row["event_type"] for row in historical_audits} >= {"FIRST_SEEN_BY_CLANK", "HISTORICAL_DISCOVERY"}
+    assert all(row["baseline_silent"] for row in historical_audits)
     assert "NEW_BOARD" not in live
     novelty = {
         row["novelty_status"]

@@ -126,6 +126,8 @@ class Pipeline:
             raise ValueError("registered source provenance differs from trusted registry")
         if any(draft.plane is not trusted.plane for draft in request.observations):
             raise ValueError("draft plane must match registered source plane")
+        if any(draft.vendor_key != trusted.vendor for draft in request.observations):
+            raise ValueError("draft vendor must match registered source vendor")
 
     def _accept_run(self, request: CollectorRunRequest, *, fixture_source: str | None = None) -> RunResult:
         # Authority validation precedes receipt lookup, failed-run writes and all mutations.

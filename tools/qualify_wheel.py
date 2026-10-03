@@ -94,7 +94,8 @@ def qualify(repo: Path, output: Path, *, ref: str = "HEAD") -> dict:
         raise ValueError("qualification output must be fresh; never overwrite evidence")
     output.mkdir(parents=True)
     git = ["git", "-c", "safe.directory=" + str(repo), "-C", str(repo)]
-    sha = subprocess.check_output([*git, "rev-parse", ref], text=True).strip()
+    _run([*git, "rev-parse", ref], cwd=output, log=output / "head.log")
+    sha = (output / "head.log").read_text(encoding="utf-8").strip()
     archive = output / "source.tar"
     _run([*git, "archive", "--format=tar", "--output=" + str(archive), sha],
          cwd=output, log=output / "archive.log")

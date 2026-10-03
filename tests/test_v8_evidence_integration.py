@@ -155,13 +155,15 @@ def test_reference_diagnostics_cannot_close_any_product_condition(store):
         assert [tuple(row) for row in store.all("SELECT * FROM diagnostic_conditions WHERE source_key='pine64-product'")] == before
 
 
-@pytest.mark.parametrize("forged", ["documentation-plane", "mixed-source", "durable-plane", "durable-authority", "missing-row", "registered-state", "unknown-source"])
+@pytest.mark.parametrize("forged", ["documentation-plane", "mixed-source", "cross-vendor", "durable-plane", "durable-authority", "missing-row", "registered-state", "unknown-source"])
 def test_generic_source_and_plane_consistency_fail_before_all_writes(store, forged):
     request = get_adapter("radxa-product").collect("invalid-source-binding", OBS)
     if forged == "documentation-plane":
         request.observations[0].plane = SourcePlane.DOCUMENTATION
     elif forged == "mixed-source":
         request.observations[0].source_key = "orange-pi-product"
+    elif forged == "cross-vendor":
+        request.observations[0].vendor_key = "raspberry-pi"
     elif forged == "durable-plane":
         store.execute("UPDATE sources SET plane='DOCUMENTATION' WHERE source_key='radxa-product'")
         request.observations[0].plane = SourcePlane.DOCUMENTATION

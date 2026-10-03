@@ -383,8 +383,10 @@ def test_config_storefront_page_is_a_variant_not_a_new_board(pipeline: Pipeline,
     assert store.count("board_variants") == variants_before + 1
     assert "NEW_BOARD" not in _live_types(store)
     live = _live_types(store)
-    assert "NEW_VARIANT" in live
-    assert "RAM_VARIANT_ADDED" in live
+    inventory_births = store.all("SELECT event_type,baseline_silent FROM events WHERE run_id='opi-32gb' AND entity_kind='VARIANT'")
+    assert {row["event_type"] for row in inventory_births} >= {"NEW_VARIANT", "RAM_VARIANT_ADDED"}
+    assert all(row["baseline_silent"] for row in inventory_births)
+    assert "NEW_VARIANT" not in live and "RAM_VARIANT_ADDED" not in live
     five = store.one("SELECT board_key FROM boards WHERE board_slug = 'orange-pi-5'")
     rams = {
         row["ram"]
@@ -403,12 +405,14 @@ def test_expanded_corpus_is_replay_stable_without_board_churn(pipeline: Pipeline
     # The 32GB page joined the same run; the board did not fork.
     five_rows = store.all("SELECT board_key FROM boards WHERE board_slug = 'orange-pi-5'")
     assert len(five_rows) == 1
-    # 5 Max is a genuine post-baseline discovery in this corpus: exactly one
-    # live NEW_BOARD, and it is the only new board of the run.
+    # First-seen after baseline is pre-existing catalogue inventory, with no
+    # dated launch evidence. Retain its audit birth silently.
     new_boards = store.all(
         "SELECT entity_key FROM events WHERE event_type = 'NEW_BOARD' AND baseline_silent = 0"
     )
-    assert [row["entity_key"] for row in new_boards] == ["orange-pi:orange-pi-5-max"]
+    assert new_boards == []
+    audit = store.one("SELECT baseline_silent FROM events WHERE run_id=\"opi-exp-1\" AND event_type=\"NEW_BOARD\" AND entity_key=\"orange-pi:orange-pi-5-max\"")
+    assert audit is not None and audit["baseline_silent"] == 1
     events_after_first = store.count("events")
     pipeline.accept_run(collect_corpus("expanded", run_id="opi-exp-2", started_at="2026-09-22T03:00:00+00:00"))
     assert store.count("boards") == boards

@@ -33,7 +33,9 @@ plane or changed durable authority cannot grant PRODUCT admission. Historical E/
 an explicit fixture admission method, with fixed source, plane, collector and
 scenario bindings. Generic unknown sources refuse; fixture mode cannot bypass
 registered-source authority. Every draft source must match its request source,
-and registered planes and durable authority must match the trusted registry.
+and registered draft planes/vendor identities and durable authority must match
+the trusted registry. Rewriting a cross-vendor draft source key cannot grant
+mutation authority for another vendor.
 
 ## Evidence boundaries
 

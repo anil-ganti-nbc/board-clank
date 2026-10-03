@@ -314,7 +314,7 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
     if integrity != "ok":
         staging.unlink(missing_ok=True)
         raise BackupError(f"restored staging database failed integrity check: {integrity}")
-    if {table: counts[table] for table in verification["verified_tables"]} != metadata["row_counts"]:
+    if counts != verification["row_counts"]:
         staging.unlink(missing_ok=True)
         raise BackupError("restored staging row counts diverge from metadata")
     restored_digest = sha256_file(staging)
