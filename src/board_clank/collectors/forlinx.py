@@ -92,15 +92,56 @@ def catalogue(html: str, page_url: str) -> tuple[dict[str, str], list[str], list
         if url in cards and cards[url] != match[1]:
             raise CollectorError('conflicting catalogue identity')
         cards[url] = match[1]
-    # Only pagination controls, never broad category/sidebar navigation.
-    pages = set()
-    for block in re.findall(r'<ul\b[^>]*class=[\"\']page[\"\'][^>]*>(.*?)</ul>', html, re.I | re.S):
-        for link in re.findall(r'href=[\"\']([^\"\']+)[\"\']', block):
-            if re.fullmatch(r'/product-list-2-[1-9]\d*\.html', link):
-                pages.add(official_url(urljoin(page_url, link)))
-    if not cards:
-        raise CollectorError('empty current SBC catalogue')
-    return cards, sorted(pages), excluded
+    # Qualified catalogues end with one complete pagination control. A title
+    # and a few cards do not establish that the discovery document is complete.
+    blocks = list(re.finditer(r'<ul\b[^>]*class=["\']page["\'][^>]*>(.*?)</ul>', html, re.I | re.S))
+    if len(blocks) != 1 or len(re.findall(r'<ul\b[^>]*class=["\']page["\']', html, re.I)) != 1:
+        raise CollectorError('missing or incomplete qualified catalogue pagination')
+    block = blocks[0]
+    entries = re.findall(r'<li\b([^>]*)>(.*?)</li>', block[1], re.I | re.S)
+    if len(entries) != len(re.findall(r'<li\b', block[1], re.I)):
+        raise CollectorError('incomplete catalogue pagination entry')
+    numbered, active, edges = {}, [], {}
+    for attributes, body in entries:
+        links = re.findall(r'<a\b([^>]*)href=["\']([^"\']+)["\']([^>]*)>(.*?)</a>', body, re.I | re.S)
+        if len(links) != 1:
+            raise CollectorError('ambiguous catalogue pagination link')
+        leading, link, trailing, label = links[0]
+        label = text(label)
+        if label.isdigit():
+            number = int(label)
+            if number in numbered or link != f'/product-list-2-{number}.html':
+                raise CollectorError('conflicting catalogue pagination number')
+            numbered[number] = official_url(urljoin(page_url, link))
+            if re.search(r'\bclass=["\']active["\']', leading + trailing, re.I):
+                active.append(number)
+        elif label in {'Prev', 'Next'} and label not in edges:
+            edges[label] = (link, bool(re.search(r'\bdisabled\b', attributes, re.I)))
+        else:
+            raise CollectorError('unqualified catalogue pagination entry')
+    current_match = re.fullmatch(r'/product-list-2(?:-([1-9]\d*))?\.html', urlparse(page_url).path)
+    if not current_match:
+        raise CollectorError('catalogue URL has the wrong document role')
+    current = int(current_match[1] or 1)
+    last = max(numbered, default=0)
+    if (not 1 <= last <= 16 or set(numbered) != set(range(1, last + 1))
+            or active != [current] or set(edges) != {'Prev', 'Next'}):
+        raise CollectorError('inconsistent or excessive catalogue pagination')
+    expected_edges = {'Prev': (f'/product-list-2-{current - 1}.html', current == 1),
+                      'Next': (f'/product-list-2-{min(current + 1, last)}.html', current == last)}
+    if edges != expected_edges:
+        raise CollectorError('inconsistent catalogue pagination boundary')
+    # Every qualified page has ten card slots; the final page may be shorter.
+    # Count excluded cards too: they are evidence of coverage, never products.
+    slots = len(cards) + len(excluded)
+    headings = list(re.finditer(r'<h3\b', html, re.I))
+    closed_cards = list(re.finditer(r'<a\b[^>]*href=["\'][^"\']+["\'][^>]*>\s*<h3\b[^>]*>.*?</h3>(?:(?!<h3\b).)*?</a>', html, re.I | re.S))
+    if (len(headings) != slots or len(closed_cards) != slots
+            or any(h.start() > block.start() for h in headings)
+            or any(card.end() > block.start() for card in closed_cards)
+            or not 1 <= slots <= 10 or (current < last and slots != 10)):
+        raise CollectorError('incomplete or unqualified catalogue card structure')
+    return cards, sorted(numbered.values()), excluded
 
 
 def hero(html: str) -> tuple[str, dict[str, str]]:
@@ -253,19 +294,29 @@ class ForlinxProductAdapter(CollectorAdapter):
         try:
             if self.experimental_live:
                 indexes = batch([INDEX])
-                initial_cards, pages, rejected = catalogue(indexes[INDEX], INDEX)
-                # page 1 is an explicit alias of the already-read index, not a second input.
-                pages = [p for p in pages if p != BASE + '/product-list-2-1.html']
-                if len(pages) > 15:
-                    raise CollectorError('excessive SBC catalogue pagination')
-                indexes.update(batch(pages))
-                for url, html in indexes.items():
-                    found, _, rejected = catalogue(html, url)
-                    excluded.extend(rejected)
-                    for link, name in found.items():
-                        if link in cards and cards[link] != name:
-                            raise CollectorError('conflicting cross-page model identity')
-                        cards[link] = name
+                page_sets = {}
+                pending = [INDEX]
+                parsed = set()
+                while pending:
+                    if len(set(indexes) | set(pending)) > 16:
+                        raise CollectorError('excessive SBC catalogue pagination')
+                    indexes.update(batch([p for p in pending if p not in indexes]))
+                    for url in pending:
+                        found, pages, rejected = catalogue(indexes[url], url)
+                        parsed.add(url)
+                        # Page 1 is the explicit root alias, never a second input.
+                        pages = {INDEX if p == BASE + '/product-list-2-1.html' else p for p in pages}
+                        page_sets[url] = pages
+                        excluded.extend(rejected)
+                        for link, name in found.items():
+                            if link in cards:
+                                raise CollectorError('duplicate or conflicting cross-page product route')
+                            cards[link] = name
+                    pending = sorted(set().union(*page_sets.values()) - parsed)
+                # Discovery reaches closure, including links exposed on later
+                # pages. Inconsistent snapshots cannot qualify partial coverage.
+                if any(pages != parsed for pages in page_sets.values()):
+                    raise CollectorError('inconsistent catalogue page sets at discovery closure')
                 if len(cards) > 200 or len(set(cards.values())) != len(cards):
                     raise CollectorError('excessive or duplicate ambiguous model routes')
                 products = batch(cards)
@@ -285,6 +336,7 @@ class ForlinxProductAdapter(CollectorAdapter):
                 documents.append(info)
         except (OSError, ValueError, KeyError, TypeError, CollectorError) as exc:
             errors.append({'error': str(exc)})
+            observations = []  # A required-document failure admits no partial PRODUCT batch.
         return CollectorRunRequest(run_id=run_id, source_key=SOURCE_KEY, collector_key=SOURCE_KEY,
             started_at=started_at, observations=observations, ok=bool(observations) and not errors,
             error='incomplete Forlinx collection' if errors else (None if observations else 'no PRODUCT observations'),

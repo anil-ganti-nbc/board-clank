@@ -1,0 +1,40 @@
+{
+  "source": "SUPERVISOR_OBSERVED_PROCESS",
+  "candidate_sha": "4b2af9969cecc36cfecc66458b6237bc0473cbe7",
+  "candidate_tree": "d71653a39128a1e7cec1e54bbeda2369d455278d",
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "packages": {
+    "pytest": "8.4.2",
+    "pydantic": "2.13.4",
+    "PyYAML": "6.0.3"
+  },
+  "started_utc": "2026-10-03T14:41:26.457372+00:00",
+  "finished_utc": "2026-10-03T14:46:49.495874+00:00",
+  "actual_process_exit_code": 0,
+  "snapshot_unchanged": true,
+  "isolated_process_temp": true,
+  "exact_commit_git_context": true,
+  "command": "python -m pytest -p no:cacheprovider --basetemp <isolated-temporary-directory> -ra",
+  "scope": "immutable Git archive; complete unfiltered suite; local Python 3.14.6 execution",
+  "pytest_result": "568 passed in 322.10s",
+  "full_log_sha256": "b51f090645a09f18cb8a580166b7b978a146227cf10168ce8382d929adf268cd",
+  "evidence_scope": "historical exact implementation SHA; does not qualify later descendants",
+  "historical_github_ci": [
+    {
+      "id": 37129047144,
+      "name": "Foundation 0 CI",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "4b2af9969cecc36cfecc66458b6237bc0473cbe7",
+      "html_url": "https://github.com/anil-ganti-nbc/board-clank/actions/runs/37129047144"
+    },
+    {
+      "id": 37129047131,
+      "name": "Fleet laws reminder",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "4b2af9969cecc36cfecc66458b6237bc0473cbe7",
+      "html_url": "https://github.com/anil-ganti-nbc/board-clank/actions/runs/37129047131"
+    }
+  ]
+}

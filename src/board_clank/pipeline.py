@@ -126,11 +126,13 @@ class Pipeline:
                 raise ValueError('unregistered source cannot enter PRODUCT admission')
             return
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
+                or trusted.enabled or trusted.promotion_state != 'EXPERIMENTAL'
                 or trusted.plane is not SourcePlane.PRODUCT
                 or trusted.authority is not SourceAuthority.FIRST_PARTY_CANONICAL):
             raise ValueError('source requires canonical PRODUCT authority')
         if durable is None or any(durable[key] != getattr(trusted, key)
-                for key in ('vendor', 'plane', 'authority', 'registered_state')):
+                for key in ('vendor', 'plane', 'authority', 'registered_state', 'enabled',
+                            'promotion_state', 'placeholder', 'out_of_scope')):
             raise ValueError('durable source provenance differs from trusted registry')
         if any(draft.plane is not trusted.plane or draft.vendor_key != trusted.vendor
                 for draft in request.observations):

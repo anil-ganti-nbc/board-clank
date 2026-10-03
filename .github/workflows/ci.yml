@@ -33,12 +33,13 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install -r requirements-dev.lock
           python -m pip install --no-deps -e .
+          python -m pip check
       - name: Prove lock pins
         run: |
           python - <<'PY'
           import importlib.metadata as m
           expected = {
-              "PyYAML": "6.0.1",
+              "PyYAML": "6.0.2",
               "pydantic": "2.13.4",
               "pydantic-core": "2.46.4",
               "pytest": "8.4.2",

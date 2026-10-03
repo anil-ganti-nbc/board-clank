@@ -88,7 +88,7 @@ def status(db_path: str | Path) -> dict[str, Any]:
     try:
         report = inspect_compatibility(con)
         counts: dict[str, Any] = {}
-        tables = _tables(con)
+        tables = set(report.present_tables)
         for table, query in (
             ("vendors", "vendors"),
             ("boards", "boards"),
@@ -98,7 +98,7 @@ def status(db_path: str | Path) -> dict[str, Any]:
             ("collector_runs", "collector_runs"),
             ("diagnostic_conditions", "diagnostic_conditions"),
         ):
-            if query in tables:
+            if report.state.value == "COMPATIBLE" and query in tables:
                 counts[table] = int(con.execute(f"SELECT COUNT(*) FROM {query}").fetchone()[0])
             else:
                 counts[table] = "UNKNOWN"
@@ -125,16 +125,10 @@ def health(db_path: str | Path) -> dict[str, Any]:
         }
     con = connect_readonly(path)
     try:
-        tables = _tables(con)
+        state = inspect_compatibility(con)
+        tables = set(state.present_tables) if state.state.value == "COMPATIBLE" else set()
         planes: dict[str, dict[str, str]] = {}
-
-        persistence = "UNKNOWN"
-        if "schema_migrations" in tables:
-            state = inspect_compatibility(con)
-            persistence = {
-                "COMPATIBLE": "ok",
-                "FRESH": "ok",
-            }.get(state.state.value, state.state.value)
+        persistence = "ok" if state.state.value == "COMPATIBLE" else state.state.value
         planes["persistence"] = {"state": persistence, "evidence": "schema compatibility inspection"}
 
         if "collector_runs" in tables:
@@ -182,8 +176,8 @@ def health(db_path: str | Path) -> dict[str, Any]:
             "evidence": "no scheduler authority declared or implemented",
         }
         degraded = any(
-            p["state"] in {"degraded", "failed", "CORRUPT", "PARTIAL"} for p in planes.values()
-        )
+            p["state"] in {"degraded", "failed"} for p in planes.values()
+        ) or state.state.value != "COMPATIBLE"
         unknown = any(p["state"] == "UNKNOWN" for p in planes.values())
         overall = "degraded" if degraded else ("ok_with_unknowns" if unknown else "ok")
         return {
@@ -202,6 +196,8 @@ def last_run(db_path: str | Path) -> dict[str, Any] | None:
         return None
     con = connect_readonly(path)
     try:
+        if inspect_compatibility(con).state.value != "COMPATIBLE":
+            return None
         if "collector_runs" not in _tables(con):
             return None
         row = con.execute(
@@ -269,12 +265,16 @@ def schema_revision(db_path: str | Path) -> dict[str, Any]:
         return {"schema_version": "UNKNOWN", "migrations": []}
     con = connect_readonly(path)
     try:
-        tables = _tables(con)
-        if "schema_migrations" not in tables:
-            return {"schema_version": "UNKNOWN", "migrations": []}
-        rows = con.execute("SELECT version, applied_at, name FROM schema_migrations ORDER BY version").fetchall()
+        report = inspect_compatibility(con)
+        rows = []
+        if "schema_migrations" in report.present_tables:
+            columns = {row[1] for row in con.execute("PRAGMA table_info(schema_migrations)")}
+            if {"version", "applied_at", "name"} <= columns:
+                rows = con.execute("SELECT version, applied_at, name FROM schema_migrations ORDER BY version").fetchall()
         return {
-            "schema_version": EXPECTED_SCHEMA_VERSION,
+            "schema_version": report.observed_version if report.observed_version is not None else "UNKNOWN",
+            "expected_schema_version": EXPECTED_SCHEMA_VERSION,
+            "compatibility_state": report.state.value,
             "applied": [dict(zip(("version", "applied_at", "name"), row)) for row in rows],
         }
     finally:
@@ -287,6 +287,8 @@ def source_summary(db_path: str | Path) -> list[dict[str, Any]]:
         return []
     con = connect_readonly(path)
     try:
+        if inspect_compatibility(con).state.value != "COMPATIBLE":
+            return []
         if "sources" not in _tables(con):
             return []
         rows = con.execute(
@@ -306,6 +308,8 @@ def diagnostic_summary(db_path: str | Path) -> dict[str, Any]:
         return {"conditions": [], "sightings_total": "UNKNOWN"}
     con = connect_readonly(path)
     try:
+        if inspect_compatibility(con).state.value != "COMPATIBLE":
+            return {"conditions": [], "sightings_total": "UNKNOWN"}
         tables = _tables(con)
         if "diagnostic_conditions" not in tables:
             return {"conditions": [], "sightings_total": "UNKNOWN"}
@@ -331,6 +335,8 @@ def execution_evidence(db_path: str | Path) -> dict[str, Any]:
         return {"runs": 0, "receipts": 0, "errors": 0}
     con = connect_readonly(path)
     try:
+        if inspect_compatibility(con).state.value != "COMPATIBLE":
+            return {"runs": "UNKNOWN", "receipts": "UNKNOWN", "errors": "UNKNOWN", "occurrences": "UNKNOWN"}
         tables = _tables(con)
 
         def count(table: str) -> Any:
