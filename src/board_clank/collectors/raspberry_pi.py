@@ -14,7 +14,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener
+
+from board_clank.collectors._http import ValidatedRedirect, document_url_validator, require_document_role
 from urllib.error import HTTPError, URLError
 
 from board_clank.collectors.base import CollectorAdapter, CollectorError
@@ -808,22 +810,33 @@ def _assert_official_url(url: str) -> str:
     return url
 
 
+def _document_role(url: str) -> str:
+    parsed = urlparse(url)
+    if _is_pcn_url(url):
+        return "pcn"
+    if parsed.netloc in PIP_HOSTS and parsed.path.rstrip("/") in {"", "/categories/505-computers", "/categories/616-modules"}:
+        return "index"
+    return "index" if parsed.path.rstrip("/") == "/products" else "detail"
+
+
 def fetch_official(url: str, *, timeout: int = 20) -> str:
     return fetch_official_meta(url, timeout=timeout)["text"]
 
 
 def fetch_official_meta(url: str, *, timeout: int = 20) -> dict[str, Any]:
     _assert_official_url(url)
+    validate_selected = document_url_validator(url, _assert_official_url, _document_role)
     request = Request(
         url,
         headers={"User-Agent": "board-clank/0.1.0 (+experimental-manual-raspberry-pi-product)"},
         method="GET",
     )
-    with urlopen(request, timeout=timeout) as response:  # noqa: S310 - host allowlisted above
+    with build_opener(ValidatedRedirect(validate_selected)).open(request, timeout=timeout) as response:  # noqa: S310 - host allowlisted above
+        final = response.geturl()
+        validate_selected(final)
         raw = response.read()
         charset = response.headers.get_content_charset() or "utf-8"
         text = raw.decode(charset, errors="replace")
-        final = response.geturl()
         return {
             "requested_url": url,
             "final_url": final,
@@ -896,10 +909,11 @@ class RaspberryPiProductAdapter(CollectorAdapter):
             leads: list[str] = []
             for root in (PIP_COMPUTERS_URL, PIP_MODULES_URL):
                 meta = record_fetch(root)
-                _drafts, info = parse_product_html(meta["text"], page_url=root, observed_at=started_at)
+                _drafts, info = parse_product_html(meta["text"], page_url=meta["final_url"], observed_at=started_at)
                 info["raw_body_hash"] = meta["raw_body_hash"]
                 info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(info)
+                require_document_role(_drafts, info, "index")
                 for lead in info.get("lead_hrefs") or []:
                     if _is_pcn_url(lead):
                         continue
@@ -914,7 +928,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
             for url in leads:
                 try:
                     meta = record_fetch(url)
-                    drafts, page_info = parse_product_html(meta["text"], page_url=url, observed_at=started_at)
+                    drafts, page_info = parse_product_html(meta["text"], page_url=meta["final_url"], observed_at=started_at)
                 except CollectorError as exc:
                     diagnostics["parser_errors"].append(str(exc))
                     diagnostics["documents"].append({"page_url": url, "status": "error"})
@@ -922,6 +936,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                 page_info["raw_body_hash"] = meta["raw_body_hash"]
                 page_info["semantic_evidence_hash"] = meta["semantic_evidence_hash"]
                 diagnostics["documents"].append(page_info)
+                require_document_role(drafts, page_info, "detail")
                 pcn_titles: list[str] = list(page_info.get("pcns") or [])
                 for href in page_info.get("lead_hrefs") or []:
                     if not _is_pcn_url(href):
@@ -929,16 +944,18 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                     try:
                         pcn_meta = record_fetch(href)
                         _pcn_drafts, pcn_info = parse_product_html(
-                            pcn_meta["text"], page_url=href, observed_at=started_at
+                            pcn_meta["text"], page_url=pcn_meta["final_url"], observed_at=started_at
                         )
                         pcn_info["raw_body_hash"] = pcn_meta["raw_body_hash"]
                         pcn_info["semantic_evidence_hash"] = pcn_meta["semantic_evidence_hash"]
                         diagnostics["pcn_pages"].append(pcn_info)
+                        require_document_role(_pcn_drafts, pcn_info, "pcn")
                         pcn_titles.extend(pcn_info.get("pcns") or [])
                     except CollectorError as exc:
                         diagnostics["parser_errors"].append(str(exc))
-                if page_info.get("status") in {"resolved", "resolved-identity"}:
-                    diagnostics["resolved"] += 1
+                if page_info.get("status") in {"resolved", "resolved-identity", "identity-conflict", "insufficient-evidence"}:
+                    if page_info["status"] in {"resolved", "resolved-identity"}:
+                        diagnostics["resolved"] += 1
                     for draft in drafts:
                         existing = list(draft.raw_fields.get("pcns") or [])
                         merged = list(dict.fromkeys(existing + pcn_titles))
@@ -951,6 +968,10 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                 diagnostics["fetches"].append({k: v for k, v in market.items() if k != "text"} | {"ok": True})
             except (CollectorError, HTTPError, URLError, OSError):
                 diagnostics["marketing_catalogue"] = "unreachable-optional"
+
+            if (not observations or diagnostics["parser_errors"]
+                    or any(not row.get("ok") for row in diagnostics["fetches"])):
+                raise CollectorError("incomplete required PRODUCT collection")
 
             return CollectorRunRequest(
                 run_id=run_id,
@@ -968,9 +989,9 @@ class RaspberryPiProductAdapter(CollectorAdapter):
                 source_key=SOURCE_KEY,
                 collector_key=COLLECTOR_KEY,
                 started_at=started_at,
-                observations=observations,
-                ok=bool(observations),
-                error=None if observations else f"experimental live fetch failed: {exc}",
+                observations=[],
+                ok=False,
+                error=f"experimental live fetch failed: {exc}",
                 diagnostics=diagnostics,
             )
 

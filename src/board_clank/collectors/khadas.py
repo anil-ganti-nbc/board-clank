@@ -172,6 +172,12 @@ def _configuration_blocks(product):
     return {m[1].lower(): content[m.end():matches[i+1].start() if i+1<len(matches) else len(content)] for i,m in enumerate(matches)}
 
 
+def _cpu_evidence(html):
+    blocks = re.findall(r'<(?:p|li|tr)\b[^>]*>(.*?)</(?:p|li|tr)>', html, re.I | re.S) or [html]
+    return sorted({text(block) for block in blocks
+                   if re.search(r'\b(?:CPU|SoC|processor|SBC|Cortex)\b', text(block), re.I)})
+
+
 def parse_product_html(html, *, page_url, observed_at, marketing=None):
     url = official_url(page_url)
     product = product_data(html, url)
@@ -183,8 +189,11 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
         raise CollectorError('product lacks matching current family/marketing evidence')
     description = text(product['description'])
     candidates = silicon(description)
+    cpu_evidence = _cpu_evidence(product['description'])
     if not candidates:
         candidates = silicon(marketing['description'])
+        cpu_evidence = sorted(set(cpu_evidence + _cpu_evidence(marketing['description'])))
+    soc_candidates = sorted(f'{v}:{slugify(s)}' for v, s in candidates)
     vendor, soc = candidates[0] if len(candidates)==1 else (UNKNOWN, UNKNOWN)
     blocks = _configuration_blocks(product)
     selections = {}
@@ -199,7 +208,8 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
     projection = {'name': name, 'description': description,
                   'additional_info': [(x['title'], text(x['description'])) for x in product['additionalInfo']],
                   'options': sorted(selections.values()), 'currency': product.get('currency', UNKNOWN),
-                  'stock': product.get('inventory', {}).get('status', UNKNOWN), 'items': []}
+                  'stock': product.get('inventory', {}).get('status', UNKNOWN), 'items': [],
+                  'cpu_evidence': cpu_evidence, 'soc_candidates': soc_candidates}
     drafts = []
     for item in product['productItems']:
         try:
@@ -236,7 +246,7 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
             spec=NormalizedSpec(soc=soc, soc_key=f'{vendor}:{slugify(soc)}' if soc!=UNKNOWN else UNKNOWN,
                 ram_type='/'.join(sorted(set(ramtype))) or UNKNOWN, pcb_revision=revision),
             native_fields={'heading':name,'product_url':url,'marketing_url':marketing['url']},
-            raw_fields=evidence, page_url=url,
+            raw_fields={**evidence, 'cpu_evidence': cpu_evidence, 'soc_candidates': soc_candidates}, page_url=url,
             availability=stock.get(projection['stock'], Availability.UNKNOWN),
             novelty=NoveltyEvidence(first_seen_at=observed_at,first_seen_source=SOURCE_KEY,
                 novelty_status=NoveltyStatus.EXISTING_PRODUCT,novelty_basis='current-catalogue-not-launch'),

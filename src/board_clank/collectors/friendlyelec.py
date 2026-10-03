@@ -25,6 +25,16 @@ INDEXES = [BASE + 'index.php?route=product/category&path=' + c for c in ('69', '
 SOC = re.compile(r'\b(RK\d{4}[A-Z0-9]*|H[23568]|A64|S5P\d+|Exynos\d+|S905[A-Z0-9]*)\b', re.I)
 
 
+def _soc_vendor(soc):
+    if soc.startswith('RK'):
+        return 'rockchip'
+    if soc in {'H2', 'H3', 'H5', 'H6', 'H8', 'A64'}:
+        return 'allwinner'
+    if soc.startswith(('S5P', 'EXYNOS')):
+        return 'samsung'
+    return 'amlogic' if soc.startswith('S905') else UNKNOWN
+
+
 def text(html: str) -> str:
     return re.sub(r'\s+', ' ', unescape(re.sub(r'<[^>]+>', ' ', html))).strip()
 
@@ -101,16 +111,16 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     rows = [text(r) for r in re.findall(r'<tr\b[^>]*>(.*?)</tr>', html, re.S | re.I)]
     cpu = [r for r in rows if re.match(r'^(CPU|SoC)\b', r, re.I)]
     candidates = sorted({m.upper() for r in cpu for m in SOC.findall(r)})
+    cpu_evidence = list(cpu)
     # Product Code is context-labelled processor/model evidence, not arbitrary prose.
     code = re.search(r'Product Code\s*:\s*(.*?)</li>', html, re.S | re.I)
     if not candidates and code:
+        cpu_evidence.append('Product Code: ' + text(code[1]))
         candidates = sorted({m.upper() for m in SOC.findall(text(code[1]))})
     soc = candidates[0] if len(candidates) == 1 else UNKNOWN
-    vendor = 'rockchip' if soc.startswith('RK') else ('allwinner' if soc in {'H2','H3','H5','H6','H8','A64'} else UNKNOWN)
-    if soc.startswith(('S5P', 'EXYNOS')):
-        vendor = 'samsung'
-    elif soc.startswith('S905'):
-        vendor = 'amlogic'
+    vendor = _soc_vendor(soc)
+    cpu_evidence = sorted(set(cpu_evidence))
+    soc_candidates = sorted(f'{_soc_vendor(candidate)}:{slugify(candidate)}' for candidate in candidates)
     ramrows = ' '.join(r for r in rows if re.match(r'^(Memory|RAM)\b', r, re.I))
     storage = ' '.join(r for r in rows if re.match(r'^Storage\b', r, re.I))
     ramtype = re.findall(r'\b(?:LP)?DDR[345]X?\b', ramrows, re.I)
@@ -137,7 +147,8 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     selected_emmc = {re.match(r'\d+',cap)[0] for _,cap in pairs if re.match(r'\d+',cap)}
     warnings = ['selector-spec-storage-disagreement'] if listed_emmc and selected_emmc-listed_emmc else []
     info.update(evidence_warnings=warnings, spec_storage=storage, paired_options=sorted(pairs),
-                wireless_evidence=wireless_rows, evidence_roles=['PRODUCT_IDENTITY','LABELLED_SPEC','PAIRED_PURCHASE_OPTIONS'])
+                wireless_evidence=wireless_rows, cpu_evidence=cpu_evidence, soc_candidates=soc_candidates,
+                evidence_roles=['PRODUCT_IDENTITY','LABELLED_SPEC','PAIRED_PURCHASE_OPTIONS'])
     family = 'compute-modules' if name.startswith(('CM', 'SOM-')) or 'Core' in name else ('nanopc' if name.startswith('NanoPC') else 'nanopi')
     typ = BoardType.COMPUTE_MODULE if family == 'compute-modules' else BoardType.SBC
     drafts = []
@@ -154,7 +165,8 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                 emmc_options=','.join(sorted({x[1] for x in pairs})), wifi=wireless,
                 bluetooth=bt[1] if bt else UNKNOWN,
                 microsd='yes' if re.search('MicroSD', storage, re.I) else UNKNOWN),
-            native_fields={'heading': name, 'page_url': url}, raw_fields={'paired_options': sorted(pairs)},
+            native_fields={'heading': name, 'page_url': url},
+            raw_fields={'paired_options': sorted(pairs), 'cpu_evidence': cpu_evidence, 'soc_candidates': soc_candidates},
             page_url=url, historical_known=historical_known,
             novelty=NoveltyEvidence(first_seen_at=observed_at, first_seen_source=SOURCE_KEY,
                 novelty_status=NoveltyStatus.EXISTING_PRODUCT, novelty_basis='first-party-catalogue-not-launch'),

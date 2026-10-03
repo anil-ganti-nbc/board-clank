@@ -1,3 +1,10 @@
+SUPERSEDED:admission overwrote normalized cpu_config with UNKNOWN. The explicit
+OEM text remained native/raw, but the avoidable normalized-data mapping loss
+requires a new implementation and fresh qualification. Retained report follows.
+The later shared PRODUCT authority/input-receipt and required document-role
+repairs also supersede this report. Its original receipts remain evidence of
+that exact intermediate snapshot, without certifying the repaired candidate.
+
 Foundation 9A Forlinx PRODUCT builder evidence, 2026-10-03
 Mission COPS-000097; independent acceptance remains with the supervisor.
 Branch foundation-9-forlinx-product, original parent

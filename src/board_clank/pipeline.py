@@ -40,6 +40,23 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def _product_input_receipt(request: CollectorRunRequest) -> str:
+    observations = []
+    for draft in request.observations:
+        item = draft.model_dump(mode='json')
+        item.pop('observed_at', None)
+        if item.get('price'):
+            item['price'].pop('observed_at', None)
+        item['novelty'].pop('first_seen_at', None)
+        item['raw_fields'].pop('html_excerpt', None)
+        observations.append(item)
+    return 'product-input-v1:' + content_hash({
+        'source_key': request.source_key, 'collector_key': request.collector_key,
+        'ok': request.ok, 'fixture_scenario': request.fixture_scenario,
+        'observations': observations,
+    })
+
+
 @dataclass
 class RunResult:
     run_id: str
@@ -74,12 +91,63 @@ class Pipeline:
     def __init__(self, store: Store) -> None:
         self.store = store
 
+    def accept_fixture_run(self, request: CollectorRunRequest) -> RunResult:
+        """Explicit historic synthetic scenarios do not grant production authority."""
+        bindings = {
+            'pine64-commerce': ('E', SourcePlane.COMMERCE),
+            'radxa-docs': ('F', SourcePlane.DOCUMENTATION),
+            'third-party-discovery': ('M', SourcePlane.DISCOVERY_ONLY),
+        }
+        binding = bindings.get(request.source_key)
+        if binding and (request.collector_key != 'fixture' or request.fixture_scenario != binding[0]
+                or any(draft.plane is not binding[1] for draft in request.observations)):
+            raise ValueError('unregistered fixture source requires its exact scenario and plane')
+        return self._accept_run(request, fixture_source=request.source_key if binding else None)
+
     def accept_run(self, request: CollectorRunRequest) -> RunResult:
+        return self._accept_run(request)
+
+    def _validate_admission_source(self, request: CollectorRunRequest, fixture_source: str | None) -> None:
+        from board_clank.sources import load_sources
+
+        declared = {source.source_key: source for source in load_sources()}
+        for key in {request.source_key, *(draft.source_key for draft in request.observations)}:
+            trusted = declared.get(key)
+            row = self.store.one('SELECT * FROM sources WHERE source_key=?', (key,))
+            if ((trusted and trusted.authority is SourceAuthority.FIRST_PARTY_SUPPORTING)
+                    or (row and row['authority'] == SourceAuthority.FIRST_PARTY_SUPPORTING.value)):
+                raise ValueError('supporting evidence cannot enter PRODUCT admission')
+        if any(draft.source_key != request.source_key for draft in request.observations):
+            raise ValueError('draft source must match request source')
+        trusted = declared.get(request.source_key)
+        durable = self.store.one('SELECT * FROM sources WHERE source_key=?', (request.source_key,))
+        if trusted is None:
+            if request.source_key != fixture_source or durable is not None:
+                raise ValueError('unregistered source cannot enter PRODUCT admission')
+            return
+        if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
+                or trusted.plane is not SourcePlane.PRODUCT
+                or trusted.authority is not SourceAuthority.FIRST_PARTY_CANONICAL):
+            raise ValueError('source requires canonical PRODUCT authority')
+        if durable is None or any(durable[key] != getattr(trusted, key)
+                for key in ('vendor', 'plane', 'authority', 'registered_state')):
+            raise ValueError('durable source provenance differs from trusted registry')
+        if any(draft.plane is not trusted.plane or draft.vendor_key != trusted.vendor
+                for draft in request.observations):
+            raise ValueError('draft plane/vendor must match registered PRODUCT source')
+
+    def _accept_run(self, request: CollectorRunRequest, *, fixture_source: str | None = None) -> RunResult:
+        # Authorization and semantic input identity precede all writes. Only
+        # explicit transport/time fields are excluded; order/multiplicity stay.
+        self._validate_admission_source(request, fixture_source)
+        receipt_hash = _product_input_receipt(request)
         existing = self.store.one(
-            "SELECT run_id FROM processed_run_receipts WHERE run_id = ?",
+            "SELECT source_key, receipt_hash FROM processed_run_receipts WHERE run_id = ?",
             (request.run_id,),
         )
         if existing:
+            if existing['source_key'] != request.source_key or existing['receipt_hash'] != receipt_hash:
+                raise ValueError('run ID collision or unverifiable legacy receipt; use a fresh run ID')
             return RunResult(
                 run_id=request.run_id,
                 status="replayed",
@@ -87,6 +155,9 @@ class Pipeline:
                 diagnostics=dict(request.diagnostics or {}),
             )
 
+        if self.store.one('SELECT run_id FROM collector_runs WHERE run_id=?', (request.run_id,)):
+            raise ValueError('run ID already belongs to an attempt without an accepted receipt')
+        request = request.model_copy(deep=True)
         if not request.ok:
             self.store.execute(
                 """
@@ -106,7 +177,9 @@ class Pipeline:
             )
             self.store.execute(
                 "INSERT INTO run_errors(run_id, source_key, message, created_at) VALUES (?, ?, ?, ?)",
-                (request.run_id, request.source_key, request.error or "collector failed", _now()),
+                (request.run_id, request.source_key, canonical_json({
+                    'format': 'collector-failure-v1', 'error': request.error or 'collector failed',
+                    'diagnostics': request.diagnostics}) if request.diagnostics else request.error or 'collector failed', _now()),
             )
             self.store.commit()
             return RunResult(
@@ -157,14 +230,6 @@ class Pipeline:
             resolved_keys = self._reconcile_diagnostic_conditions(request, baseline=baseline)
             event_keys.extend(resolved_keys)
             notification_count = self._count_notifications(event_keys)
-            receipt_hash = content_hash(
-                {
-                    "run_id": request.run_id,
-                    "source_key": request.source_key,
-                    "observation_count": len(request.observations),
-                    "event_keys": event_keys,
-                }
-            )
             self.store.execute(
                 """
                 INSERT INTO processed_run_receipts(run_id, source_key, receipt_hash, accepted_at, observation_count, event_count)
@@ -1043,6 +1108,9 @@ class Pipeline:
             "marketing_name": draft.marketing_name,
             "page_url": draft.page_url,
         }
+        cpu_evidence = sorted(str(item) for item in (draft.raw_fields.get('cpu_evidence') or []))
+        if cpu_evidence:
+            state['cpu_evidence'] = cpu_evidence
         return content_hash(state), state
 
     def _upsert_condition_row(

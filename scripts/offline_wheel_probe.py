@@ -5,6 +5,7 @@ The output/database directory must be fresh and explicitly operator-selected.
 """
 import argparse
 import json
+import importlib.metadata
 from pathlib import Path
 import sys
 
@@ -31,6 +32,7 @@ def main():
     assert_foundation_0_roster()
     validate_manifest(build_manifest())
     validate_manifest(load_manifest())
+    assert build_manifest()['architecture']['python'] == importlib.metadata.metadata('board-clank')['Requires-Python']
     store = Store(args.db)
     sync_sources_to_store(store)
     pipeline = Pipeline(store)

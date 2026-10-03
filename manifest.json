@@ -1,6 +1,6 @@
 {
   "architecture": {
-    "python": ">=3.11",
+    "python": ">=3.12",
     "storage": "sqlite"
   },
   "backup_restore": {

@@ -128,6 +128,23 @@ def test_unpaired_memory_not_cartesian_and_single_pair():
         assert f.memory_pair({'ram': ram, 'rom': rom}).ram == 'UNKNOWN'
 
 
+def test_explicit_core_configuration_survives_admission_without_chip_guess(pipeline, store):
+    draft, _ = parse('OK-MX9352-C')
+    expected = draft[0].raw_fields['architecture']
+    assert expected and 'Cortex-A55@' in expected and 'Cortex-M33' in expected
+    assert draft[0].cpu_configuration == draft[0].spec.cpu_config == expected
+    pipeline.accept_run(one_product_request('configuration-persistence', draft[0]))
+    row = store.one("SELECT payload_json FROM canonical_observations WHERE entity_kind='BOARD' AND entity_key='forlinx:ok-mx9352-c'")
+    payload = json.loads(row['payload_json'])
+    assert payload['spec']['cpu_config'] == expected
+    assert payload['soc_key'] == 'nxp:i-mx93' and payload['soc_marketing_name'] == 'i.MX93'
+    # The M33 companion core remains honest configuration text, never SoC identity.
+    assert not store.all("SELECT * FROM socs WHERE marketing_name LIKE '%M33%'")
+    empty = parse('OK6818-C2')[0][0]
+    assert empty.raw_fields['architecture'] == ''
+    assert empty.cpu_configuration == empty.spec.cpu_config == 'UNKNOWN'
+
+
 @pytest.mark.parametrize('model', ['OK1052-C', 'OK1061-S'])
 def test_actual_mcu_only_catalogue_products_rejected(model):
     ds, info = parse(model)

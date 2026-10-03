@@ -187,7 +187,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     if args.fixture:
         requests = FixtureCollector(args.fixture).collect_runs()
-        results = [pipeline.accept_run(req).as_dict() for req in requests]
+        results = [pipeline.accept_fixture_run(req).as_dict() for req in requests]
         store.close()
         return _json({"mode": "fixture", "results": results})
     if experimental_live:

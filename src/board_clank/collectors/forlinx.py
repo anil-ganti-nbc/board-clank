@@ -192,7 +192,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, catalogue_
         vendor_key='forlinx', vendor_name='Forlinx Embedded', family_slug='single-board-computers',
         family_name='Single Board Computers', board_slug=slugify(name), marketing_name=name,
         board_type=BoardType.SBC, variant=memory_pair(fields), soc_vendor=vendor,
-        soc_marketing_name=soc, architecture=arch,
+        soc_marketing_name=soc, architecture=arch, cpu_configuration=architecture or UNKNOWN,
         spec=NormalizedSpec(soc=soc, soc_key=f'{vendor}:{slugify(soc)}' if soc != UNKNOWN else UNKNOWN,
             cpu_arch=arch.value, cpu_config=architecture or UNKNOWN, ram_type='/'.join(sorted(set(ram_types))) or UNKNOWN,
             ram_options=fields.get('ram') or UNKNOWN, emmc_options=emmc_options(fields['rom']),
