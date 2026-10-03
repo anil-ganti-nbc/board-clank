@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -83,11 +84,34 @@ def _quoted(identifier: str) -> str:
     return '"' + identifier.replace('"', '""') + '"'
 
 
+def _sql_words(sql: str) -> list[str]:
+    """Ignore quoted names/data and comments when inspecting constraint keywords."""
+    tokens = re.finditer(
+        r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^\]]*\]|"
+        r"--[^\n]*|/\*[\s\S]*?\*/|[A-Za-z_][A-Za-z_0-9]*", sql
+    )
+    return [token.group().upper() for token in tokens if re.match(r"[A-Za-z_]", token.group())]
+
+
+def _safe_literal_default(value: str, *, nullable: bool) -> bool:
+    text = value.strip()
+    while text.startswith("(") and text.endswith(")"):
+        text = text[1:-1].strip()
+    if text.upper() == "NULL":
+        return nullable
+    return bool(
+        text.upper() in ("TRUE", "FALSE")
+        or re.fullmatch(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", text)
+        or re.fullmatch(r"'(?:''|[^'])*'", text)
+        or re.fullmatch(r"[xX]'(?:[0-9A-Fa-f]{2})*'", text)
+    )
+
+
 def _table_structure(con: sqlite3.Connection, table: str) -> dict[str, object]:
-    """Read material structure; ignore physical column order and SQLite FK ids."""
+    """Read material structure, including hidden columns and write constraints."""
     columns = {
-        row[1]: (str(row[2]).upper(), row[3], row[4], row[5])
-        for row in con.execute(f"PRAGMA table_info({_quoted(table)})")
+        row[1]: (str(row[2]).upper(), row[3], row[4], row[5], row[6])
+        for row in con.execute(f"PRAGMA table_xinfo({_quoted(table)})")
     }
     foreign_keys: dict[int, list[tuple[object, ...]]] = {}
     for row in con.execute(f"PRAGMA foreign_key_list({_quoted(table)})"):
@@ -102,38 +126,60 @@ def _table_structure(con: sqlite3.Connection, table: str) -> dict[str, object]:
         )
         indexes[row[1]] = (row[2], row[3], row[4], columns_in_key)
     sql = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
-    return {"columns": columns, "foreign_keys": keys, "indexes": indexes,
-            "autoincrement": bool(sql and "AUTOINCREMENT" in str(sql[0]).upper())}
+    words = _sql_words(str(sql[0])) if sql else []
+    mode = next(((row[2], row[4], row[5]) for row in con.execute("PRAGMA table_list")
+                 if row[0] == "main" and row[1] == table), None)
+    if mode is None:
+        raise ValueError(f"table mode cannot be verified: {table}")
+    return {"columns": columns, "foreign_keys": keys, "indexes": indexes, "mode": mode,
+            "autoincrement": "AUTOINCREMENT" in words,
+            "constraints": tuple(words.count(word) for word in ("CHECK", "COLLATE", "DEFERRABLE", "CONFLICT"))}
 
 
 @lru_cache(maxsize=1)
 def _expected_structure() -> dict[str, dict[str, object]]:
-    # Build the packaged v3 contract in memory. No target Store or migration is invoked.
+    # The packaged v3 contract is built in memory; the target is never migrated.
     con = sqlite3.connect(":memory:")
     try:
         con.executescript(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
         if set(_user_tables(con)) != set(EXPECTED_TABLES):
             raise ValueError("packaged schema table contract is inconsistent")
+        if con.execute("SELECT 1 FROM sqlite_master WHERE type='trigger'").fetchone():
+            raise ValueError("canonical v3 schema must not define triggers")
         return {table: _table_structure(con, table) for table in EXPECTED_TABLES}
     finally:
         con.close()
 
 
 def _structural_issues(con: sqlite3.Connection) -> list[str]:
-    issues = []
+    # No trigger is part of canonical v3. An extra-table trigger can also mutate
+    # canonical rows indirectly, so unknown trigger programs fail closed.
+    issues = [f"{row[0]}: unexpected trigger on {row[1]}" for row in con.execute(
+        "SELECT name, tbl_name FROM sqlite_master WHERE type='trigger' ORDER BY name"
+    )]
     for table, expected in _expected_structure().items():
         actual = _table_structure(con, table)
         for column, shape in expected["columns"].items():
             if actual["columns"].get(column) != shape:
                 issues.append(f"{table}.{column}: required column/type/nullability/default/key differs")
-        if not expected["foreign_keys"].issubset(actual["foreign_keys"]):
-            issues.append(f"{table}: required foreign-key contract differs")
+        for column, shape in actual["columns"].items():
+            if column in expected["columns"]:
+                continue
+            nullable = not shape[1]
+            safe_default = nullable if shape[2] is None else _safe_literal_default(shape[2], nullable=nullable)
+            if shape[3] or shape[4] or not safe_default:
+                issues.append(f"{table}.{column}: extra column is not safe for canonical inserts")
+        if expected["foreign_keys"] != actual["foreign_keys"]:
+            issues.append(f"{table}: foreign-key contract differs")
+        if expected["mode"] != actual["mode"] or expected["constraints"] != actual["constraints"]:
+            issues.append(f"{table}: table mode/check/collation/deferred constraints differ")
         if expected["autoincrement"] != actual["autoincrement"]:
             issues.append(f"{table}: required row-id allocation differs")
         actual_indexes = set(actual["indexes"].values())
+        expected_unique = {shape for shape in expected["indexes"].values() if shape[0]}
+        if any(shape[0] and shape not in expected_unique for shape in actual_indexes):
+            issues.append(f"{table}: unexpected uniqueness constraint")
         for name, shape in expected["indexes"].items():
-            # Constraint autoindex names are SQLite implementation details. Explicit
-            # canonical indexes retain their names as well as their material keys.
             if (shape[1] in ("pk", "u") and shape not in actual_indexes) or (
                 shape[1] == "c" and actual["indexes"].get(name) != shape
             ):
