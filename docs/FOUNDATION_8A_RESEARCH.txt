@@ -1,0 +1,103 @@
+Foundation 8A empirical research checkpoint, 2026-10-03, BEFORE parser code.
+Mission COPS-000094; session 01a100c9-238f-7376-91b4-c2f4eb34d372.
+Start 706107799c488ee97cde53d7d8f84de59b0c63fd;
+tree 5a3c494af044e3b60058c94937e6aad0282884f9.
+Local/fetched remote exact, tracked clean, .zcodeignore unchanged SHA256
+1898036e950c81ac0d4b5fc93c2e8eaabfdc9bffedcb3338baeb9cbdc4a49cfe.
+Full starting suite: 299 passed in 141.82s, actual pytest exit0.
+Schema3, seven real PRODUCT adapters experimental/disabled, freeze ON,
+no scheduler/delivery. NAS deployment is separate, unchanged at613c3a1.
+Todd COPS-000093 separate checkout/workstream; no files consumed or rebased.
+
+Research capture (raw responses, SHA256, URL, final URL, size, HTTP status):
+C:/Users/anil/Documents/Codex/2026-09-22/files-pasted-by-the-user-you/work/khadas-research/capture.json
+Candidate scope authorities https://www.khadas.com/family, /vim, /edge.
+Current global VIM/Edge navigation and series surfaces link VIM1,VIM1S,VIM2,
+VIM3,VIM3L,VIM4,Edge (/edge1),Edge-V,Edge2. This is observed discovery, not
+a predeclared expected live count. Family content also exposes Captain as an
+extension/carrier, and Tone/Tea/Mind products, all outside SBC scope.
+Only full VIM/Edge model headings and current first-party family linkage may
+authorize PRODUCT identity. A processor in Mind/audio/accessories is not enough.
+
+Ordinary identifying urllib HTTPS requests succeeded, no browser automation,
+challenge bypass or TLS weakening. Wix pages are large but server-rendered:
+marketing HTML has headings/links/meta description; product-page routes carry
+application/json script id=wix-warmup-data. appsWarmupData contains a catalogue
+product with name,urlPart,description,additionalInfo,options,productItems,
+currency,price,inventory. JSON-LD Product independently supplies name/offers.
+ProductItems.optionsSelections bind exact selection IDs to SKU/price/stock.
+Do NOT take a Cartesian product of options. This data is supplied in ordinary
+page HTML; no undocumented authenticated API or browser execution required.
+Product-page h1 and structured product name should agree. Canonical URL is
+www.khadas.com/product-page/<urlPart>. Reject off-host redirects before follow.
+Series navigation is finite; store add-on pagination is not inventory discovery.
+
+Current store paths captured: khadas-vim1,vim1s,new-vim2,vim3,
+vim3l-bare-board,vim4,edge,edge-v,edge2; also cases/heatsinks/cooling/HTPC kit.
+Identity distinctions: VIM3 uses Amlogic A311D; VIM3L S905D3. VIM1 S905X;
+VIM1S S905Y4. These are distinct boards in explicit VIM family, not suffix
+revisions. Edge and Edge-V both RK3399 but different named form factors and
+connectors. /edge1 is marketing URL for heading Edge, not a new Edge1 identity.
+Edge2 is separately named and store identifies Rockchip RK3588S2.
+Companions Mali-G610,AP6275P,STM32,PHY/PMIC/codec tokens are not application SoCs.
+Edge store description omits SoC token; its current first-party marketing meta
+description explicitly identifies Rockchip RK3399. A linked marketing fallback
+must be same-product/name matched, not arbitrary cross-page silicon borrowing.
+
+VIM2 /product-page/new-vim2 names v1.4 in each Basic/Pro/Max configuration.
+It explicitly documents changed transformer/fan header and links
+https://dl.khadas.com/products/vim2/misc/vim2_v1.4_whats_new.pdf
+The first-party transition guide describes PCB/component/header differences.
+Thus v1.4 is a supported PCB revision of VIM2, not part of board slug.
+Do not instantiate v1.2 merely because the comparison mentions it.
+VIM1's compact v14 label is not silently normalized to a dotted revision;
+the linked forum is not ingested and revision remains unclaimed here.
+
+Named paired matrices directly present in additionalInfo:
+VIM2 Basic2GB/16GB/AP6356S-BT4.1; Pro3GB/32GB/AP6398S-BT5.0;
+Max3GB/64GB/AP6398S-BT5.0. Edge2 Basic8GB/32GB; Pro16GB/64GB.
+Edge2 productItems explicitly enumerate each Basic/Pro x ARM-PC/Maker-Kit
+combination. Description says ARM PC includes Maker Kit and cooling kit;
+marketing distinguishes enclosure/cooling/exposed headers. Preserve package
+label in variant bundle, not two board identities. Do not mix package-specific
+dimensions/ports into board-level comparison. VIM4 also exposes NPU/no-NPU and
+cooling packages: preserve exact SKU/option distinctions; do not claim every
+VIM4 contains an NPU. VIM3L HTPC bundle is not a new board and is initially
+excluded as a separate store identity because bare board already owns it.
+
+Secondary roles stay read-only research, never PRODUCT discovery:
+https://docs.khadas.com/products/sbc/edge-2l/hardware/start
+https://dl.khadas.com/products/
+Edge-2L exists in docs/downloads and the2026brochure. No current PRODUCT link
+was established on the captured family/VIM/Edge surfaces; carry coverage debt.
+No automatic docs/download resurrection. Forum posts are not canonical inputs.
+
+Volatility measured: repeated marketing /vim2 raw SHA changed (6c2f5380...
+to196fa48e...), repeated product-page/edge2 raw SHA remained99331a58....
+Wix viewer-model telemetry/scripts/media IDs and markup cannot be entity state.
+Retain meaningful model/revision/spec/option/SKU/stock/price in semantic source
+evidence; exclude presentation styles and telemetry, not those facts. Domain
+inventory drafts may leave unimplemented commerce fields unknown, but report
+the full selected semantic source projection/hash and do not fabricate prices.
+
+Generic audit: existing vendor/family keys, PCB RevisionKind, VariantDimensions
+(RAM,storage,wireless,bundle,sku), source-scoped diagnostics and receipt replay
+fit Khadas. No generic pipeline/model/schema change justified. Registry admission
+and manifest inventory are narrow policy updates. Existing canonical BOARD
+payload contains native_fields/availability/price: avoid per-SKU retail fields
+there or same-run variants would create fake board churn. Per-SKU evidence stays
+raw_fields/variant and collector semantic evidence; overall stock is board scope.
+Atomic source-run failure, as FriendlyELEC, preserves all prior boards and
+conditions when one required page fails. Observer source_summary is dynamic;
+prove shape compatibility, do not widen Diagnostic/Motherclank integration.
+
+Post-implementation live-discovery correction (first attempt preserved):
+The first atomic live pass reached a404 RCA-to-3.5mm accessory link on VIM3L.
+All domain counts stayed zero. Examination of every captured marketing page's
+actual anchor text proves Buy Now and exact-model cards identify product
+purchase links; arbitrary add-on navigation is not required PRODUCT input.
+Discovery now follows those anchors, records other store links as excluded,
+and still fails closed if a required purchase page fails. VIM3L's Buy Now HTPC
+kit link is fetched then rejected as duplicate bundle, not silently ignored.
+All nine marketing pages have this observed purchase contract. No URL-specific
+404 exception or weakened atomic acceptance is used.

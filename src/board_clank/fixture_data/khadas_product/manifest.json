@@ -1,0 +1,167 @@
+{
+  "marketing": [
+    {
+      "page_url": "https://www.khadas.com/vim1",
+      "file": "html/vim1.html",
+      "raw_sha256": "8c21f9e304b2d4443e811849f1169663e1e99364b790c00bd5633e51d39c2e38"
+    },
+    {
+      "page_url": "https://www.khadas.com/vim1s",
+      "file": "html/vim1s.html",
+      "raw_sha256": "799c1fbe03d148592f6231ff8ad1c1b69aead58ea98ebb4e048c30e31ea50d1d"
+    },
+    {
+      "page_url": "https://www.khadas.com/vim2",
+      "file": "html/vim2.html",
+      "raw_sha256": "6c2f538079c589407fcc17a887127cfd07c6aea21f45084cc78b032162bd01b8"
+    },
+    {
+      "page_url": "https://www.khadas.com/vim3",
+      "file": "html/vim3.html",
+      "raw_sha256": "03722e6329d0d5e6d92aae1eeee95c8f18a02edd2b685f57f2c84834868b0c8f"
+    },
+    {
+      "page_url": "https://www.khadas.com/vim3l",
+      "file": "html/vim3l.html",
+      "raw_sha256": "df29f601b992a7eb5a4600dfd218953641e56655c079c1faa7ee0a361511f95f"
+    },
+    {
+      "page_url": "https://www.khadas.com/vim4",
+      "file": "html/vim4.html",
+      "raw_sha256": "4e30b5f674d6932b90983cc2516cd5a78141e3c076e2080e6fd8449914c8a0d9"
+    },
+    {
+      "page_url": "https://www.khadas.com/edge1",
+      "file": "html/edge1.html",
+      "raw_sha256": "edc0954344b2992dc015b249246a152e8e278d0ef16e6d30dfbc690b81d78247"
+    },
+    {
+      "page_url": "https://www.khadas.com/edge-v",
+      "file": "html/edge-v.html",
+      "raw_sha256": "faec9cff0f7425413932fabb26dc448fe5ac4ae2f2e362b7db8c5c911a18a343"
+    },
+    {
+      "page_url": "https://www.khadas.com/edge2",
+      "file": "html/edge2.html",
+      "raw_sha256": "7b904ff4e395c6843c3c05b472a4ecaa18d402f0caf6cb47584b81083c877344"
+    }
+  ],
+  "corpora": {
+    "baseline": [
+      {
+        "page_url": "https://www.khadas.com/product-page/3705-cooling-fan",
+        "file": "html/product-page-3705-cooling-fan.html",
+        "raw_sha256": "d3b23f11327dce7e821d5c35fe6119bd359f303649de48954c77795be8a614c1",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/diy-case",
+        "file": "html/product-page-diy-case.html",
+        "raw_sha256": "26c8afdc8d876e62beacabc7c129e0e94ec541e241838acaa2dca32727c4d88e",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/diy-case2",
+        "file": "html/product-page-diy-case2.html",
+        "raw_sha256": "8e84a5eea55f02b3492f468866b98e13c98d1ab5da148a11eb25af8e8deabe99",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/edge-v",
+        "file": "html/product-page-edge-v.html",
+        "raw_sha256": "f2a30d4c2b35e78f23088713bf62417d3bf0a3c6d8393192f6f91a59a89bb038",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/edge",
+        "file": "html/product-page-edge.html",
+        "raw_sha256": "95c8ce0875b8633fadf89cc676409dcfe94fd043a0422d9e54eb479842dcaa37",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/edge2",
+        "file": "html/product-page-edge2.html",
+        "raw_sha256": "99331a584290966fe86abb95d9ba8cbf463ebb910c8c4aa8b7af9a74167d1104",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/khadas-vim1",
+        "file": "html/product-page-khadas-vim1.html",
+        "raw_sha256": "f6af45a848d14842df3362943bebcaf9838e84ff30b6a0ba0a45658f82c4d208",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/metal-plate-for-diy-case",
+        "file": "html/product-page-metal-plate-for-diy-case.html",
+        "raw_sha256": "9b76a0394c469ed43d2a8b43ab5aca02245ed99fe3abd5a6269293760eda1148",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/new-vim-heatsink",
+        "file": "html/product-page-new-vim-heatsink.html",
+        "raw_sha256": "d4f5f000bf37b322b85cb7c7c27ff6d42468e0144d40b4dfc325d74b56784add",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/new-vim2",
+        "file": "html/product-page-new-vim2.html",
+        "raw_sha256": "7dea49cf219c58566e285183173809eadbfcda3439fbfdffb641af505edcd28d",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/passive-vim-heatsink",
+        "file": "html/product-page-passive-vim-heatsink.html",
+        "raw_sha256": "ca3c39d248749ed565227a345c3370975c53dc7381d862314efbb76432371a27",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/vim1s",
+        "file": "html/product-page-vim1s.html",
+        "raw_sha256": "6ccc44c3e61e1bc9d69f5be36d13220811e12eac10ca82f1288c1685a7dfc3bf",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/vim3",
+        "file": "html/product-page-vim3.html",
+        "raw_sha256": "99a802013a03de8a376cef3d59a12943ab87873c5dee4e59fb94a0f537392007",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/vim3l-bare-board",
+        "file": "html/product-page-vim3l-bare-board.html",
+        "raw_sha256": "2341ea51d0bf051de859e0165be112fcc4cda8d74f215f41914978fdeba74a2e",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/vim3l-htpc-kit",
+        "file": "html/product-page-vim3l-htpc-kit.html",
+        "raw_sha256": "c8e72f3151544323dd89eda24e928f97318517fbeea9b01cff1e11190bb221ec",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      },
+      {
+        "page_url": "https://www.khadas.com/product-page/vim4",
+        "file": "html/product-page-vim4.html",
+        "raw_sha256": "49054c1d2aa6583198b8ff6eebe55bb89b55c77aa0172eda20c64682395e590f",
+        "role": "PRODUCT",
+        "distillation": "h1 and exact semantic product fields from wix-warmup-data"
+      }
+    ]
+  },
+  "rejections": [{"page_url": "https://www.khadas.com/product-page/tea", "file": "html/product-page-tea.html", "raw_sha256": "45977d4756b4686b7c6843763ccace63ea22f9068ee3e68d88bee14c5f1f6638", "role": "NON_SBC_REJECT", "distillation": "h1 and exact semantic product fields from wix-warmup-data"}],
+  "capture_date": "2026-10-03"
+}

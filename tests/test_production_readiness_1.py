@@ -349,7 +349,7 @@ def test_backup_refuses_unmigrated_state(tmp_path: Path) -> None:
 def test_runtime_manifest_validates() -> None:
     report = validate_manifest(build_manifest())
     assert report["valid"] is True
-    assert report["source_count"] == 7
+    assert report["source_count"] == 8
     assert report["schema_version"] == EXPECTED_SCHEMA_VERSION
 
 

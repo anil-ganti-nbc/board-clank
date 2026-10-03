@@ -24,7 +24,7 @@
       "state": "active"
     },
     "collection": {
-      "evidence": "seven real source adapters exist; every source enabled=false",
+      "evidence": "eight real source adapters exist; every source enabled=false",
       "state": "supported_unconfigured"
     },
     "delivery": {
@@ -48,7 +48,7 @@
       "state": "active"
     },
     "replay": {
-      "evidence": "processed_run_receipts idempotency proven across seven vendors",
+      "evidence": "processed_run_receipts idempotency proven across eight vendors",
       "state": "active"
     },
     "scheduler": {
@@ -98,7 +98,8 @@
     "banana-pi-product",
     "hardkernel-odroid-product",
     "pine64-product",
-    "friendlyelec-product"
+    "friendlyelec-product",
+    "khadas-product"
   ],
   "versions": {
     "adapter_contract": "0.2",

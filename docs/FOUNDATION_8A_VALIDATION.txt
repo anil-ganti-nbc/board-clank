@@ -1,0 +1,76 @@
+Foundation 8A Khadas PRODUCT local validation, 2026-10-03
+Mission COPS-000094; session01a100c9-238f-7376-91b4-c2f4eb34d372.
+Branch foundation-8-khadas-product, direct child of706107799c488ee97cde53d7d8f84de59b0c63fd.
+Start tree5a3c494af044e3b60058c94937e6aad0282884f9.
+
+Implementation is adapter-local. Existing pipeline, identity, models, schema,
+seven vendor adapters are byte-unchanged from the exact start. Schema stays3.
+Registry replaces khadas-placeholder rather than duplicating it. Both source
+inventories and manifests agree. Observer contract keys/shape unchanged;
+the only observer.py edit is human-readable adapter-count prose seven->eight.
+No Diagnostic/Motherclank files changed. No deployment, scheduler or delivery.
+
+Corpus: nine distilled marketing pages, sixteen catalogue/add-on store pages,
+plus actual Tea non-SBC rejection (seventeen store pages total). Manifest
+records raw-source SHA256 and URLs. Raw/distilled parser outputs compared equal
+for all26 pages. Synthetic Mind/conflict/malformed mutations are labelled tests.
+Actual pages are server-rendered Wix HTML/JSON, no browser or protected API.
+Research rationale and primary-source URLs: FOUNDATION_8A_RESEARCH.txt.
+
+Fixture proof:9 boards,2 families,9 revision identities,19 explicit variants,
+8 SoCs;85 baseline-silent events,85 SUPPRESSED notifications. Same-run receipt
+idempotency and two new-run replays add zero events/outbox. Only VIM2 asserts
+PCB1.4; other revision identities are UNKNOWN placeholders, not known revisions.
+VIM1/VIM1S and VIM3/VIM3L distinct. Edge and Edge-V distinct despite RK3399.
+Edge2 has one board, four explicit SKU/package combinations. No Cartesian
+product inferred. Only visible productItems admitted; hidden options retained
+in semantic source evidence. Retail SKU price/stock evidence is retained but
+not misrepresented as board-level price events. Unsupported fields stay UNKNOWN.
+
+Tests: baseline299 passed141.82s exit0. Final333 passed93.88s exit0, full summary,
+black-hole HTTP/HTTPS/ALL proxies, no pytest cache.34 added Khadas cases.
+Eight-vendor mixed-store test preserves seven existing entity rowsets, no
+FIELD_CHANGED/collision or unrelated diagnostic closure, including shared SoCs.
+Failure/replay diagnostics tested; unknown/conflicting silicon fails closed.
+Manifest, backup/restore, schema3, observer, CLI refusal and provenance remain
+covered by full suite. Explicit khadas --live refused before DB creation.
+Production-readiness/non-root/exact-SHA GitHub proof must be recorded separately
+after commit; this document does not claim remote CI.
+
+Live attempt1: _Soak/khadas-foundation8a-9sg7aqq6 retained. Atomic failure on
+404 non-purchase RCA cable navigation, zero entities/events/outbox committed.
+Empirical Buy Now/exact-model-card discovery correction recorded in research;
+no per-URL exception, no weakened required-input acceptance.333-test suite ran
+after that correction and before the successful fresh soak.
+
+Successful three-pass evidence:
+C:/Users/anil/Clanks/_Soak/khadas-foundation8a-mnnnvupk
+UTC starts2026-10-03T08:34:40.570668,08:34:51.344968,08:34:54.819891.
+Each pass:22 successful fetches,0 failed,0 redirects,0 parser errors;
+9 resolved SBC documents,1 duplicate HTPC bundle rejected,20 non-purchase
+store links recorded as excluded.9 boards/2 families/9 revision identities/
+19 variants/8 SoCs/0 diagnostic conditions.3 runs,3 accepted receipts.
+Pass1:85 baseline-silent events and85 SUPPRESSED outbox rows; delivery0.
+Pass2:0 events/outbox additions. Pass3:0 events/outbox additions.
+All nine accepted product semantic projections identical across three passes.
+Raw hashes changed on19/22 URLs in pass2 vs1 and20/22 URLs in pass3 vs1;
+no false semantic churn. Source projection keeps model/spec/revision/options/
+SKU/price/stock; scripts/telemetry/style are not entity state.
+Adapter SHA2561d37e2ab0f84c81e457d37b30cb9b9f74227e2a912e7379d4e1fe163abf5375f.
+Soak process exit0; integrity_check ok; foreign_key_check empty.
+Read-only post-run DB SHA256 unchanged:
+cae165ed6c5fba797507ec5378532a3ab1f0fb76a7069bfccf52f9ee6f560d82.
+
+Governance:Khadas REGISTERED/EXPERIMENTAL/enabled=false/PRODUCT/
+FIRST_PARTY_CANONICAL. All other vendor states unchanged; promotion freeze ON.
+Source-only tranche; admitted NAS source613c3a1 was not accessed or deployed.
+No scheduler, delivery or promotion. main untouched. .zcodeignore unchanged.
+
+Debt:Edge-2L docs/brochure only until current PRODUCT authority established;
+VIM1 v14 not promoted to PCB revision; missing variant facts remain UNKNOWN;
+VIM3L HTPC package not a separate board; broader commerce/history ingestion
+not claimed. Live passes are short manual stability checks, not endurance soak.
+Todd's unfinished evidence-depth branch not consumed or rebased. Future
+integration may conflict in taxonomy.py, source inventory, manifests, registry,
+packaging/tests/workflow branch lists if both lanes touch them. This is a risk
+assessment, not a merge/conflict test or approval of his unfinished changes.

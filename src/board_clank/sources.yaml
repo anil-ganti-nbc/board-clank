@@ -136,16 +136,18 @@ sources:
     placeholder: true
     notes: Phase-2 placeholder. Not activated in Foundation 0.
 
-  - source_key: khadas-placeholder
+  - source_key: khadas-product
     vendor: khadas
     plane: PRODUCT
-    authority: UNVERIFIED
-    base_urls: []
+    authority: FIRST_PARTY_CANONICAL
+    base_urls: [https://www.khadas.com/family, https://www.khadas.com/vim, https://www.khadas.com/edge]
     enabled: false
     registered_state: REGISTERED
     promotion_state: EXPERIMENTAL
-    placeholder: true
-    notes: Phase-2 placeholder. Not activated in Foundation 0.
+    placeholder: false
+    expected_identity_surface: Current VIM/Edge family linkage and matching product heading
+    expected_variant_surface: Explicit SKU to named configuration bindings; no Cartesian product
+    notes: Foundation 8A manual experimental PRODUCT adapter. Docs/downloads reference-only; Mind/audio/accessories excluded. Disabled, not promoted, no delivery.
 
   - source_key: up-board-placeholder
     vendor: up-board

@@ -164,14 +164,13 @@ PHASE1_VENDORS = (
     "pine64",
 )
 
-# Foundation 7A admits FriendlyELEC without changing the original Phase-1 roster.
-PHASE2_ADMITTED = ("friendlyelec",)
+# Foundations 7A/8A admit FriendlyELEC/Khadas without changing Phase-1.
+PHASE2_ADMITTED = ("friendlyelec", "khadas")
 
 PHASE2_PLACEHOLDERS = (
     "milk-v",
     "beagleboard",
     "libre-computer",
-    "khadas",
     "up-board",
     "seeed-studio",
     "firefly",

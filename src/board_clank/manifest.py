@@ -73,7 +73,7 @@ def build_manifest() -> dict[str, Any]:
         "capability_states": {
             "collection": {
                 "state": "supported_unconfigured",
-                "evidence": "seven real source adapters exist; every source enabled=false",
+                "evidence": "eight real source adapters exist; every source enabled=false",
             },
             "health": {
                 "state": "active",
@@ -101,7 +101,7 @@ def build_manifest() -> dict[str, Any]:
             },
             "replay": {
                 "state": "active",
-                "evidence": "processed_run_receipts idempotency proven across seven vendors",
+                "evidence": "processed_run_receipts idempotency proven across eight vendors",
             },
             "deployment": {
                 "state": "unknown_or_unverified",
@@ -116,6 +116,7 @@ def build_manifest() -> dict[str, Any]:
             "hardkernel-odroid-product",
             "pine64-product",
             "friendlyelec-product",
+            "khadas-product",
         ],
         "scheduler_authority": "NONE",
         "notification_authority": "NONE",
