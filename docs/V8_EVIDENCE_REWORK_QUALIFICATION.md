@@ -1,5 +1,9 @@
 # Board v8 evidence-plane review rework qualification
 
+Historical qualification for the independently reviewed 7136/fe5 candidate,
+which received REQUEST_CHANGES. The current repairs and fresh gates are recorded
+in [V8_EVIDENCE_SECOND_REWORK_QUALIFICATION.md](V8_EVIDENCE_SECOND_REWORK_QUALIFICATION.md).
+
 Mission: COPS-000096. Date: 2026-10-03. Source-only.
 
 Qualified implementation/live-execution SHA:
