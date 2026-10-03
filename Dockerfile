@@ -26,6 +26,7 @@ COPY docs ./docs
 
 RUN pip install -r requirements.lock \
     && pip install --no-deps . \
+    && pip check \
     && mkdir -p /app/data \
     && chown -R clank:clank /app
 

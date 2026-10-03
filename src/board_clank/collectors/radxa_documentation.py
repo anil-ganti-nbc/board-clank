@@ -309,11 +309,17 @@ def _resolve_board(store: Store) -> tuple[str | None, dict]:
     }
 
 
+def _semantic_info(info: dict) -> dict:
+    # These exact fields affect durable diagnostic state. Raw transport bytes
+    # are deliberately cosmetic; mapping reason/candidates are not.
+    return {k: v for k, v in info.items() if k != "decoded_text_sha256"}
+
+
 def _diagnostic(store: Store, run_id: str, observed_at: str, info: dict, unresolved: bool) -> None:
     key = "reference-diagnostic:" + SOURCE_KEY
     row = store.one("SELECT * FROM diagnostic_conditions WHERE condition_key=?", (key,))
     if unresolved:
-        state = content_hash({k: v for k, v in info.items() if k != "decoded_text_sha256"})
+        state = content_hash(_semantic_info(info))
         payload = canonical_json(info)
         if row is None:
             store.execute(
@@ -354,8 +360,11 @@ def accept_documentation(store: Store, html: str, *, run_id: str, observed_at: s
     target, mapping = _resolve_board(store)
     info["mapping"] = mapping
     unresolved = not claims or target is None
-    receipt = content_hash({"source_key":SOURCE_KEY,"semantic_hash":info["semantic_hash"],
-                            "target":target,"unresolved":unresolved,"errors":info["errors"]})
+    receipt = "supporting-input-v2:" + content_hash({
+        "version": "supporting-input-v2", "source_key": SOURCE_KEY,
+        "target": target, "unresolved": unresolved, "semantic_info": _semantic_info(info),
+        "claims": [c.payload() for c in sorted(claims, key=lambda c: c.hardware_label)],
+    })
     existing = store.one("SELECT * FROM processed_run_receipts WHERE run_id=?", (run_id,))
     if existing:
         if existing["source_key"] != SOURCE_KEY or existing["receipt_hash"] != receipt:
@@ -368,7 +377,7 @@ def accept_documentation(store: Store, html: str, *, run_id: str, observed_at: s
     try:
         store.begin()
         _validate_sources(store)
-        if _resolve_board(store)[0] != target:
+        if _resolve_board(store) != (target, mapping):
             raise CollectorError("PRODUCT linkage changed during admission")
         store.execute(
             "INSERT INTO collector_runs(run_id,source_key,collector_key,started_at,finished_at,status) VALUES (?,?,?,?,?,?)",

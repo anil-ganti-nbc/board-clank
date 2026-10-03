@@ -1,5 +1,10 @@
 # Board v8 evidence-plane second review rework qualification
 
+Historical implementation report: superseded for current acceptance by the exact
+`0da9b99a` independent REQUEST_CHANGES review and the third rework disposition.
+Its recorded executions remain evidence only for the implementation SHA named
+below; its earlier no-blocker/metadata assessment is not a current gate result.
+
 Mission: COPS-000096. Date: 2026-10-03. Source-only.
 
 Qualified implementation/live-execution SHA:

@@ -56,21 +56,43 @@ def official_url(url: str) -> str:
     raise CollectorError('unsupported FriendlyELEC surface')
 
 
+def _document_role(url):
+    url = official_url(url)
+    return 'product' if 'product_id' in parse_qs(urlparse(url).query) else 'lead-index'
+
+
+def _assert_document_url(requested, final):
+    requested, final = official_url(requested), official_url(final)
+    expected = _document_role(requested)
+    if expected != _document_role(final) or (expected == 'lead-index' and requested != final):
+        raise CollectorError('selected document redirect changed URL/role')
+    return final
+
+
 class _Redirect(HTTPRedirectHandler):
+    max_redirections = 5
+    max_repeats = 2
+
+    def __init__(self, expected_url=None):
+        super().__init__()
+        self.expected_url = expected_url
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        official_url(newurl)  # validate BEFORE following, not after fetching
+        if self.expected_url is None:
+            self.expected_url = req.full_url
+        _assert_document_url(self.expected_url, newurl)  # before following each hop
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch(url: str) -> dict:
     url = official_url(url)
-    with build_opener(_Redirect()).open(Request(url, headers={
+    with build_opener(_Redirect(url)).open(Request(url, headers={
         'User-Agent': 'BoardClank/0.1 (experimental-manual-friendlyelec-product)'
     }), timeout=30) as response:
+        final = _assert_document_url(url, response.geturl())
         body = response.read(4_000_001)
         if len(body) > 4_000_000:
             raise CollectorError('FriendlyELEC response exceeds size limit')
-        final = official_url(response.geturl())
         return dict(requested_url=url, final_url=final, status=response.status,
                     redirected=url != final, raw_body_hash=hashlib.sha256(body).hexdigest(),
                     text=body.decode('utf-8', 'replace'))
@@ -102,9 +124,11 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     name = names.pop()
     info['heading'] = name
     if re.search(r'\b(case|heatsink|heat sink|camera|display|dock|kit|carrier|shield|power|flash|hat|LCD)\b', name, re.I):
+        info.update(rejection_reason='accessory heading', evidence_roles=['NON_BOARD_CATALOGUE_ITEM'])
         return [], info
     # Whole heading gate, not a board name mentioned inside an accessory title.
     if not re.fullmatch(r'(?:NanoPi|NanoPC)[ -][A-Za-z0-9-]+(?: (?:Plus|Core|Core-LTS|Air-LTS))?|CM\d+(?: Plus)?|SOM-[A-Za-z0-9-]+', name):
+        info.update(rejection_reason='heading outside admitted board model surface', evidence_roles=['NON_BOARD_CATALOGUE_ITEM'])
         return [], info
     rows = [text(r) for r in re.findall(r'<tr\b[^>]*>(.*?)</tr>', html, re.S | re.I)]
     cpu = [r for r in rows if re.match(r'^(CPU|SoC)\b', r, re.I)]
@@ -201,11 +225,22 @@ class FriendlyElecProductAdapter(CollectorAdapter):
             try:
                 if self.experimental_live:
                     meta = fetch(url)
+                    final = _assert_document_url(url, meta['final_url'])
                     html = meta.pop('text')
                     fetches.append(dict(meta, ok=True))
                 else:
                     html = files[url].read_text(encoding='utf-8')
-                drafts, info = parse_product_html(html, page_url=url, observed_at=started_at)
+                    final = url
+                drafts, info = parse_product_html(html, page_url=final, observed_at=started_at)
+                if _document_role(final) == 'product' and info.get('status') == 'lead-index':
+                    raise CollectorError('required product lost parser document role')
+                if _document_role(final) == 'lead-index' and info.get('status') != 'lead-index':
+                    raise CollectorError('required index lost parser discovery role')
+                if (_document_role(final) == 'product' and not drafts
+                    and not (info.get('status') == 'rejected' and info.get('heading')
+                             and info.get('rejection_reason')
+                             and 'NON_BOARD_CATALOGUE_ITEM' in info.get('evidence_roles', []))):
+                    raise CollectorError('required product returned no admitted or explicit non-board evidence')
                 if info['status']=='insufficient-page':
                     errors.append({'url':url,'error':'missing or ambiguous product heading'})
                 if info['status']=='lead-index' and not info['lead_hrefs']:
@@ -214,8 +249,10 @@ class FriendlyElecProductAdapter(CollectorAdapter):
                 documents.append(info)
                 if self.experimental_live and info['status']=='lead-index':
                     queue.extend(u for u in info['lead_hrefs'] if u not in seen)
-            except (OSError, ValueError, CollectorError) as exc:
+            except (OSError, ValueError, KeyError, TypeError, CollectorError) as exc:
                 errors.append({'url':url,'error':str(exc)})
+        if errors:
+            observations = []  # preserve atomic failure: never expose partial PRODUCT drafts
         return CollectorRunRequest(run_id=run_id,source_key=SOURCE_KEY,collector_key=SOURCE_KEY,
             # Atomic source admission: a partial fetch/parser run must not close
             # conditions merely because a missing page could not report them.

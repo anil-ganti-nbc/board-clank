@@ -75,19 +75,41 @@ def official_url(url):
     raise CollectorError('Khadas surface outside PRODUCT scope')
 
 
+def _document_role(url):
+    url = official_url(url)
+    return 'lead-index' if url in INDEXES else ('product' if '/product-page/' in url else 'marketing')
+
+
+def _assert_document_url(requested, final):
+    requested, final = official_url(requested), official_url(final)
+    expected = _document_role(requested)
+    if expected != _document_role(final) or (expected == 'lead-index' and requested != final):
+        raise CollectorError('selected document redirect changed URL/role')
+    return final
+
+
 class _Redirect(HTTPRedirectHandler):
+    max_redirections = 5
+    max_repeats = 2
+
+    def __init__(self, expected_url=None):
+        super().__init__()
+        self.expected_url = expected_url
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        official_url(newurl)
+        if self.expected_url is None:
+            self.expected_url = req.full_url
+        _assert_document_url(self.expected_url, newurl)  # before following each hop
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch(url):
     url = official_url(url)
-    with build_opener(_Redirect()).open(Request(url, headers={'User-Agent': 'BoardClank/0.1 (manual experimental Khadas PRODUCT)'}), timeout=30) as r:
+    with build_opener(_Redirect(url)).open(Request(url, headers={'User-Agent': 'BoardClank/0.1 (manual experimental Khadas PRODUCT)'}), timeout=30) as r:
+        final = _assert_document_url(url, r.geturl())
         body = r.read(6_000_001)
         if len(body)>6_000_000:
             raise CollectorError('Khadas page size limit')
-        final = official_url(r.url)
         return {'text': body.decode('utf-8'), 'requested_url': url, 'final_url': final,
                 'status': r.status, 'redirected': url != final,
                 'raw_body_hash': hashlib.sha256(body).hexdigest()}
@@ -185,6 +207,7 @@ def parse_product_html(html, *, page_url, observed_at, marketing=None):
     name = product['name']
     info = {'page_url': url, 'heading': name, 'status': 'rejected-non-sbc'}
     if not MODEL.fullmatch(name):
+        info.update(rejection_reason='heading outside admitted SBC model surface', evidence_roles=['NON_BOARD_CATALOGUE_ITEM'])
         return [], info
     if not marketing or marketing['name'].casefold() != name.casefold():
         raise CollectorError('product lacks matching current family/marketing evidence')
@@ -279,29 +302,34 @@ class KhadasProductAdapter(CollectorAdapter):
             except (OSError, ValueError, CollectorError) as exc:
                 fetches.append({'requested_url':url,'ok':False,'error':str(exc)})
                 raise
+            final = _assert_document_url(url, result['final_url'])
             html = result.pop('text')
             fetches.append(dict(result,ok=True))
-            return html
+            return html, final
         try:
             if self.experimental_live:
                 market_urls = set()
                 for index in INDEXES:
-                    leads = links(read(index),index)
+                    html, final = read(index)
+                    leads = links(html, final)
                     market_urls.update(u for u in leads if '/product-page/' not in u and u not in INDEXES)
                 if not market_urls or len(market_urls)>40:
                     raise CollectorError('empty or excessive current marketing discovery')
                 for url in sorted(market_urls):
-                    html = read(url)
-                    market = marketing_evidence(html,url)
+                    html, final = read(url)
+                    market = marketing_evidence(html,final)
                     markets[market['name'].casefold()] = market
                     purchases = purchase_links(html,market)
-                    excluded.update(u for u in links(html,url) if '/product-page/' in u and u not in purchases)
+                    excluded.update(u for u in links(html,final) if '/product-page/' in u and u not in purchases)
                     for link in purchases:
                         stores.setdefault(link,None)
                 if not stores or len(stores)>80:
                     raise CollectorError('empty or excessive store discovery')
+                fetched_stores = {}
                 for url in stores:
-                    stores[url] = read(url)
+                    html, final = read(url)
+                    fetched_stores[final] = html
+                stores = fetched_stores
             else:
                 manifest = json.loads((CORPUS_DIR/'manifest.json').read_text())
                 for entry in manifest['marketing']:
@@ -312,10 +340,16 @@ class KhadasProductAdapter(CollectorAdapter):
             for url,html in stores.items():
                 name = product_data(html,url)['name'].casefold()
                 drafts, info = parse_product_html(html,page_url=url,observed_at=started_at,marketing=markets.get(name))
+                if not drafts and not (info.get('status') == 'rejected-non-sbc' and info.get('heading')
+                                      and info.get('rejection_reason')
+                                      and 'NON_BOARD_CATALOGUE_ITEM' in info.get('evidence_roles', [])):
+                    raise CollectorError('required product returned no admitted or explicit non-board evidence')
                 observations.extend(drafts)
                 documents.append(info)
         except (OSError, ValueError, KeyError, TypeError, CollectorError) as exc:
             errors.append({'error':str(exc)})
+        if errors:
+            observations = []  # fail the complete required-document collection
         return CollectorRunRequest(run_id=run_id,source_key=SOURCE_KEY,collector_key=SOURCE_KEY,
             started_at=started_at,observations=observations,ok=bool(observations) and not errors,
             error='incomplete Khadas collection' if errors else (None if observations else 'no PRODUCT observations'),
