@@ -1,5 +1,9 @@
 # Board v8 / supporting evidence qualification
 
+Historical qualification for the initially reviewed `2531db26` candidate, which
+received REQUEST_CHANGES. The current rework and fresh qualification are recorded
+in [V8_EVIDENCE_REWORK_QUALIFICATION.md](V8_EVIDENCE_REWORK_QUALIFICATION.md).
+
 Mission: COPS-000096. Date: 2026-10-03.
 
 Qualified implementation and live-execution SHA:
