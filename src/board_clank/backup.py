@@ -27,6 +27,8 @@ import hashlib
 import json
 import os
 import sqlite3
+import stat
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -275,6 +277,34 @@ def durable_state_snapshot(db_path: str | Path) -> dict[str, list[str]]:
         con.close()
 
 
+def _require_distinct_restore_paths(paths: dict[str, Path]) -> None:
+    """Refuse ambiguous path roles before any restore mutation."""
+    entries = list(paths.items())
+    try:
+        resolved = {role: os.path.normcase(str(path.resolve())) for role, path in entries}
+        for index, (left_role, left) in enumerate(entries):
+            for right_role, right in entries[index + 1:]:
+                if resolved[left_role] == resolved[right_role] or (
+                    left.exists() and right.exists() and left.samefile(right)
+                ):
+                    raise BackupError(f"restore paths alias: {left_role} / {right_role}")
+    except OSError as exc:
+        raise BackupError(f"restore path identities could not be verified: {exc}") from exc
+
+
+def _owned_staging(path: Path, identity: tuple[int, int]) -> bool:
+    try:
+        observed = path.lstat()
+    except FileNotFoundError:
+        return False
+    return stat.S_ISREG(observed.st_mode) and (observed.st_dev, observed.st_ino) == identity
+
+
+def _discard_owned_staging(path: Path, identity: tuple[int, int]) -> None:
+    if _owned_staging(path, identity):
+        path.unlink()
+
+
 def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: str | Path,
                    *, activate: bool = False, force: bool = False) -> dict[str, Any]:
     """Restore a verified backup into an isolated staging path.
@@ -285,6 +315,8 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
     target; without it, the staging path is returned for operator review.
     """
     backup_path, meta_path, target_path = Path(backup_path), Path(meta_path), Path(target_path)
+    paths = {"backup": backup_path, "metadata": meta_path, "target": target_path}
+    _require_distinct_restore_paths(paths)
     verification = verify_backup(backup_path, meta_path)
     metadata = verification["metadata"]
     declared_schema = metadata["schema_version"]
@@ -304,54 +336,73 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
         )
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    staging = target_path.with_name(target_path.name + ".restore-staging")
-    if staging.exists():
-        staging.unlink()
-    staging.write_bytes(backup_path.read_bytes())
-
-    check = sqlite3.connect(staging)
+    descriptor, name = tempfile.mkstemp(prefix=".board-clank-restore-", suffix=".db",
+                                         dir=target_path.parent)
+    staging = Path(name)
+    identity = None
+    paths["staging"] = staging
+    verified_staging = False
     try:
-        integrity = _integrity(check)
-        counts = _row_counts(check)
-    finally:
-        check.close()
-    if integrity != "ok":
-        staging.unlink(missing_ok=True)
-        raise BackupError(f"restored staging database failed integrity check: {integrity}")
-    if counts != verification["row_counts"]:
-        staging.unlink(missing_ok=True)
-        raise BackupError("restored staging row counts diverge from metadata")
-    restored_digest = sha256_file(staging)
-    if restored_digest != metadata["sha256"]:
-        staging.unlink(missing_ok=True)
-        raise BackupError("restored staging SHA-256 diverges from metadata")
+        owned = os.fstat(descriptor)
+        identity = (owned.st_dev, owned.st_ino)
+        _require_distinct_restore_paths(paths)
+        with os.fdopen(descriptor, "wb") as stream:
+            descriptor = None
+            stream.write(backup_path.read_bytes())
+        if not _owned_staging(staging, identity):
+            raise BackupError("restore staging ownership changed before verification")
+        check = sqlite3.connect(staging.as_uri() + "?mode=ro", uri=True)
+        try:
+            integrity = _integrity(check)
+            counts = _row_counts(check)
+        finally:
+            check.close()
+        if integrity != "ok":
+            raise BackupError(f"restored staging database failed integrity check: {integrity}")
+        if counts != verification["row_counts"]:
+            raise BackupError("restored staging row counts diverge from metadata")
+        restored_digest = sha256_file(staging)
+        if restored_digest != metadata["sha256"]:
+            raise BackupError("restored staging SHA-256 diverges from metadata")
 
-    report = {
-        "restored": True,
-        "staging_path": str(staging),
-        "activated": False,
-        "target_path": str(target_path),
-        "sha256": restored_digest,
-        "integrity": integrity,
-        "schema_version": verification["schema_version"],
-        "backup_created_at": metadata["created_at"],
-        "backup_code_revision": metadata["code_revision"],
-        "row_counts": counts,
-        "durable_state": durable_state_snapshot(staging),
-        "metadata_coverage": verification["metadata_coverage"],
-        "verified_tables": verification["verified_tables"],
-        "unverified_tables": verification["unverified_tables"],
-    }
-    if activate:
-        if force:
-            # Same-directory replacement is atomic. A failure leaves both the
-            # old target and the independently verified staging image intact.
-            staging.replace(target_path)
-        else:
-            # Atomically publish only when absent; a late-created target must
-            # never be overwritten without explicit force. Retain staging on failure.
-            os.link(staging, target_path)
-            staging.unlink()
-        report["activated"] = True
-        report["staging_path"] = None
-    return report
+        report = {
+            "restored": True,
+            "staging_path": str(staging),
+            "activated": False,
+            "target_path": str(target_path),
+            "sha256": restored_digest,
+            "integrity": integrity,
+            "schema_version": verification["schema_version"],
+            "backup_created_at": metadata["created_at"],
+            "backup_code_revision": metadata["code_revision"],
+            "row_counts": counts,
+            "durable_state": durable_state_snapshot(staging),
+            "metadata_coverage": verification["metadata_coverage"],
+            "verified_tables": verification["verified_tables"],
+            "unverified_tables": verification["unverified_tables"],
+        }
+        verified_staging = True
+        if activate:
+            _require_distinct_restore_paths(paths)
+            if not _owned_staging(staging, identity):
+                raise BackupError("restore staging ownership changed before activation")
+            if force:
+                # Same-directory replacement is atomic. A failure leaves both the
+                # old target and the independently verified staging image intact.
+                staging.replace(target_path)
+            else:
+                # Atomically publish only when absent; a late-created target must
+                # never be overwritten without explicit force. Retain staging on failure.
+                os.link(staging, target_path)
+                _discard_owned_staging(staging, identity)
+            report["activated"] = True
+            report["staging_path"] = None
+        return report
+    except BaseException:
+        if descriptor is not None:
+            os.close(descriptor)
+        # Retain independently verified staging after a failed activation, as
+        # before. Unverified temporary state is cleaned only while still owned.
+        if identity is not None and not verified_staging:
+            _discard_owned_staging(staging, identity)
+        raise
