@@ -118,20 +118,25 @@ def _table_structure(con: sqlite3.Connection, table: str) -> dict[str, object]:
         foreign_keys.setdefault(row[0], []).append(tuple(row)[1:])
     keys = {tuple(sorted(group)) for group in foreign_keys.values()}
     indexes = {}
+    index_terms = {}
     for row in con.execute(f"PRAGMA index_list({_quoted(table)})"):
-        columns_in_key = tuple(
-            (part[2], part[3], part[4])
+        terms = tuple(
+            (part[1], part[2], part[3], part[4])
             for part in con.execute(f"PRAGMA index_xinfo({_quoted(row[1])})")
             if part[5]
         )
+        columns_in_key = tuple((name, descending, collation)
+                               for _, name, descending, collation in terms)
         indexes[row[1]] = (row[2], row[3], row[4], columns_in_key)
+        index_terms[row[1]] = terms
     sql = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
     words = _sql_words(str(sql[0])) if sql else []
     mode = next(((row[2], row[4], row[5]) for row in con.execute("PRAGMA table_list")
                  if row[0] == "main" and row[1] == table), None)
     if mode is None:
         raise ValueError(f"table mode cannot be verified: {table}")
-    return {"columns": columns, "foreign_keys": keys, "indexes": indexes, "mode": mode,
+    return {"columns": columns, "foreign_keys": keys, "indexes": indexes,
+            "index_terms": index_terms, "mode": mode,
             "autoincrement": "AUTOINCREMENT" in words,
             "constraints": tuple(words.count(word) for word in ("CHECK", "COLLATE", "DEFERRABLE", "CONFLICT"))}
 
@@ -179,6 +184,18 @@ def _structural_issues(con: sqlite3.Connection) -> list[str]:
         expected_unique = {shape for shape in expected["indexes"].values() if shape[0]}
         if any(shape[0] and shape not in expected_unique for shape in actual_indexes):
             issues.append(f"{table}: unexpected uniqueness constraint")
+        for name, shape in actual["indexes"].items():
+            if name in expected["indexes"] or shape[0]:
+                continue
+            # Only ordinary column indexes with available built-in collations
+            # are benign additions. Expressions and predicates execute on writes.
+            terms = actual["index_terms"][name]
+            if shape[1] != "c" or shape[2] or not terms or any(
+                cid < 0 or column not in actual["columns"]
+                or str(collation).upper() not in {"BINARY", "NOCASE", "RTRIM"}
+                for cid, column, _, collation in terms
+            ):
+                issues.append(f"{table}.{name}: unsupported additive index")
         for name, shape in expected["indexes"].items():
             if (shape[1] in ("pk", "u") and shape not in actual_indexes) or (
                 shape[1] == "c" and actual["indexes"].get(name) != shape
