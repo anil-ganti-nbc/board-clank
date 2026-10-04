@@ -127,15 +127,18 @@ def test_failed_forced_replace_preserves_target_and_verified_staging(tmp_path, m
     target = tmp_path / "target.db"
     Store(target).close()
     before = target.read_bytes()
-    staging = target.with_name(target.name + ".restore-staging")
+    attempted = []
     def reject_replace(self, destination):
-        assert self == staging and Path(destination) == target
+        assert self.parent == target.parent and self.name.startswith(".board-clank-restore-")
+        assert Path(destination) == target
+        attempted.append(self)
         raise OSError("injected replacement failure")
     monkeypatch.setattr(Path, "replace", reject_replace)
     with pytest.raises(OSError, match="injected replacement failure"):
         restore_backup(backup.database_path, backup.metadata_path, target, activate=True, force=True)
     assert target.exists() and target.read_bytes() == before
-    assert staging.exists() and verify_backup(staging, backup.metadata_path)["verified"]
+    assert len(attempted) == 1
+    assert attempted[0].exists() and verify_backup(attempted[0], backup.metadata_path)["verified"]
 
 
 def test_late_target_creation_without_force_is_not_overwritten(tmp_path, monkeypatch):
@@ -143,16 +146,17 @@ def test_late_target_creation_without_force_is_not_overwritten(tmp_path, monkeyp
     Store(source).close()
     backup = create_backup(source, tmp_path / "backup")
     target = tmp_path / "target.db"
-    staging = target.with_name(target.name + ".restore-staging")
-    native_write = Path.write_bytes
+    native_link = os.link
     late_content = b"another actor's explicitly named target"
-    def write_and_create(self, contents):
-        result = native_write(self, contents)
-        if self == staging:
-            native_write(target, late_content)
-        return result
-    monkeypatch.setattr(Path, "write_bytes", write_and_create)
-    with pytest.raises((BackupError, FileExistsError)):
+    attempted = []
+    def link_after_target_creation(staging, destination):
+        assert Path(staging).parent == target.parent and Path(destination) == target
+        attempted.append(Path(staging))
+        target.write_bytes(late_content)
+        return native_link(staging, destination)
+    monkeypatch.setattr(os, "link", link_after_target_creation)
+    with pytest.raises(FileExistsError):
         restore_backup(backup.database_path, backup.metadata_path, target, activate=True, force=False)
     assert target.read_bytes() == late_content
-    assert staging.exists() and verify_backup(staging, backup.metadata_path)["verified"]
+    assert len(attempted) == 1
+    assert attempted[0].exists() and verify_backup(attempted[0], backup.metadata_path)["verified"]
