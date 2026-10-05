@@ -1,4 +1,4 @@
-"""Eight qualified PRODUCT vendors retain authority alongside supporting references."""
+"""Nine qualified PRODUCT vendors retain authority alongside supporting references."""
 from __future__ import annotations
 
 import json
@@ -56,12 +56,12 @@ def seed_eight(store: Store):
 
 
 def test_supporting_roster_manifest_contract_and_factory_are_separate(tmp_path, capsys):
-    assert len(product_sources()) == 8
+    assert len(product_sources()) == 9
     assert supporting_sources() == [source_definition()]
-    assert len(load_sources()) == 17
+    assert len(load_sources()) == 18
     assert_foundation_0_roster()
     manifest = build_manifest()
-    assert validate_manifest(manifest)["source_count"] == 8
+    assert validate_manifest(manifest)["source_count"] == 9
     assert validate_manifest(manifest)["supporting_source_count"] == 1
     assert SOURCE_KEY not in manifest["sources"]
     manifest["sources"].append(SOURCE_KEY)
@@ -129,7 +129,7 @@ def test_eight_product_vendors_reference_replay_observer_backup_restore(store, d
     byte_hash = sha256_file(db_path)
     observer = full_snapshot(db_path)
     assert observer["status"]["schema_version"] == 3 and observer["status"]["mutating"] is False
-    assert len(observer["source_summary"]) == 17
+    assert len(observer["source_summary"]) == 18
     assert sha256_file(db_path) == byte_hash
     backup = create_backup(db_path, tmp_path / "backup", name="eight-product-reference")
     assert backup.metadata["integrity"] == "ok"

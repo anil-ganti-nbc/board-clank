@@ -1,12 +1,22 @@
 {
+  "manifest_version": 1,
+  "clank_id": "board-clank",
+  "display_name": "Board Clank (SBC hardware intelligence)",
+  "maturity": "EXPERIMENTAL",
+  "release_channel": "foundation-0",
+  "versions": {
+    "package": "0.1.0",
+    "schema": 3,
+    "code_revision": "UNKNOWN",
+    "adapter_contract": "0.2"
+  },
+  "ownership": {
+    "domain": "SBC board/vendor inventory and novelty (first-party PRODUCT plane)",
+    "operator": "anil-ganti-nbc"
+  },
   "architecture": {
     "python": ">=3.12",
     "storage": "sqlite"
-  },
-  "backup_restore": {
-    "format": "sqlite online-backup image + sidecar metadata (format v1)",
-    "integrity": "PRAGMA integrity_check + SHA-256 verified",
-    "operator_triggered": true
   },
   "capabilities": [
     "discovery",
@@ -19,49 +29,72 @@
     "observer_surface"
   ],
   "capability_states": {
-    "backup_restore": {
-      "evidence": "operator-triggered SQLite online backup with SHA-256 verified isolated restore",
-      "state": "active"
-    },
     "collection": {
-      "evidence": "eight PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
-      "state": "supported_unconfigured"
-    },
-    "delivery": {
-      "evidence": "notification rows are generated outbox-only; no send path exists; promotion_freeze=true",
-      "state": "unsupported_by_policy"
-    },
-    "deployment": {
-      "evidence": "no deployment evidence exists; deployed HEAD is a separate observer fact",
-      "state": "unknown_or_unverified"
-    },
-    "events": {
-      "evidence": "event/outbox plane with baseline silence and diagnostic conditions",
-      "state": "active"
+      "state": "supported_unconfigured",
+      "evidence": "nine PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false"
     },
     "health": {
-      "evidence": "read-only health surface over persistent state",
-      "state": "active"
+      "state": "active",
+      "evidence": "read-only health surface over persistent state"
     },
-    "observer_surface": {
-      "evidence": "read-only identity/capabilities/status/health/last_run/capability_states",
-      "state": "active"
+    "events": {
+      "state": "active",
+      "evidence": "event/outbox plane with baseline silence and diagnostic conditions"
     },
-    "replay": {
-      "evidence": "versioned semantic input receipts authenticate replay across eight vendors; legacy unverifiable receipts refuse replay",
-      "state": "active"
+    "delivery": {
+      "state": "unsupported_by_policy",
+      "evidence": "notification rows are generated outbox-only; no send path exists; promotion_freeze=true"
     },
     "scheduler": {
-      "evidence": "no scheduler authority declared or implemented",
-      "state": "unsupported_by_policy"
+      "state": "unsupported_by_policy",
+      "evidence": "no scheduler authority declared or implemented"
+    },
+    "backup_restore": {
+      "state": "active",
+      "evidence": "operator-triggered SQLite online backup with SHA-256 verified isolated restore"
+    },
+    "observer_surface": {
+      "state": "active",
+      "evidence": "read-only identity/capabilities/status/health/last_run/capability_states"
+    },
+    "replay": {
+      "state": "active",
+      "evidence": "versioned semantic input receipts authenticate replay across nine vendors; legacy unverifiable receipts refuse replay"
+    },
+    "deployment": {
+      "state": "unknown_or_unverified",
+      "evidence": "no deployment evidence exists; deployed HEAD is a separate observer fact"
     }
   },
-  "clank_id": "board-clank",
-  "declaration_note": "Declared manifest. code_revision is a build/runtime fact (BOARD_CLANK_SOURCE_REVISION env) and is deliberately UNKNOWN in the committed declaration; runtime truth is exposed by board_clank.manifest.build_manifest() and the observer surface.",
-  "display_name": "Board Clank (SBC hardware intelligence)",
-  "manifest_version": 1,
-  "maturity": "EXPERIMENTAL",
+  "sources": [
+    "raspberry-pi-product",
+    "orange-pi-product",
+    "radxa-product",
+    "banana-pi-product",
+    "hardkernel-odroid-product",
+    "pine64-product",
+    "friendlyelec-product",
+    "khadas-product",
+    "forlinx-product"
+  ],
+  "supporting_sources": [
+    {
+      "source_key": "radxa-rock5b-documentation-poc",
+      "vendor": "radxa",
+      "plane": "DOCUMENTATION",
+      "authority": "FIRST_PARTY_SUPPORTING",
+      "enabled": false,
+      "registered_state": "REGISTERED",
+      "promotion_state": "EXPERIMENTAL"
+    }
+  ],
+  "scheduler_authority": "NONE",
   "notification_authority": "NONE",
+  "persistence": {
+    "engine": "sqlite",
+    "schema_version": 3,
+    "default_path_semantics": "operator-provided --db path; no writes outside the declared database file"
+  },
   "observer_surface": {
     "contract": "Observer Adapter Surface Contract v0.2 (required core)",
     "methods": [
@@ -80,42 +113,10 @@
     ],
     "read_only": true
   },
-  "ownership": {
-    "domain": "SBC board/vendor inventory and novelty (first-party PRODUCT plane)",
-    "operator": "anil-ganti-nbc"
+  "backup_restore": {
+    "operator_triggered": true,
+    "format": "sqlite online-backup image + sidecar metadata (format v1)",
+    "integrity": "PRAGMA integrity_check + SHA-256 verified"
   },
-  "persistence": {
-    "default_path_semantics": "operator-provided --db path; no writes outside the declared database file",
-    "engine": "sqlite",
-    "schema_version": 3
-  },
-  "release_channel": "foundation-0",
-  "scheduler_authority": "NONE",
-  "sources": [
-    "raspberry-pi-product",
-    "orange-pi-product",
-    "radxa-product",
-    "banana-pi-product",
-    "hardkernel-odroid-product",
-    "pine64-product",
-    "friendlyelec-product",
-    "khadas-product"
-  ],
-  "supporting_sources": [
-    {
-      "authority": "FIRST_PARTY_SUPPORTING",
-      "enabled": false,
-      "plane": "DOCUMENTATION",
-      "promotion_state": "EXPERIMENTAL",
-      "registered_state": "REGISTERED",
-      "source_key": "radxa-rock5b-documentation-poc",
-      "vendor": "radxa"
-    }
-  ],
-  "versions": {
-    "adapter_contract": "0.2",
-    "code_revision": "UNKNOWN",
-    "package": "0.1.0",
-    "schema": 3
-  }
+  "declaration_note": "Declared manifest. code_revision is a build/runtime fact (BOARD_CLANK_SOURCE_REVISION env) and is deliberately UNKNOWN in the committed declaration; runtime truth is exposed by board_clank.manifest.build_manifest() and the observer surface."
 }

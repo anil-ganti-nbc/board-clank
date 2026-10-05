@@ -252,7 +252,7 @@ def capability_states(db_path: str | Path) -> dict[str, dict[str, str]]:
     return {
         "collection": {
             "state": "supported_unconfigured",
-            "evidence": "eight source adapters registered; every source enabled=false",
+            "evidence": "nine PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
         },
         "health": {"state": "active", "evidence": "read-only health plane over persistent state"},
         "events": {

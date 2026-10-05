@@ -43,7 +43,7 @@ for module in modules:
 assert docs._FIXTURE.resolve().is_relative_to(install)
 provenance = json.loads(docs._FIXTURE.with_name('manifest.json').read_text(encoding='utf-8'))
 assert provenance['source_url'] == docs.DOCS_URL and provenance['license'] == 'CC BY 4.0'
-assert len(product_sources()) == 8 and len(supporting_sources()) == 1
+assert len(product_sources()) == 9 and len(supporting_sources()) == 1
 assert validate_manifest(load_manifest())['valid']
 db = execution / 'wheel-eight.db'
 vendors = (*PHASE1_VENDORS, *PHASE2_ADMITTED)

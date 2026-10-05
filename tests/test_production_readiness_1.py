@@ -349,7 +349,7 @@ def test_backup_refuses_unmigrated_state(tmp_path: Path) -> None:
 def test_runtime_manifest_validates() -> None:
     report = validate_manifest(build_manifest())
     assert report["valid"] is True
-    assert report["source_count"] == 8
+    assert report["source_count"] == 9
     assert report["schema_version"] == EXPECTED_SCHEMA_VERSION
 
 
@@ -408,7 +408,7 @@ def test_observer_surface_is_read_only_and_complete(tmp_path: Path) -> None:
         assert entry["evidence"]
     assert snapshot["capability_states"]["delivery"]["state"] == "unsupported_by_policy"
     assert snapshot["capability_states"]["scheduler"]["state"] == "unsupported_by_policy"
-    assert len(snapshot["source_summary"]) == 17  # eight PRODUCT + one supporting + eight placeholders
+    assert len(snapshot["source_summary"]) == 18  # nine PRODUCT + one supporting + eight placeholders
 
 
 def test_observer_never_upgrades_unknown(tmp_path: Path) -> None:

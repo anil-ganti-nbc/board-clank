@@ -22,7 +22,13 @@ def test_delayed_existing_catalogue_board_and_variants_are_silent(store, vendor)
     assert Pipeline(store).accept_run(first).baseline
     delayed = full.model_copy(deep=True)
     delayed.run_id += "-delayed"
-    delayed.observations = delayed.observations[1:]
+    # Unresolved catalogue rows keep their own diagnostic events. They are not
+    # inventory births, and Forlinx retains those rows in the same corpus.
+    delayed.observations = [
+        draft for draft in full.observations[1:]
+        if not draft.evidence_insufficient and not draft.identity_conflict
+    ]
+    assert delayed.observations
     for draft in delayed.observations:
         # Use the adapter's actual catalogue evidence, without the fixture's historical shortcut.
         draft.historical_known = False

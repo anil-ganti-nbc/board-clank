@@ -3,7 +3,7 @@ name: Foundation 0 CI
 on:
   pull_request:
   push:
-    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency, foundation-3-radxa-product, foundation-4-banana-pi-product, foundation-5-odroid-product, foundation-6-pine64-product, production-readiness-1, production-readiness-1b-odroid-coverage, foundation-7-friendlyelec-product, foundation-8-khadas-product, integration-v8-evidence-plane]
+    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency, foundation-3-radxa-product, foundation-4-banana-pi-product, foundation-5-odroid-product, foundation-6-pine64-product, production-readiness-1, production-readiness-1b-odroid-coverage, foundation-7-friendlyelec-product, foundation-8-khadas-product, foundation-9-forlinx-product, integration-v8-evidence-plane, integration-096-097-reconciled]
   workflow_dispatch:
 
 permissions:
@@ -53,6 +53,18 @@ jobs:
           PY
       - name: Compile
         run: python -m compileall -q src
+      - name: Build and install wheel outside checkout
+        run: |
+          python -m pip wheel --no-deps --wheel-dir /tmp/board-wheel .
+          python -m pip install --no-deps --no-index --target /tmp/board-wheel-site /tmp/board-wheel/*.whl
+      - name: All nine adapters from installed wheel offline
+        env:
+          NO_PROXY: ""
+          HTTP_PROXY: "http://127.0.0.1:9"
+          HTTPS_PROXY: "http://127.0.0.1:9"
+          ALL_PROXY: "http://127.0.0.1:9"
+        working-directory: /tmp
+        run: python -I "$GITHUB_WORKSPACE/scripts/offline_wheel_probe.py" --site /tmp/board-wheel-site --db /tmp/installed-wheel-probe.sqlite
       - name: Tests with black-hole proxy
         env:
           NO_PROXY: "127.0.0.1,localhost,::1"

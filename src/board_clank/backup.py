@@ -208,19 +208,24 @@ def _read_metadata(meta_path: Path) -> dict[str, Any]:
 
 
 def _metadata_coverage(metadata: dict[str, Any]) -> dict[str, Any]:
-    """v1 artifacts before occurrence enumeration remain valid, with explicit partial coverage."""
+    """Accept complete metadata or the exact historical format-1 table scope."""
+    counts = metadata["row_counts"]
     current = set(DURABLE_TABLES)
     legacy = current - {"observation_occurrences"}
-    counts = metadata["row_counts"]
     if not isinstance(counts, dict) or set(counts) not in (current, legacy):
-        raise BackupError("backup metadata durable-table coverage is incomplete or unknown")
-    tables = metadata.get("durable_tables")
-    if tables is not None and (not isinstance(tables, list) or set(tables) != set(counts)
-                               or len(tables) != len(set(tables))):
-        raise BackupError("backup metadata durable_tables differs from row_counts")
-    return {"metadata_coverage": "COMPLETE" if set(counts) == current else "LEGACY_PARTIAL",
-            "verified_tables": [table for table in DURABLE_TABLES if table in counts],
-            "unverified_tables": [table for table in DURABLE_TABLES if table not in counts]}
+        raise BackupError("backup metadata row-count table coverage is unsupported")
+    if any(type(value) is not int or value < 0 for value in counts.values()):
+        raise BackupError("backup metadata row counts must be nonnegative integers")
+    declared = metadata.get("durable_tables")
+    if declared is not None and (not isinstance(declared, list)
+            or any(not isinstance(table, str) for table in declared)
+            or len(declared) != len(set(declared)) or set(declared) != set(counts)):
+        raise BackupError("backup metadata durable_tables diverge from row-count coverage")
+    return {
+        "metadata_coverage": "COMPLETE" if set(counts) == current else "LEGACY_PARTIAL",
+        "verified_tables": [table for table in DURABLE_TABLES if table in counts],
+        "unverified_tables": [table for table in DURABLE_TABLES if table not in counts],
+    }
 
 
 def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, Any]:
@@ -229,6 +234,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
     if not backup_path.exists() or not meta_path.exists():
         raise BackupError(f"backup artifact missing: {backup_path} / {meta_path}")
     metadata = _read_metadata(meta_path)
+    coverage = _metadata_coverage(metadata)
     digest = sha256_file(backup_path)
     if digest != metadata["sha256"]:
         raise BackupError(f"backup SHA-256 mismatch: metadata {metadata['sha256']} != actual {digest}")
@@ -242,7 +248,6 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
         con.close()
     if integrity != "ok":
         raise BackupError(f"backup failed integrity check: {integrity}")
-    coverage = _metadata_coverage(metadata)
     if {table: counts[table] for table in coverage["verified_tables"]} != metadata["row_counts"]:
         raise BackupError("backup row counts diverge from metadata")
     observed = inspect_path(backup_path)
@@ -359,6 +364,9 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
             check.close()
         if integrity != "ok":
             raise BackupError(f"restored staging database failed integrity check: {integrity}")
+        # Compare the complete image observed by verify_backup, including rows
+        # that genuine legacy metadata did not declare. The full-image SHA also
+        # remains mandatory; legacy omission never becomes a full coverage claim.
         if counts != verification["row_counts"]:
             raise BackupError("restored staging row counts diverge from metadata")
         restored_digest = sha256_file(staging)

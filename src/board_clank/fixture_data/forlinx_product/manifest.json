@@ -1,0 +1,393 @@
+{
+  "provenance": "Distilled current first-party captures, 2026-10-03; raw bytes retained outside worktree in research evidence",
+  "catalogues": [
+    {
+      "file": "html/product-list-2-2.html",
+      "page_url": "https://www.forlinx.net/product-list-2-2.html",
+      "raw_sha256": "97e35052570c1bc7f032a0050cdf45aa4e98f24a1b1a644b6f2036a0d05a4905"
+    },
+    {
+      "file": "html/product-list-2-3.html",
+      "page_url": "https://www.forlinx.net/product-list-2-3.html",
+      "raw_sha256": "fea84fb48fc35596181cc04e240647608c965d13d3d2add7bcfcbbaba4564773"
+    },
+    {
+      "file": "html/product-list-2-4.html",
+      "page_url": "https://www.forlinx.net/product-list-2-4.html",
+      "raw_sha256": "67a7c17c8f8d93749445addbc152c7dad1413569d36fe6f9566ef6accfe25433"
+    },
+    {
+      "file": "html/product-list-2-5.html",
+      "page_url": "https://www.forlinx.net/product-list-2-5.html",
+      "raw_sha256": "876d4f798f4871485ad604351ba9902823c8ec090b4b096cc9e2457ee65e8678"
+    },
+    {
+      "file": "html/product-list-2-6.html",
+      "page_url": "https://www.forlinx.net/product-list-2-6.html",
+      "raw_sha256": "b3e7736f2667e34ba1157282ea11c6f725d2e1faab30887b19bb6a71ab3bb64a"
+    },
+    {
+      "file": "html/product-list-2.html",
+      "page_url": "https://www.forlinx.net/product-list-2.html",
+      "raw_sha256": "d417d7c7065c660258c9dd62ea7610f723803b15d39de9d4d999fb644d16c6fe"
+    }
+  ],
+  "corpora": {
+    "baseline": [
+      {
+        "file": "html/a40i-single-board-computer-59.html",
+        "page_url": "https://www.forlinx.net/product/a40i-single-board-computer-59.html",
+        "catalogue_model": "OKA40i-C",
+        "raw_sha256": "949459850bfd0cd00dfa0664b9ee24f7324240a29e86f4e5123cba28f139eac7"
+      },
+      {
+        "file": "html/am335xd-47.html",
+        "page_url": "https://www.forlinx.net/product/am335xd-47.html",
+        "catalogue_model": "OK335xD",
+        "raw_sha256": "597f7dce16a00ce28b319fdaa1a5c65ee2af1936aa7432e0ee3464c8a89ac8ca"
+      },
+      {
+        "file": "html/am335xs-single-board-computer-49.html",
+        "page_url": "https://www.forlinx.net/product/am335xs-single-board-computer-49.html",
+        "catalogue_model": "OK335xS",
+        "raw_sha256": "6cae2ad7713e500f485a5c11b6fe705f1a6466cbbd1ee74f72d15e67acd3a1f6"
+      },
+      {
+        "file": "html/am5718-c-single-board-computer-53.html",
+        "page_url": "https://www.forlinx.net/product/am5718-c-single-board-computer-53.html",
+        "catalogue_model": "OK5718-C",
+        "raw_sha256": "ed4fdcf66374d788bcdc4752bb07aab16b6eebd946d76539ebdc308492c926d3"
+      },
+      {
+        "file": "html/am5718-single-board-computer-97.html",
+        "page_url": "https://www.forlinx.net/product/am5718-single-board-computer-97.html",
+        "catalogue_model": "OK5718-C2",
+        "raw_sha256": "c672b0eb7646b35f1b17e24877eee525e6d628b30079503e8d3bbf4896817786"
+      },
+      {
+        "file": "html/am6254-development-board-132.html",
+        "page_url": "https://www.forlinx.net/product/am6254-development-board-132.html",
+        "catalogue_model": "OK62xx-C",
+        "raw_sha256": "a62856159d5b46be7cbb1c9838d4338a13a267a137ced768c237bd3d3e60d5ee"
+      },
+      {
+        "file": "html/i.mx6dl-37.html",
+        "page_url": "https://www.forlinx.net/product/i.mx6dl-37.html",
+        "catalogue_model": "OKMX6DL-S3",
+        "raw_sha256": "9e2a1a12e54cc6cc8ff523806838e8234a9b4a94ce4f1ca791675f5c8934fe43"
+      },
+      {
+        "file": "html/i.mx6ul-single-board-computer-39.html",
+        "page_url": "https://www.forlinx.net/product/i.mx6ul-single-board-computer-39.html",
+        "catalogue_model": "OKMX6UL-C1",
+        "raw_sha256": "c9fd9d0e56a5b65e96df25989cf160a28b61c73763fa0fe0612f7c11b462dc9d"
+      },
+      {
+        "file": "html/i.mx6ull-single-board-computer-107.html",
+        "page_url": "https://www.forlinx.net/product/i.mx6ull-single-board-computer-107.html",
+        "catalogue_model": "OKMX6ULL-S",
+        "raw_sha256": "7c9a309caefa40e04e731c8fc38185a498497f1fdfd295a4ea07550c6ed7e427"
+      },
+      {
+        "file": "html/i.mx9352-single-board-computer-136.html",
+        "page_url": "https://www.forlinx.net/product/i.mx9352-single-board-computer-136.html",
+        "catalogue_model": "OK-MX9352-C",
+        "raw_sha256": "40b68fc9f9200c3567f0d89e521fb043a3a8c33093306c636ac6765ef804987c"
+      },
+      {
+        "file": "html/imx6-duallite-33.html",
+        "page_url": "https://www.forlinx.net/product/imx6-duallite-33.html",
+        "catalogue_model": "OKMX6DL-C",
+        "raw_sha256": "15566134b2cd100a0db9f392d1530e3aa367f7a1d6731e55fe4beaeb372c4249"
+      },
+      {
+        "file": "html/imx6quad-31.html",
+        "page_url": "https://www.forlinx.net/product/imx6quad-31.html",
+        "catalogue_model": "OKMX6Q-C",
+        "raw_sha256": "a32b2a1413ba35a6655e79a662948e6bf1d600c3e844910172feb137228cc32f"
+      },
+      {
+        "file": "html/imx6quad-single-board-computer-35.html",
+        "page_url": "https://www.forlinx.net/product/imx6quad-single-board-computer-35.html",
+        "catalogue_model": "OKMX6Q-S3",
+        "raw_sha256": "cd8c63766e9f891d259d936a48856779970304eac12246bc323aa09d6846f0c6"
+      },
+      {
+        "file": "html/imx6ul-41.html",
+        "page_url": "https://www.forlinx.net/product/imx6ul-41.html",
+        "catalogue_model": "OKMX6UL-C2",
+        "raw_sha256": "8d646b197e95b227e1b0bc989413bd229ed31e7e4803c0b9ddf03af3d5af1fd2"
+      },
+      {
+        "file": "html/imx6ull-development-board-129.html",
+        "page_url": "https://www.forlinx.net/product/imx6ull-development-board-129.html",
+        "catalogue_model": "OKMX6ULL-C",
+        "raw_sha256": "8ad68a081a8a604a17008d34e5a00d30457e60f919edc3075542a997b9709a27"
+      },
+      {
+        "file": "html/imx8mm-single-board-computer-29.html",
+        "page_url": "https://www.forlinx.net/product/imx8mm-single-board-computer-29.html",
+        "catalogue_model": "OKMX8MM-C",
+        "raw_sha256": "7da2641e05fc7260dc11ceba473b93dab9fb7492d3892311e0d73c8ae973127e"
+      },
+      {
+        "file": "html/imx8mpq-smarc-sbc-154.html",
+        "page_url": "https://www.forlinx.net/product/imx8mpq-smarc-sbc-154.html",
+        "catalogue_model": "OK-MX8MPx-SMARC",
+        "raw_sha256": "6a855073f91c70c6496f41867e4ddf71a04d73c72ebc2c4933dc827f89946020"
+      },
+      {
+        "file": "html/imx91-single-board-computer-139.html",
+        "page_url": "https://www.forlinx.net/product/imx91-single-board-computer-139.html",
+        "catalogue_model": "OK-MX91xx-C",
+        "raw_sha256": "4efdd060bc89ee9d42fd24a014824f6f6bea141dece412ffc0521d4d35ab0e01"
+      },
+      {
+        "file": "html/imx95-c-sbc-152.html",
+        "page_url": "https://www.forlinx.net/product/imx95-c-sbc-152.html",
+        "catalogue_model": "OK-MX9596-C",
+        "raw_sha256": "244cb913b4fc7c67d656cc641e55aadb86ab2cd004663f8d9b9dc4641fc3d6e2"
+      },
+      {
+        "file": "html/imxrt1052-43.html",
+        "page_url": "https://www.forlinx.net/product/imxrt1052-43.html",
+        "catalogue_model": "OK1052-C",
+        "raw_sha256": "79c51a828fbc39e2b17ada93d71d9a2b0acd37bfce382cdc8638476997b705cf"
+      },
+      {
+        "file": "html/jh7110-single-board-computer-riscv-142.html",
+        "page_url": "https://www.forlinx.net/product/jh7110-single-board-computer-riscv-142.html",
+        "catalogue_model": "OK7110-C",
+        "raw_sha256": "82dc51867e53bd25b9d860c72a7637c419170b3ef6f3e9ba5ca2e8be7f94d3f2"
+      },
+      {
+        "file": "html/ls1012a-single-board-computer-27.html",
+        "page_url": "https://www.forlinx.net/product/ls1012a-single-board-computer-27.html",
+        "catalogue_model": "OK1012A-C",
+        "raw_sha256": "4c29f72012d247847c0ba36d7a8c6e98e783c91f3da0f638ec67b9450ad8436b"
+      },
+      {
+        "file": "html/ls1028a-single-board-computer-111.html",
+        "page_url": "https://www.forlinx.net/product/ls1028a-single-board-computer-111.html",
+        "catalogue_model": "OK1028A-C",
+        "raw_sha256": "5e775a6f514a216b33c68b085c1de77905b5b6f70a39ae51c368f8e726d3506d"
+      },
+      {
+        "file": "html/ls1043a-single-board-computer-25.html",
+        "page_url": "https://www.forlinx.net/product/ls1043a-single-board-computer-25.html",
+        "catalogue_model": "OK1043A-C3",
+        "raw_sha256": "9bd7394f3d595bba3f835d13bec1a061757f09bc3fd4d5cb0818cb1a35eedb4b"
+      },
+      {
+        "file": "html/ls1046a-single-board-computer-22.html",
+        "page_url": "https://www.forlinx.net/product/ls1046a-single-board-computer-22.html",
+        "catalogue_model": "OK1046A-C2",
+        "raw_sha256": "6cea8fe29809d3694a132c30fa5217ddb63904eda147ad634eb50998129a1ae6"
+      },
+      {
+        "file": "html/ma35-s-sbc-161.html",
+        "page_url": "https://www.forlinx.net/product/ma35-s-sbc-161.html",
+        "catalogue_model": "OK-MA35-S21",
+        "raw_sha256": "0d49a93fc85222cee5d0ff5e8955647047722e8bd1015ca160076dff2992291c"
+      },
+      {
+        "file": "html/ok335xs-ii-sbc-51.html",
+        "page_url": "https://www.forlinx.net/product/ok335xs-ii-sbc-51.html",
+        "catalogue_model": "OK335xS-II",
+        "raw_sha256": "0b0142f649cc15bb4f6e0fbc6de86f0559f0f4562d77fb5e1fec568250494aa6"
+      },
+      {
+        "file": "html/ok3562j-up4-rockchip-rk3562j-development-board-188.html",
+        "page_url": "https://www.forlinx.net/product/ok3562j-up4-rockchip-rk3562j-development-board-188.html",
+        "catalogue_model": "OK3562J-UP4",
+        "raw_sha256": "314d92ae0dedd2ccf61c64f3a57f1589df8af0d6bdc8f15db63a41ad6041ba7b"
+      },
+      {
+        "file": "html/ok3568-up4-rockchip-rk3568-development-board-190.html",
+        "page_url": "https://www.forlinx.net/product/ok3568-up4-rockchip-rk3568-development-board-190.html",
+        "catalogue_model": "OK3568-UP4",
+        "raw_sha256": "a778d74c2984148c5c34c345e9cb35f0a4d19727b77820f3bed1b779c21198e9"
+      },
+      {
+        "file": "html/ok3576-up5-rockchip-rk3576-development-board-200.html",
+        "page_url": "https://www.forlinx.net/product/ok3576-up5-rockchip-rk3576-development-board-200.html",
+        "catalogue_model": "OK3576J-UP5",
+        "raw_sha256": "8db74877c5f830d784c2b3f02b117e5a7ad77f44b94ac2cba46976bff3245182"
+      },
+      {
+        "file": "html/ok3588-up5-rockchip-rk3588-development-board-199.html",
+        "page_url": "https://www.forlinx.net/product/ok3588-up5-rockchip-rk3588-development-board-199.html",
+        "catalogue_model": "OK3588J-UP5",
+        "raw_sha256": "e6559d0cd188b633c20a4d3b13012fc9310d442609e6038d5cdd74e982893f89"
+      },
+      {
+        "file": "html/ok527n-up4-allwinner-t527-development-board-189.html",
+        "page_url": "https://www.forlinx.net/product/ok527n-up4-allwinner-t527-development-board-189.html",
+        "catalogue_model": "OK527N-UP4",
+        "raw_sha256": "d38d9223ea0313269168d104ae0bc92ca6f41a2f758b7aac4cc5863b6adb5e02"
+      },
+      {
+        "file": "html/ok536-up4-allwinner-t536-development-board-187.html",
+        "page_url": "https://www.forlinx.net/product/ok536-up4-allwinner-t536-development-board-187.html",
+        "catalogue_model": "OK536-UP4",
+        "raw_sha256": "798c01a10a4fbfc6c65f04f172411b0806376f3879229d5da66bb601423678a5"
+      },
+      {
+        "file": "html/okmx8mp-c-development-board-120.html",
+        "page_url": "https://www.forlinx.net/product/okmx8mp-c-development-board-120.html",
+        "catalogue_model": "OKMX8MPx-C",
+        "raw_sha256": "d55b18d4877d75e5b889513d5ddc34222f41694fa09d0f3bbbee3ad621e0d2fd"
+      },
+      {
+        "file": "html/okmx9352-up4-nxp-imx93-development-board-191.html",
+        "page_url": "https://www.forlinx.net/product/okmx9352-up4-nxp-imx93-development-board-191.html",
+        "catalogue_model": "OK-MX9352-UP4",
+        "raw_sha256": "efd3f49d1d0b26efb758791624a259255fe9d89cd5e653b4a3d86bfff78196d1"
+      },
+      {
+        "file": "html/rk3399-c-single-board-computer-103.html",
+        "page_url": "https://www.forlinx.net/product/rk3399-c-single-board-computer-103.html",
+        "catalogue_model": "OK3399-C",
+        "raw_sha256": "c9c158633ba8abe0317f6ca91aed46d6a45d4990787c8084fb0b19fe8592bedd"
+      },
+      {
+        "file": "html/rk3506-s12-mini-sbc-170.html",
+        "page_url": "https://www.forlinx.net/product/rk3506-s12-mini-sbc-170.html",
+        "catalogue_model": "OK3506-S12",
+        "raw_sha256": "d500ccee918183ac98712c75049754612eb9532b5ec33b69a0471bf6d49b498f"
+      },
+      {
+        "file": "html/rk3506j-c-sbc-169.html",
+        "page_url": "https://www.forlinx.net/product/rk3506j-c-sbc-169.html",
+        "catalogue_model": "OK3506J-C",
+        "raw_sha256": "ba12e0ca95d8a4979d0e60a7f2c282757654d2a3b5aaac700ebc6e451b1ca8e7"
+      },
+      {
+        "file": "html/rk3506j-s-sbc-163.html",
+        "page_url": "https://www.forlinx.net/product/rk3506j-s-sbc-163.html",
+        "catalogue_model": "OK3506J-S",
+        "raw_sha256": "63e42547f22e9d96a9c31e80163fdd7ab0bc98a01a2ec86dbe0a4ed618cf0001"
+      },
+      {
+        "file": "html/rk3562-c-sbc-159.html",
+        "page_url": "https://www.forlinx.net/product/rk3562-c-sbc-159.html",
+        "catalogue_model": "OK3562J-C",
+        "raw_sha256": "6c6cd926dbd5e2093d2a5c53d3024de126ab31831d10751b3da428db2fea18a3"
+      },
+      {
+        "file": "html/rk3568-sbc-126.html",
+        "page_url": "https://www.forlinx.net/product/rk3568-sbc-126.html",
+        "catalogue_model": "OK3568-C",
+        "raw_sha256": "a7a8b180a2f9cbaf5a0b85f9360a6e6b35f2e1d5007fdc43cab799c303d2de4c"
+      },
+      {
+        "file": "html/rk3572-dev-kit-ok3572-c-180.html",
+        "page_url": "https://www.forlinx.net/product/rk3572-dev-kit-ok3572-c-180.html",
+        "catalogue_model": "OK3572-C",
+        "raw_sha256": "93cfcfe13e940b640653d1bb18e49574e12888060394452f0546b2f2d119f50d"
+      },
+      {
+        "file": "html/rk3576-c-sbc-157.html",
+        "page_url": "https://www.forlinx.net/product/rk3576-c-sbc-157.html",
+        "catalogue_model": "OK3576-C",
+        "raw_sha256": "38f167785b9b2cd376940b1809fc31098bbd39278508a82d540df588b1d602f3"
+      },
+      {
+        "file": "html/rk3588-sbc-135.html",
+        "page_url": "https://www.forlinx.net/product/rk3588-sbc-135.html",
+        "catalogue_model": "OK3588-C",
+        "raw_sha256": "3f49e3098b7c8c61c363242c3e8d1a7ffe68d1f8a071db4b5e03942e5249fa5f"
+      },
+      {
+        "file": "html/rockchip-rv1126b-bj-s-sbc-175.html",
+        "page_url": "https://www.forlinx.net/product/rockchip-rv1126b-bj-s-sbc-175.html",
+        "catalogue_model": "OK1126Bx-S",
+        "raw_sha256": "d580c424db73f26a74317bab015b2f095906d0db6a1fb78d932d522b193d1717"
+      },
+      {
+        "file": "html/rt1061-45.html",
+        "page_url": "https://www.forlinx.net/product/rt1061-45.html",
+        "catalogue_model": "OK1061-S",
+        "raw_sha256": "340496da22c24544d0287a14e9feda16b27b74c59ed2be4ab9fe2d2eed43da78"
+      },
+      {
+        "file": "html/rv1126bx-c-sbc-196.html",
+        "page_url": "https://www.forlinx.net/product/rv1126bx-c-sbc-196.html",
+        "catalogue_model": "OK1126Bx-C",
+        "raw_sha256": "fe4be87a8ea053153f23b4adb2ed7edb7fce9d10e6065e60866bc6332b9d3d3f"
+      },
+      {
+        "file": "html/rz-g2l-development-board-131.html",
+        "page_url": "https://www.forlinx.net/product/rz-g2l-development-board-131.html",
+        "catalogue_model": "OK-G2LD-C",
+        "raw_sha256": "21ca1e79af8e027c315947fef84ef8e53cffc2dc02c300ad0dc25cda2b905fa8"
+      },
+      {
+        "file": "html/s5p4418-100.html",
+        "page_url": "https://www.forlinx.net/product/s5p4418-100.html",
+        "catalogue_model": "OK4418-C2",
+        "raw_sha256": "1eb6bf64fd3d2b1c88cd12591ac8b750bba5e2ef0af7cee6595f2e847d043713"
+      },
+      {
+        "file": "html/s5p4418-single-board-computer-55.html",
+        "page_url": "https://www.forlinx.net/product/s5p4418-single-board-computer-55.html",
+        "catalogue_model": "OK4418-C",
+        "raw_sha256": "7d866d68af45caedbf520a63a256f98f7c6d00d275b2063cad9319e562ff8fcf"
+      },
+      {
+        "file": "html/s5p6818-57.html",
+        "page_url": "https://www.forlinx.net/product/s5p6818-57.html",
+        "catalogue_model": "OK6818-C2",
+        "raw_sha256": "d7d88e9adc2f24db09e06dad7685fb9da54675783a9166f231865cc7dabf014e"
+      },
+      {
+        "file": "html/s5p6818-99.html",
+        "page_url": "https://www.forlinx.net/product/s5p6818-99.html",
+        "catalogue_model": "OK6818-C",
+        "raw_sha256": "6c78cb5650978e50646a008ead024b1c1a7a7e4178137e091f3d89eef88a8bd3"
+      },
+      {
+        "file": "html/t113i-s-sbc-144.html",
+        "page_url": "https://www.forlinx.net/product/t113i-s-sbc-144.html",
+        "catalogue_model": "OK113i-S",
+        "raw_sha256": "3cb3171ab16610e65aba3480fc1c7bdb15a80b1285676dfe7adc2d0678845edb"
+      },
+      {
+        "file": "html/t153-s-sbc-172.html",
+        "page_url": "https://www.forlinx.net/product/t153-s-sbc-172.html",
+        "catalogue_model": "OK153-S",
+        "raw_sha256": "54f7fb63370d2dd8398ad360690bcc83e9f3224bfe266429089729d69252088c"
+      },
+      {
+        "file": "html/t153-s12-mini-sbc-176.html",
+        "page_url": "https://www.forlinx.net/product/t153-s12-mini-sbc-176.html",
+        "catalogue_model": "OK153-S12",
+        "raw_sha256": "693094634582d6407e9fb5478aa6fbc89f0f72e1a138718ec9bf7555877965eb"
+      },
+      {
+        "file": "html/t3-95.html",
+        "page_url": "https://www.forlinx.net/product/t3-95.html",
+        "catalogue_model": "OKT3-C",
+        "raw_sha256": "8f1cad2df2851a97e4134f4612e083e72fa308cd7c401c15f38b810969ae206a"
+      },
+      {
+        "file": "html/t507-single-board-computer-117.html",
+        "page_url": "https://www.forlinx.net/product/t507-single-board-computer-117.html",
+        "catalogue_model": "OKT507-C",
+        "raw_sha256": "0c58ad38cdce4221bd4e1d709baba237089e529c9fb9626061ed3310dee61395"
+      },
+      {
+        "file": "html/t527-c-sbc-150.html",
+        "page_url": "https://www.forlinx.net/product/t527-c-sbc-150.html",
+        "catalogue_model": "OK527N-C",
+        "raw_sha256": "2d55049d096b84cd1fb64f9dc6230a79f43b01bc8faeaedcbd43b44bbc84c1ef"
+      },
+      {
+        "file": "html/t536-c-sbc-165.html",
+        "page_url": "https://www.forlinx.net/product/t536-c-sbc-165.html",
+        "catalogue_model": "OK536-C",
+        "raw_sha256": "9ee8b52f9ae66e8840603859e21e3392db9ce8dd0bc989a8756d8574d08983f6"
+      }
+    ]
+  }
+}

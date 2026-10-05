@@ -365,7 +365,7 @@ def test_legacy_consumers_current_projection_product_replay_and_backup_restore(s
     observer = full_snapshot(db_path)
     assert observer["status"]["state"] == "COMPATIBLE"
     assert observer["status"]["schema_version"] == 3
-    assert len(observer["source_summary"]) == 17
+    assert len(observer["source_summary"]) == 18
     assert all(s["enabled"] == 0 and s["promotion_state"] != 'PROMOTED' for s in observer["source_summary"])
     for command in ('report','status','events','source-intel','observe','health','check-state','manifest'):
         args = ['--db',str(db_path),command]

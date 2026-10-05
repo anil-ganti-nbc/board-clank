@@ -149,6 +149,20 @@ sources:
     expected_variant_surface: Explicit SKU to named configuration bindings; no Cartesian product
     notes: Foundation 8A manual experimental PRODUCT adapter. Docs/downloads reference-only; Mind/audio/accessories excluded. Disabled, not promoted, no delivery.
 
+  # Foundation 9A: first-party SBC catalogue, manual experimental only.
+  - source_key: forlinx-product
+    vendor: forlinx
+    plane: PRODUCT
+    authority: FIRST_PARTY_CANONICAL
+    base_urls: [https://www.forlinx.net/product-list-2.html]
+    enabled: false
+    registered_state: REGISTERED
+    promotion_state: EXPERIMENTAL
+    placeholder: false
+    expected_identity_surface: Current explicit SBC card plus exactly matching product hero model
+    expected_variant_surface: One conservative memory configuration; independent option lists remain UNKNOWN
+    notes: Foundation 9A disabled PRODUCT adapter. FET SoMs, MCU-only boards, unclassified EVM, embedded computers, accessories, kits, accelerators and Jetson excluded. No promotion, scheduler or delivery.
+
   - source_key: up-board-placeholder
     vendor: up-board
     plane: PRODUCT

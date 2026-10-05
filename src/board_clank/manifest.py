@@ -80,7 +80,7 @@ def build_manifest() -> dict[str, Any]:
         "capability_states": {
             "collection": {
                 "state": "supported_unconfigured",
-                "evidence": "eight PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
+                "evidence": "nine PRODUCT adapters and one bounded supporting reference collector exist; every source enabled=false",
             },
             "health": {
                 "state": "active",
@@ -108,7 +108,7 @@ def build_manifest() -> dict[str, Any]:
             },
             "replay": {
                 "state": "active",
-                "evidence": "versioned semantic input receipts authenticate replay across eight vendors; legacy unverifiable receipts refuse replay",
+                "evidence": "versioned semantic input receipts authenticate replay across nine vendors; legacy unverifiable receipts refuse replay",
             },
             "deployment": {
                 "state": "unknown_or_unverified",
@@ -124,6 +124,7 @@ def build_manifest() -> dict[str, Any]:
             "pine64-product",
             "friendlyelec-product",
             "khadas-product",
+            "forlinx-product",
         ],
         "supporting_sources": _supporting_declarations(),
         "scheduler_authority": "NONE",

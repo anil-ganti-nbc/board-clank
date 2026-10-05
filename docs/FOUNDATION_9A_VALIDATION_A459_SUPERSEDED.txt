@@ -1,0 +1,132 @@
+SUPERSEDED:admission overwrote normalized cpu_config with UNKNOWN. The explicit
+OEM text remained native/raw, but the avoidable normalized-data mapping loss
+requires a new implementation and fresh qualification. Retained report follows.
+The later shared PRODUCT authority/input-receipt and required document-role
+repairs also supersede this report. Its original receipts remain evidence of
+that exact intermediate snapshot, without certifying the repaired candidate.
+
+Foundation 9A Forlinx PRODUCT builder evidence, 2026-10-03
+Mission COPS-000097; independent acceptance remains with the supervisor.
+Branch foundation-9-forlinx-product, original parent
+7a3c2a409721fd25917522b3edb862755c2523d4,
+parent tree054cffecabf0602134bf28f9c230e9b756eb2a84. Initially clean.
+
+Exact repaired implementation/live execution SHA:
+a459d3a0b68f8e526eec828397c9dfbbe9a516f2
+Implementation tree:b6ef0a0bb77597fa4a3e4738fdfff1e84cd66357.
+Reporting documentation is committed separately after these live passes.
+This document does not identify its own commit as the live execution SHA.
+
+First-party scope/research:FOUNDATION_9A_RESEARCH.txt. Actual current catalogue
+https://www.forlinx.net/product-list-2.html plus pages2..6 supplies59 explicit
+Single Board Computer model cards. AM62L32 Local EVM lacks that classification
+and is excluded. Product authority is the linked product-cp labelled hero;
+six expected labels CPU/Architecture/Frequency/RAM/ROM/System must be present.
+An absent paragraph fails the complete request; explicitly empty source values
+are preserved as UNKNOWN. Raw and distilled outputs compare equal for all59
+products after the repaired parser. Corpus includes six indexes and59 heroes.
+
+Admission:46 resolved SBCs, one family,46 UNKNOWN revision identities,
+46 conservative variants,30 shared application SoCs,11 unresolved processor
+conditions. Two Cortex-M-only products OK1052-C/OK1061-S are rejected despite
+their manufacturer's SBC labels. Silicon vendors include NXP/TI/Rockchip/
+Allwinner/Renesas/StarFive/Nuvoton/Samsung. Whole labelled CPU evidence must
+resolve one application processor; companion chips/cores and explicit multi-
+processor option expressions do not become invented silicon. Unresolved CPU
+expressions populate soc_candidates, preserving meaningful diagnostic state.
+
+Exact model suffixes -C/-C1/-C2/-C3/-UP4/-UP5/-S/-S12 remain distinct Board
+identities even when they share an SoC. No internal FET/SoM is minted. SoMs,
+embedded computers, carriers/kits/accessories, accelerator cards and NVIDIA
+Jetson remain outside this source's scope. Discovery and fetch allow only
+qualified first-party PRODUCT routes, bounded pages and catalogue-linked
+models. A redirected current route requires new linkage qualification.
+
+RAM/ROM options are independent source evidence, never a Cartesian matrix.
+Ten products have one explicitly bound singleton RAM/eMMC pair;36 retain
+UNKNOWN dimensions. Full RAM/ROM values remain raw and in semantic projections;
+scoped RAM/eMMC options retain only appropriate memory evidence. Only explicit
+eMMC-labelled comma groups enter emmc_options; NAND/QSPI/NOR are retained raw.
+Memory options are omitted from native Board summary so option-only edits
+change stored revision/variant observations without false Board FIELD_CHANGED.
+Cloudflare public presentation masks are decoded so changing XOR keys does not
+manufacture CPU clock changes. Actual model/CPU/clock/memory/OS facts remain.
+
+Review-driven shared repairs are narrow and explicitly authorized:
+1. _birth_events silences inventory births for historical_known or explicit
+   EXISTING_PRODUCT/HISTORICAL evidence, including Board/revision/variant audit
+   events. Source-baseline determination and _transition_events are unchanged.
+   Current catalogue discovery does not infer launch or official dates.
+2. Durable backup coverage includes observation_occurrences, all24 schema-v3
+   tables. Genuine old format-1 metadata with exactly the previous table set
+   remains supported as LEGACY_PARTIAL, with explicit unverified-table reporting.
+   Full-image SHA/integrity and complete observed restore counts remain required.
+3. Wheel packaging includes all nine adapters' fixture trees. The installed
+   outside-checkout python -I probe confirms259/259 fixture files, all nine
+   actual offline adapters,124 boards, schema3, integrity ok and suppressed
+   notifications. Exact-SHA CI repeats the installed-wheel probe offline.
+
+Tests:422 passed123.68s, actual process exit0, complete output captured. Dedicated
+TEMP/TMP prevented inherited fixed stdout/stderr file collisions with concurrent
+qualifiers. Black-hole HTTP/HTTPS/ALL proxies, no pytest cache. Forlinx73 cases
+and16 delayed-inventory/transition cases cover all nine vendors, delayed real
+Khadas SKUs and synthetic known PCB identities, UNKNOWN chronology, diagnostic
+evidence change/replay, partial failure atomicity and memory/media separation.
+Actual Board clock FIELD_CHANGED, SOC_CHANGED, PORTS_CHANGED and diagnostic
+resolution remain observable. Six inherited assertions that demanded alerts
+for known inventory were corrected to prove retained silent durable births.
+Foundation assertion, both manifests, identity/version/health passed separately.
+
+Three separate manual provenance-bound experimental live passes, fresh isolated
+database:soak-a459d3a0-provenance. No production database or collector used.
+UTC starts2026-10-03T13:10:59.287825,13:13:08.072756,13:14:48.493232.
+Each65 successful raw captures,0 final failures,0 transient failures,0 redirects,
+0 parser errors. Each59 documents:46 resolved,11 insufficient,2 MCU rejected.
+Pass1:215 baseline-silent events and215 SUPPRESSED notification audit rows.
+Pass2:0 events/outbox additions. Pass3:0 events/outbox additions.
+Final46 boards/1 family/46 revisions/46 variants/30 SoCs/11 conditions/
+33 diagnostic sightings/414 observation occurrences/3 runs/3 accepted receipts.
+No known PCB/marketing revision is inferred. Same-run receipt replay changes
+none of the24 durable tables. All65 raw hashes differ on each later pass, while
+all59 bounded product semantic projections remain identical; no replay churn.
+Adapter SHA25668112a7cc31062698cf9d8b9bf3517f9c366a2e5497743381ae3961eba226bd3.
+BOARD_CLANK_SOURCE_REVISION was injected before Python imports; all215 events
+and backup metadata identify exact execution SHA a459d3a0b68f8e526eec828397c9dfbbe9a516f2.
+
+Readiness:observer leaves DB bytes unchanged; SQLite online backup succeeds,
+integrity_check ok, foreign_key_check empty, COMPLETE metadata coverage.
+All24 raw source/backup SQLite table rowsets compare equal independently.
+Backup image SHA256ee54feb8793de2c14cb99366d8381873d5615a81298dafc56a85750f8a55821d.
+Initial restored state equals all24 durable source tables. Restored same-run
+receipt is unchanged; one deliberately new restored run adds only operational
+occurrences/sightings/receipts/current-run bookkeeping, zero events/outbox and
+no entity minting. The retained restored DB therefore includes this extra run.
+
+Implementation exact-SHA GitHub evidence:
+Foundation CI https://github.com/anil-ganti-nbc/board-clank/actions/runs/37125148090
+ci/hermetic-tests SUCCESS, installed-wheel nine-adapter probe SUCCESS,
+foundation/readiness CLI gates SUCCESS, ci/container-nonroot SUCCESS.
+Fleet Laws https://github.com/anil-ganti-nbc/board-clank/actions/runs/37125148122
+SUCCESS. Full logs and exact-SHA job metadata retained; an initial TLS log
+download timeout is retained and successful retry is separate evidence.
+Final reporting-SHA CI and independent Hermes/Sol review are separate gates
+recorded by the supervisor; no review verdict or Mission completion is claimed.
+
+Evidence outside worktree:_Reconciliation/board-foundation9-forlinx includes
+raw first-party captures/receipts, raw-distilled equality, complete pytest logs
+and real exits, installed-wheel artifact/receipts, exact-SHA CI logs, request
+payloads, live database, observer, SQLite-safe backup and restored replay DB.
+ca3ff1115477c8124d7ab8fced652a3539817c44 is superseded: its two accepted passes
+and interrupted partial third are retained, with occurrence-coverage limitation
+explicit. An earlier extra a459 pass lacked injected event provenance and is
+retained separately; it is excluded from these three qualification passes.
+
+Governance:Forlinx REGISTERED/EXPERIMENTAL/enabled=false/PRODUCT/
+FIRST_PARTY_CANONICAL. All sources remain disabled; promotion freeze unchanged,
+schema stays3, observer keys/shape unchanged. No deployment, scheduler,
+delivery authority, source enablement/promotion, main merge or history rewrite.
+No evidence-depth/CNX lineage consumed, no other Clank changed, canonical
+.zcodeignore untouched. Current production freshness/runtime is not claimed.
+Live passes are short manual stability checks, not an endurance certification.
+Unresolved current CPU alternatives and absent launch/revision/SKU evidence
+remain deliberate limits requiring new first-party qualification.
