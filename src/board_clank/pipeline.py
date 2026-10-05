@@ -306,12 +306,12 @@ class Pipeline:
         baseline: bool,
         unresolved_out: list | None = None,
     ) -> tuple[int, list[str]]:
-        if draft.evidence_insufficient:
+        identity = _UnresolvedIdentity(draft) if draft.evidence_insufficient else self._resolve_identity(draft)
+        if isinstance(identity, _UnresolvedIdentity):
             if unresolved_out is not None:
-                unresolved_out.append((draft, _UnresolvedIdentity(draft)))
+                unresolved_out.append((draft, identity))
                 return 0, []
             return self._admit_unresolved(request, draft, baseline=baseline)
-        identity = self._resolve_identity(draft)
         self._upsert_graph(draft, identity, request)
         events: list[EventRecord] = []
 
@@ -404,8 +404,16 @@ class Pipeline:
                 for row in current_rows
                 if row["soc_key"] == spec.soc_key and row["ports_signature"] == ports
             ]
-            if matching:
-                # Reuse existing revision identity rather than inventing another UNKNOWN token.
+            if len(matching) > 1:
+                # Matching hardware signatures cannot distinguish explicit revisions.
+                # Preserve uncertainty rather than assigning provenance to an arbitrary row.
+                draft.evidence_insufficient = True
+                draft.identity_conflict = True
+                draft.identity_conflict_reason = "ambiguous-revision-identity"
+                draft.raw_fields["revision_candidates"] = sorted(row["revision_key"] for row in matching)
+                return _UnresolvedIdentity(draft)
+            if len(matching) == 1:
+                # Reuse a uniquely evidenced revision rather than inventing another UNKNOWN token.
                 from board_clank.identity import BoardIdentity, variant_key as make_variant_key
 
                 row = matching[0]
@@ -1141,6 +1149,12 @@ class Pipeline:
         # new labelled CPU evidence exists; meaningful new evidence is state.
         if draft.raw_fields.get("cpu_evidence"):
             state["cpu_evidence"] = sorted(draft.raw_fields["cpu_evidence"])
+        if draft.raw_fields.get("revision_candidates"):
+            state["revision_candidates"] = sorted(draft.raw_fields["revision_candidates"])
+            state["revision_evidence"] = {
+                "soc_key": draft.resolved_soc_key(),
+                "ports_signature": draft.spec.ports_signature(),
+            }
         return content_hash(state), state
 
     def _upsert_condition_row(
