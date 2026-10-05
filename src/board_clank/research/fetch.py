@@ -52,7 +52,9 @@ class _SameSiteRedirect(HTTPRedirectHandler):
 def fetch_first_party(url: str, claimed_domain: str, *, timeout: float = 15.0) -> FetchEvidence:
     if not url_on_domain(url, claimed_domain):
         raise FetchRejected("third_party_only")
-    request = Request(url, headers={"User-Agent": "board-clank-research/cnx-board-candidate-v1"}, method="GET")
+    # Leave User-Agent unset so urllib sends its normal Python-urllib token.
+    # A custom product token is answered 404 by some CDNs while that default is not.
+    request = Request(url, method="GET")
     try:
         with build_opener(_SameSiteRedirect(claimed_domain)).open(request, timeout=timeout) as response:
             final = response.geturl()

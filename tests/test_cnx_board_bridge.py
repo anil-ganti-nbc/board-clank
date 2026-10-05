@@ -56,6 +56,39 @@ def _snapshot(path: Path) -> dict:
         con.close()
 
 
+def test_fetch_does_not_send_a_custom_product_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = {}
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def geturl(self):
+            return "https://northwind.example/catalogue"
+
+        def read(self, limit):
+            return b"board-research-oem: Northwind Boards\n"
+
+        def getcode(self):
+            return 200
+
+    class Opener:
+        def open(self, request, timeout=None):
+            captured["user_agent"] = request.get_header("User-agent")
+            return Response()
+
+    monkeypatch.setattr("board_clank.research.fetch.build_opener", lambda *args, **kwargs: Opener())
+    from board_clank.research.fetch import fetch_first_party
+    evidence = fetch_first_party("https://northwind.example/catalogue", "northwind.example")
+    assert evidence.status == 200
+    assert captured["user_agent"] in (None, "Python-urllib/3.12")
+
+
 def test_canonical_serialization_is_order_independent() -> None:
     envelope = synthetic_envelope("run-1")
     swapped = {key: envelope[key] for key in reversed(envelope)}
