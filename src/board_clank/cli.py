@@ -22,6 +22,7 @@ from board_clank.compatibility import StateCompatibilityError, inspect_path
 from board_clank.health import health_payload
 from board_clank.paths import default_db_path
 from board_clank.pipeline import Pipeline
+from board_clank.research.commands import cmd_export, cmd_import, cmd_list, cmd_qualify, cmd_reject, cmd_show
 from board_clank.sources import assert_foundation_0_roster, load_sources, sync_sources_to_store
 from board_clank.store import Store
 from board_clank.taxonomy import CompatibilityState
@@ -358,6 +359,27 @@ def build_parser() -> argparse.ArgumentParser:
     manifest_cmd = sub.add_parser("manifest-declared", help="Validate the committed declaration manifest")
     manifest_cmd.add_argument("--file", help="Optional declaration path (default: bundled manifest.json)")
     sub.add_parser("observe", help="Read-only observer surface snapshot (v0.2 contract)")
+    export = sub.add_parser("cnx-export-candidates", help="Write an immutable CNX research JSONL envelope file")
+    export.add_argument("--run", required=True)
+    export.add_argument("--output", required=True)
+    imported = sub.add_parser("import-candidates", help="Import CNX envelopes as research leads only")
+    imported.add_argument("--input", required=True)
+    imported.add_argument("--research-db", required=True)
+    imported.add_argument("--research-only", action="store_true")
+    leads = sub.add_parser("research-leads", help="Inspect or disposition research leads")
+    lead_commands = leads.add_subparsers(dest="lead_command", required=True)
+    listed = lead_commands.add_parser("list")
+    listed.add_argument("--research-db", required=True)
+    shown = lead_commands.add_parser("show")
+    shown.add_argument("lead_id")
+    shown.add_argument("--research-db", required=True)
+    qualified = lead_commands.add_parser("qualify")
+    qualified.add_argument("lead_id")
+    qualified.add_argument("--research-db", required=True)
+    rejected = lead_commands.add_parser("reject")
+    rejected.add_argument("lead_id")
+    rejected.add_argument("--reason", required=True)
+    rejected.add_argument("--research-db", required=True)
     return parser
 
 
@@ -380,7 +402,22 @@ COMMANDS = {
     "manifest": cmd_manifest,
     "manifest-declared": cmd_manifest_declared,
     "observe": cmd_observe,
+    "cnx-export-candidates": cmd_export,
+    "import-candidates": cmd_import,
+    "research-leads": lambda args: _research_leads(args),
 }
+
+
+def _research_leads(args: argparse.Namespace) -> int:
+    if args.lead_command == "list":
+        return cmd_list(args)
+    if args.lead_command == "show":
+        return cmd_show(args)
+    if args.lead_command == "qualify":
+        return cmd_qualify(args)
+    if args.lead_command == "reject":
+        return cmd_reject(args)
+    return 2
 
 
 def main(argv: list[str] | None = None) -> int:
