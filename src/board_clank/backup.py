@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from board_clank._version import CLANK_ID, EXPECTED_SCHEMA_VERSION, SOURCE_REVISION
-from board_clank.compatibility import inspect_path
+from board_clank.compatibility import inspect_path, readonly_uri
 
 BACKUP_FORMAT_VERSION = 1
 BACKUP_SUFFIX = ".board-clank-backup.db"
@@ -122,7 +122,7 @@ def create_backup(db_path: str | Path, out_dir: str | Path, *, name: str | None 
             f"refusing to back up database in state {report.state.value}: {report.reason}"
         )
 
-    src_con = sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)
+    src_con = sqlite3.connect(readonly_uri(source), uri=True)
     try:
         integrity = _integrity(src_con)
         if integrity != "ok":
@@ -147,7 +147,7 @@ def create_backup(db_path: str | Path, out_dir: str | Path, *, name: str | None 
         src_con.close()
 
     # Verify the artifact independently before metadata is written.
-    art_con = sqlite3.connect(f"file:{backup_path.as_posix()}?mode=ro", uri=True)
+    art_con = sqlite3.connect(readonly_uri(backup_path), uri=True)
     try:
         artifact_integrity = _integrity(art_con)
         artifact_counts = _row_counts(art_con)
@@ -238,7 +238,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
     digest = sha256_file(backup_path)
     if digest != metadata["sha256"]:
         raise BackupError(f"backup SHA-256 mismatch: metadata {metadata['sha256']} != actual {digest}")
-    con = sqlite3.connect(f"file:{backup_path.as_posix()}?mode=ro", uri=True)
+    con = sqlite3.connect(readonly_uri(backup_path), uri=True)
     try:
         integrity = _integrity(con)
         counts = _row_counts(con)
@@ -268,7 +268,7 @@ def verify_backup(backup_path: str | Path, meta_path: str | Path) -> dict[str, A
 
 def durable_state_snapshot(db_path: str | Path) -> dict[str, list[str]]:
     """Deterministic per-table content hashes for equivalence proofs."""
-    con = sqlite3.connect(f"file:{Path(db_path).as_posix()}?mode=ro", uri=True)
+    con = sqlite3.connect(readonly_uri(db_path), uri=True)
     try:
         snapshot: dict[str, list[str]] = {}
         for table in DURABLE_TABLES:
@@ -356,7 +356,7 @@ def restore_backup(backup_path: str | Path, meta_path: str | Path, target_path: 
             stream.write(backup_path.read_bytes())
         if not _owned_staging(staging, identity):
             raise BackupError("restore staging ownership changed before verification")
-        check = sqlite3.connect(staging.as_uri() + "?mode=ro", uri=True)
+        check = sqlite3.connect(readonly_uri(staging), uri=True)
         try:
             integrity = _integrity(check)
             counts = _row_counts(check)

@@ -21,5 +21,6 @@ htmlcov/
 .DS_Store
 artifacts/
 tmp/
+.runtime/
 .idea/
 .vscode/

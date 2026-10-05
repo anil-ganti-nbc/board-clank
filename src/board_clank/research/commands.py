@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from board_clank.research.bridge import import_jsonl, qualify_lead, reject_lead
 from board_clank.research.export import export_jsonl, synthetic_envelope
+from board_clank.research.paths import same_database
 from board_clank.research.store import ResearchStore, ResearchStoreError
 
 
@@ -16,9 +16,7 @@ def _emit(payload: dict, code: int) -> int:
 
 
 def _same_database(research_db: str, canonical_db: str | None) -> bool:
-    if not canonical_db:
-        return False
-    return Path(research_db).resolve() == Path(canonical_db).resolve()
+    return same_database(research_db, canonical_db)
 
 
 def cmd_export(args) -> int:

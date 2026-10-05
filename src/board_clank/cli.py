@@ -359,6 +359,11 @@ def build_parser() -> argparse.ArgumentParser:
     manifest_cmd = sub.add_parser("manifest-declared", help="Validate the committed declaration manifest")
     manifest_cmd.add_argument("--file", help="Optional declaration path (default: bundled manifest.json)")
     sub.add_parser("observe", help="Read-only observer surface snapshot (v0.2 contract)")
+    ui = sub.add_parser("ui", help="Loopback operator GUI for research leads")
+    ui.add_argument("--research-db", required=True)
+    ui.add_argument("--port", type=int)
+    ui.add_argument("--no-browser", action="store_true")
+    ui.add_argument("--runtime-dir")
     export = sub.add_parser("cnx-export-candidates", help="Write an immutable CNX research JSONL envelope file")
     export.add_argument("--run", required=True)
     export.add_argument("--output", required=True)
@@ -405,7 +410,24 @@ COMMANDS = {
     "cnx-export-candidates": cmd_export,
     "import-candidates": cmd_import,
     "research-leads": lambda args: _research_leads(args),
+    "ui": lambda args: _ui(args),
 }
+
+
+def _ui(args: argparse.Namespace) -> int:
+    from board_clank.ui.server import main as ui_main
+
+    if not args.db:
+        print(json.dumps({"status": "refused", "reason": "canonical --db is required"}, indent=2, sort_keys=True))
+        return 2
+    argv = ["--db", args.db, "--research-db", args.research_db]
+    if args.port is not None:
+        argv.extend(["--port", str(args.port)])
+    if args.no_browser:
+        argv.append("--no-browser")
+    if getattr(args, "runtime_dir", None):
+        argv.extend(["--runtime-dir", args.runtime_dir])
+    return ui_main(argv)
 
 
 def _research_leads(args: argparse.Namespace) -> int:

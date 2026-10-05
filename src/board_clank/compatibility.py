@@ -65,10 +65,20 @@ class StateCompatibilityError(RuntimeError):
         self.report = report
 
 
+def readonly_uri(path: str | Path) -> str:
+    """SQLite read-only URI. Percent-encode so spaces and drive letters stay one path."""
+    target = Path(path).expanduser()
+    if not target.is_absolute():
+        target = Path.cwd() / target
+    try:
+        absolute = target.resolve(strict=False)
+    except OSError:
+        absolute = target.absolute()
+    return absolute.as_uri() + "?mode=ro"
+
+
 def connect_readonly(path: str | Path) -> sqlite3.Connection:
-    target = Path(path)
-    uri = f"file:{target.as_posix()}?mode=ro"
-    con = sqlite3.connect(uri, uri=True)
+    con = sqlite3.connect(readonly_uri(path), uri=True)
     con.row_factory = sqlite3.Row
     return con
 
