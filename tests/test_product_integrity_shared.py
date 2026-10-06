@@ -171,7 +171,11 @@ def test_each_old_live_collector_success_then_failure_is_atomic(name, failure, m
         return [valid[0].model_copy(deep=True)], {'status': 'resolved', 'lead_hrefs': []}
     monkeypatch.setattr(module, 'fetch_official_meta', fake_fetch)
     monkeypatch.setattr(module, 'parse_product_html', fake_parse)
-    request = get_adapter(module.SOURCE_KEY, experimental_live=True).collect('partial-' + name + '-' + failure, OBS)
+    adapter = get_adapter(module.SOURCE_KEY, experimental_live=True)
+    # Retained HTML mechanism tests; the public Store API has its own required
+    # record/pagination atomicity regression coverage in test_nas_alternate_paths.
+    collect = adapter._collect_html_live if name == 'odroid' else adapter.collect
+    request = collect('partial-' + name + '-' + failure, OBS)
     assert parsed and not request.ok and request.observations == [], (request.error, request.diagnostics)
     if failure in {'fetch', 'parse'}: assert request.diagnostics['parser_errors']
     else: assert 'unexpected required' in request.error
@@ -382,7 +386,9 @@ def test_real_detail_parser_after_good_document_fails_whole_run(name, failure, m
         return parse_real(body, page_url=page_url, observed_at=observed_at)
     monkeypatch.setattr(module, 'fetch_official_meta', fetch)
     monkeypatch.setattr(module, 'parse_product_html', parse)
-    request = get_adapter(module.SOURCE_KEY, experimental_live=True).collect('real-parser-failure-'+name+'-'+failure, OBS)
+    adapter = get_adapter(module.SOURCE_KEY, experimental_live=True)
+    collect = adapter._collect_html_live if name == 'odroid' else adapter.collect
+    request = collect('real-parser-failure-'+name+'-'+failure, OBS)
     assert request.diagnostics['resolved'] == 1, request.diagnostics
     assert not request.ok and not request.observations
     assert 'unexpected required detail' in request.error

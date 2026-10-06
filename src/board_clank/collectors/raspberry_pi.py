@@ -529,12 +529,23 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         raise CollectorError(f"html parse failed for {page_url}: {exc}") from exc
 
     name = _clean_name(parser.h1 or parser.title)
+    original_heading = name
+    legacy = re.fullmatch(r"Raspberry Pi Model ([AB])\+", name, re.I)
+    if legacy:
+        # Exact current PIP labels; reviewed official Pi1 marketing aliases.
+        expected_sku = 'SC0562' if legacy[1].upper() == 'A' else 'SC0563'
+        if urlparse(page_url).netloc not in PIP_HOSTS or expected_sku not in _extract_skus(html):
+            raise CollectorError('unverified legacy Raspberry Pi identity alias')
+        name = 'Raspberry Pi 1 Model '+legacy[1].upper()+'+'
     diagnostics: dict[str, Any] = {
         "page_url": page_url,
         "heading": name or UNKNOWN,
         "lead_hrefs": [],
         "status": "ok",
     }
+    if legacy:
+        diagnostics['original_heading'] = original_heading
+        diagnostics['identity_alias_basis'] = 'PIP Computers heading + explicit SKU; official Pi1 alias'
     parsed_url = urlparse(page_url)
     skus = _extract_skus(html)
     pcns = _extract_pcn_titles(parser.texts)
@@ -692,7 +703,8 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                         cpu_configuration=UNKNOWN,
                         gpu="VideoCore VII" if "videocore vii" in blob.lower() else ("VideoCore" if "videocore" in blob.lower() else UNKNOWN),
                         spec=spec,
-                        raw_fields={"spec_lines": spec_lines, "skus": skus, "pcns": pcns},
+                        raw_fields={"spec_lines": spec_lines, "skus": skus, "pcns": pcns,
+                                    "original_heading":original_heading},
                         native_fields={
                             "heading": name,
                             "page_url": page_url,

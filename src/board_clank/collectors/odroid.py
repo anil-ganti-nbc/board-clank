@@ -417,7 +417,7 @@ def _detail_leads(href_list: list[str], base_url: str) -> list[str]:
     return sorted(leads)
 
 
-def parse_product_html(html: str, *, page_url: str, observed_at: str, historical_known: bool = False) -> tuple[list[ObservationDraft], dict[str, Any]]:
+def parse_product_html(html: str, *, page_url: str, observed_at: str, historical_known: bool = False, scope_from_identity: bool = False) -> tuple[list[ObservationDraft], dict[str, Any]]:
     """Parse one official Hardkernel product-surface HTML document."""
     parser = _PageParser()
     try:
@@ -449,7 +449,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
     body_text = " ".join(parser.paragraphs + parser.h2s + [parser.description])
     table_text = " ".join(" ".join(row) for table in parser.tables for row in table)
 
-    if _HANDHELD_RE.search(parser.h1) or _HANDHELD_RE.search(body_text):
+    if _HANDHELD_RE.search(parser.h1) or (not scope_from_identity and _HANDHELD_RE.search(body_text)):
         diagnostics["status"] = "ignored-non-computer"
         diagnostics["scope"] = "NON_BOARD_CATALOGUE_ITEM"
         diagnostics["reason"] = "handheld-consumer-device"
@@ -776,6 +776,10 @@ class OdroidProductAdapter(CollectorAdapter):
         return drafts
 
     def _collect_live(self, run_id: str, started_at: str) -> CollectorRunRequest:
+        from .odroid_store import collect_api
+        return collect_api(run_id,started_at)
+
+    def _collect_html_live(self, run_id: str, started_at: str) -> CollectorRunRequest:
         """Live path: shop index -> product pages. hardkernel.com only;
         odroid.com / wiki / forum are never fetched (documentation planes)."""
         diagnostics: dict[str, Any] = {

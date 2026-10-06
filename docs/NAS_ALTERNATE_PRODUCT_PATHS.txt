@@ -1,0 +1,40 @@
+COPS-000101 approved alternate PRODUCT mechanisms,2026-10-06.
+Parent94f5b95e;source-only adapter correction before inert NAS codeupdate.
+
+RPI:PIP legacyModelA+/B+ headings mapped to reviewed Pi1aliases only with
+matchingSC0562/SC0563. Raw original heading retained;unknownspecs stayunknown.
+Pico,keyboard computers andaccessories stayexcluded. PrimaryPIP remainsrequired.
+BPI:exactOpenWrtOne/AP-24.XY router title plus controlledroutercategory and
+product-specificmanufacturing statement. Alias staysraw,notPCB revision.
+Title CPU extractor preservesMT7981B application vsMT7976C Wi-Fi companion.
+
+ODROID:public WooStoreAPI categories/products,publishedsuppliersSKU records,
+verified page-count closure. Current shop discovery supplements published
+linked pages omitted fromcollection filters;no hard-codedmodel inventory.
+Groupedproduct bindings explicitly connect region/IOheaderSKUs tooneboard;
+hidden/unpublished references reported,notresurrected. Unsupportedvariable
+configuration failsclosed. Productcards removed fromscopeddescription;SoC
+fromownlabelledtable,notrelatedproducts. SimpleSKU emitsonecombination;
+socket/add-on options do not create fitted256GBstorage orcartesianvariants.
+HC4withOLED remainsHC4variant. ActualobservedpublishedURLs anchorboardrefs;
+never fabricate a base URL. SKUprice/stock retainedraw;board-level stock/RAM
+matrix normalized acrosscurrentSKUs topreventfalsewithin-runboardchurn.
+ExplicitGO/handheld andkit exclusions preserved. LegacyHTML boundary tests
+remain,publicAPI has separate late-failure/all-table atomicity tests.
+
+Forlinx:existing currentcatalogue closure +allrequiredproducts beforeparse.
+Four workers,boundedrequest retries,900ssourcebudget plusouterprocessbound.
+Completedrequest bodies/receipts/progress persisted immediately onlyunder
+operator-provided --capture-dir;manifest hasrunID/codeSHA/start/end/hash/URL
+andcompleteflag. Interrupted/failed captures remainevidence. No automatic
+cross-run stale reuse;restartfresh capture unlessseparately freshness-validated.
+Recorded same-run retries andincremental durable captures allow recovery of
+fetch evidence without calling partialdata current. Fullsource acceptance is
+stillatomic;noobservations onrequiredfetch/parser/pagination failure.
+
+Research:parentmissionALTERNATE_MECHANISMS.txt and primary captures.
+Real distilled fixtures:tests/fixtures/alternate_paths.json. Negative
+mutations clearlymarkedtests. Genericpipeline/identity/schema/observercontract
+unchanged;schema3. Every sourceEXPERIMENTAL/disabled;freezeON.
+No scheduler/delivery/promotionauthority. Qualification usesisolatedDB only.
+Canonical NASstate preserved through backup+read-onlyhash/fingerprint checks.

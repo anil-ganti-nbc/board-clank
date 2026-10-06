@@ -109,6 +109,7 @@ def get_adapter(source_key: str, **kwargs):
         return ForlinxProductAdapter(
             experimental_live=bool(kwargs.get("experimental_live")),
             corpus=str(kwargs.get("corpus") or "baseline"),
+            capture_dir=kwargs.get('capture_dir'),
         )
     vendor = source_key.replace("-product", "")
     if vendor not in ADAPTERS:

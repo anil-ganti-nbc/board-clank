@@ -1,0 +1,796 @@
+{
+  "capture_date": "2026-10-06",
+  "provenance": {
+    "odroid-five-products": {
+      "url": "https://www.hardkernel.com/wp-json/wc/store/v1/products?slug=odroid-c4,odroid-c5,odroid-n2-with-4gbyte-ram-2,odroid-hc4,odroid-go-ultra-clear-white&per_page=10",
+      "status": 200,
+      "seconds": 3.039,
+      "bytes": 684060,
+      "sha256": "3ef1e8a40eb921ed4344492a108bee6015e015808228c07510a47721c1cd6c9e",
+      "total": "5",
+      "total_pages": "1",
+      "products": [
+        {
+          "id": 116255,
+          "name": "ODROID-C5",
+          "slug": "odroid-c5",
+          "permalink": "https://www.hardkernel.com/shop/odroid-c5/",
+          "sku": "G250509831255",
+          "categories": [
+            {
+              "id": 20882,
+              "name": "Amlogic",
+              "slug": "amlogic",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+            },
+            {
+              "id": 20864,
+              "name": "ODROID BOARD",
+              "slug": "odroid-board",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/"
+            }
+          ],
+          "is_in_stock": true
+        },
+        {
+          "id": 85179,
+          "name": "ODROID-GO ULTRA Clear White",
+          "slug": "odroid-go-ultra-clear-white",
+          "permalink": "https://www.hardkernel.com/shop/odroid-go-ultra-clear-white/",
+          "sku": "G220824392774",
+          "categories": [
+            {
+              "id": 20882,
+              "name": "Amlogic",
+              "slug": "amlogic",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+            }
+          ],
+          "is_in_stock": true
+        },
+        {
+          "id": 57603,
+          "name": "ODROID-HC4",
+          "slug": "odroid-hc4",
+          "permalink": "https://www.hardkernel.com/shop/odroid-hc4/",
+          "sku": "G201014154359",
+          "categories": [
+            {
+              "id": 20882,
+              "name": "Amlogic",
+              "slug": "amlogic",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+            }
+          ],
+          "is_in_stock": true
+        },
+        {
+          "id": 52492,
+          "name": "ODROID-N2+ with 4GByte RAM",
+          "slug": "odroid-n2-with-4gbyte-ram-2",
+          "permalink": "https://www.hardkernel.com/shop/odroid-n2-with-4gbyte-ram-2/",
+          "sku": "G200702239825",
+          "categories": [
+            {
+              "id": 20882,
+              "name": "Amlogic",
+              "slug": "amlogic",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+            }
+          ],
+          "is_in_stock": true
+        },
+        {
+          "id": 45491,
+          "name": "ODROID-C4 with 4GByte RAM",
+          "slug": "odroid-c4",
+          "permalink": "https://www.hardkernel.com/shop/odroid-c4/",
+          "sku": "G200409831255",
+          "categories": [
+            {
+              "id": 20882,
+              "name": "Amlogic",
+              "slug": "amlogic",
+              "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+            }
+          ],
+          "is_in_stock": true
+        }
+      ]
+    },
+    "odroid-categories": {
+      "url": "https://www.hardkernel.com/wp-json/wc/store/v1/products/categories?per_page=100",
+      "status": 200,
+      "seconds": 0.699,
+      "bytes": 3881,
+      "sha256": "fe8ef2e97b767e4e198682187d287937bb08e9ac70400cb4fbd525449a32ee78",
+      "total": null,
+      "total_pages": null,
+      "board_categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "description": "ODROID",
+          "parent": 20864,
+          "count": 10,
+          "image": null,
+          "review_count": 0,
+          "permalink": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        },
+        {
+          "id": 20864,
+          "name": "ODROID BOARD",
+          "slug": "odroid-board",
+          "description": "",
+          "parent": 0,
+          "count": 45,
+          "image": null,
+          "review_count": 0,
+          "permalink": "https://www.hardkernel.com/product-category/odroid-board/"
+        },
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "description": "ODROID",
+          "parent": 20864,
+          "count": 31,
+          "image": null,
+          "review_count": 0,
+          "permalink": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        },
+        {
+          "id": 20884,
+          "name": "x86",
+          "slug": "x86",
+          "description": "ODROID x86",
+          "parent": 20864,
+          "count": 4,
+          "image": null,
+          "review_count": 0,
+          "permalink": "https://www.hardkernel.com/product-category/odroid-board/x86/"
+        }
+      ]
+    }
+  },
+  "odroid_products": [
+    {
+      "id": 116255,
+      "name": "ODROID-C5",
+      "type": "simple",
+      "slug": "odroid-c5",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-c5/",
+      "sku": "G250509831255",
+      "description": "<table><tr><td>A</td><td>CPU (Amlogic S905X5M)</td><td>H</td><td>2 x System LED indicators</td></tr><tr><td>B</td><td>DDR4 memory (4GiB)</td><td>I</td><td>1 x UART for system console</td></tr><tr><td>C</td><td>4 x USB 2.0 host ports</td><td>J</td><td>1 x IR receiver</td></tr><tr><td>D</td><td>1 x RJ45 Ethernet port (10/100/1000)</td><td>K</td><td>40 x GPIO pins</td></tr><tr><td>E</td><td>1 x HDMI 2.0</td><td>L, O</td><td>Stereo audio output 2 pins, Alternative power input 2 pins</td></tr><tr><td>F</td><td>1 x Micro USB 2.0 port (OTG)</td><td>M</td><td>1 x eMMC module socket</td></tr><tr><td>G</td><td>1 x DC power jack (Outer diameter : 5.5mm, inner diameter : 2.1mm)</td><td>N</td><td>1 x Micro SD slot</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 85mm x 56mm x 22mm Weight: 42g</td></tr><tr><td>Processor</td><td>Amlogic S905X5M Quad-Core Cortex-A55 (2.5GHz) ARM G310 V2 GPU (0.85GHz)</td></tr><tr><td>Memory</td><td>DDR4 4GB with 32-bit bus width Data rate: 3200 MT/s</td></tr><tr><td>Storage</td><td>1x Micro SD slot (DS/HS mode up to UHS-I SDR104) 1x eMMC socket (HS400)</td></tr><tr><td>Networking</td><td>1 x GbE port (RJ45, supports 10/100/1000 Mbps) \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video output</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID)</td></tr><tr><td>Audio</td><td>1 x HDMI digital output 1 x Analog stereo line out</td></tr></table><table><tr><td>External I/O</td><td>4 x USB 2.0 host port 1 x Micro USB port (OTG) 1 x Debug serial console (UART : 921600bps) 1 x 40 pin GPIO header GPIO input/output nominal voltage is 3.1V. The maximum input tolerance is 3.4V.</td></tr><tr><td>Other features</td><td>* System LED Indicators: \u2013 Red (POWER) Solid light when DC power is connected \u2013 Blue (ALIVE) Flashing like a heartbeat while Kernel runs. Solid on the u-boot stage.</td></tr><tr><td>Power</td><td>1 x DC jack: outer (negative) diameter 5.5mm inner (positive) diameter 2.1mm 1 x Alternative(aux) power input from a 2-pin header DC input voltage range: 7.5V ~ 15.5V (12V/2A power adapter is recommended) \u2013 IDLE : \u2243 1W without any kind of peripherals \u2013 CPU Stress : \u2243 2.5W (Performance governor) without any kind of peripherals \u2013 Power Off : \u2243 0.22W</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a> </strong></p>\n<table class=\"table01\">\n<tbody>\n<tr>\n<td>TIER (for business account )</td>\n<td>DISCOUNT (bank transfer only)</td>\n</tr>\n<tr>\n<td>10 ~ 99</td>\n<td>5%</td>\n</tr>\n<tr>\n<td>100 ~ 299</td>\n<td>6%</td>\n</tr>\n<tr>\n<td>300 ~ and more</td>\n<td>7%</td>\n</tr>\n</tbody>\n</table>",
+      "categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        },
+        {
+          "id": 20864,
+          "name": "ODROID BOARD",
+          "slug": "odroid-board",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/"
+        }
+      ],
+      "prices": {
+        "price": "6900",
+        "regular_price": "6900",
+        "sale_price": "6900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 85179,
+      "name": "ODROID-GO ULTRA Clear White",
+      "type": "simple",
+      "slug": "odroid-go-ultra-clear-white",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-go-ultra-clear-white/",
+      "sku": "G220824392774",
+      "description": "<table><tr><td>Processor</td><td>CPU : Amlogic S922X (Quad-core Cortex-A73(2.2Ghz) and Dual-core Cortex-A53(2Ghz) ARMv8-A architecture with Neon and Crypto extensions GPU : Mali-G52 GPU with 6 x Execution Engines (846Mhz)</td><td>CPU : Amlogic S922X (Quad-core Cortex-A73(2.2Ghz) and Dual-core Cortex-A53(2Ghz) ARMv8-A architecture with Neon and Crypto extensions GPU : Mali-G52 GPU with 6 x Execution Engines (846Mhz)</td></tr><tr><td>OS</td><td>Ubuntu 20.04.4 on Kernel 4.9.277 Aarch64 Modified EmulationStation front-end with Libretro. GPU accelerated OpenGL-ES on DRM-FB</td><td>Ubuntu 20.04.4 on Kernel 4.9.277 Aarch64 Modified EmulationStation front-end with Libretro. GPU accelerated OpenGL-ES on DRM-FB</td></tr><tr><td>Memory</td><td>2GiB (LPDDR4 1608Mhz, 32 Bits bus width)</td><td>2GiB (LPDDR4 1608Mhz, 32 Bits bus width)</td></tr><tr><td>Storage</td><td>On board 16GiB eMMC, Micro SD Card slot(UHS-1 Capable interface)</td><td>On board 16GiB eMMC, Micro SD Card slot(UHS-1 Capable interface)</td></tr><tr><td>Display</td><td>5inch 854\u00d7480 TFT LCD (Wide viewing angle display, MIPI-DSI interface)</td><td>5inch 854\u00d7480 TFT LCD (Wide viewing angle display, MIPI-DSI interface)</td></tr><tr><td>Audio</td><td>Earphone stereo jack, 0.5Watt 8\u03a9 Mono speaker</td><td>Earphone stereo jack, 0.5Watt 8\u03a9 Mono speaker</td></tr><tr><td>Battery</td><td>Li-Polymer 3.7V/4000mAh(76.5\u00d754.5\u00d77.5mm), Up to 6 hours of continuous game playing time</td><td>Li-Polymer 3.7V/4000mAh(76.5\u00d754.5\u00d77.5mm), Up to 6 hours of continuous game playing time</td></tr><tr><td>Power Supply</td><td>5V input, USB-C power connector : A USB -C charging Y cable with type-A is included in the package. Maximum drawing current: 1.5Amp Support USB 2.0 Device on the USB-C port</td><td>5V input, USB-C power connector : A USB -C charging Y cable with type-A is included in the package. Maximum drawing current: 1.5Amp Support USB 2.0 Device on the USB-C port</td></tr><tr><td>External I/O</td><td>USB 2.0 Host x 1</td><td>USB 2.0 Host x 1</td></tr><tr><td>Input Buttons</td><td>F1, F2, F3, F4, F5, F6, A, B, X, Y, Direction Pad, Left Shoulder, Right Shoulder, Left Shoulder2, Right Shoulder2, Analog joystick, Analog joystick2</td><td>F1, F2, F3, F4, F5, F6, A, B, X, Y, Direction Pad, Left Shoulder, Right Shoulder, Left Shoulder2, Right Shoulder2, Analog joystick, Analog joystick2</td></tr><tr><td>Wireless</td><td>Optional USB dual-band WiFi Bluetooth combo adapter</td><td>Optional USB dual-band WiFi Bluetooth combo adapter</td></tr><tr><td>Power consumption</td><td>Game emulation: 800 ~ 1300mA (depends on backlit brightness and type of game emulations and the wireless usage), Power off mode: &lt;1mA</td><td>Game emulation: 800 ~ 1300mA (depends on backlit brightness and type of game emulations and the wireless usage), Power off mode: &lt;1mA</td></tr><tr><td>Charging time</td><td>3 ~ 4 hours when off. 6 ~ 7 hours when in use.</td><td>3 ~ 4 hours when off. 6 ~ 7 hours when in use.</td></tr><tr><td>Dimensions</td><td>204x86x25 mm, Weight: 299 g (8 oz)</td><td>204x86x25 mm, Weight: 299 g (8 oz)</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a></strong></p>",
+      "categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        }
+      ],
+      "prices": {
+        "price": "5500",
+        "regular_price": "11100",
+        "sale_price": "5500",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 57603,
+      "name": "ODROID-HC4",
+      "type": "simple",
+      "slug": "odroid-hc4",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-hc4/",
+      "sku": "G201014154359",
+      "description": "<table><tr><td>A</td><td>CPU (Amlogic S905X3)</td><td>H</td><td>2x System LED indicators</td></tr><tr><td>B</td><td>DDR4 memory (4GiB)</td><td>I</td><td>1x UART for system console</td></tr><tr><td>C</td><td>2x SATA ports</td><td>J</td><td>1x IR receiver</td></tr><tr><td>D</td><td>1x RJ45 Ethernet port (10/100/1000)</td><td>K</td><td>5x GPIO pins (for optional OLED display)</td></tr><tr><td>E</td><td>1x HDMI 2.0</td><td>L</td><td>1x Micro SD slot</td></tr><tr><td>F</td><td>1x USB 2.0 host port</td><td>M</td><td>1x Cooling fan</td></tr><tr><td>G</td><td>1x DC power jack (Outer diameter : 5.5mm, inner diameter 2.1mm)</td><td>N</td><td>1x Boot switch</td></tr></table><table><tr><td>odroid@hc4:/media/ssd2$ iozone -e -I -a -s 100M -r 4k -r 16384k -i 0 -i 1 -i 2 Iozone: Performance Test of File I/O Version $Revision: 3.489 $ Compiled for 64 bit mode. Build: linux-arm random random kB reclen write rewrite read reread read write 102400 4 44097 62373 75362 75511 39859 60806 102400 16384 428515 426902 390226 392564 391412 427137</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 84mm x 90.5mm x 25.0mm Heatsink Dimensions: 40mm x 32mm x 10mm Weight: 280g including heatsink, fan and case</td></tr><tr><td>Processor</td><td>Amlogic S905X3 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.800GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G31 MP2 GPU with 4 x Execution Engines (650Mhz)</td></tr><tr><td>Memory</td><td>DDR4 4GiB with 32-bit bus width Data rate: 2640 MT/s (PC4-21333 grade) 1.2Volt low power design</td></tr><tr><td>Storage</td><td>1x Micro SD slot (DS/HS mode up to UHS-I SDR104)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F (Ethernet transceiver) \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID)</td></tr><tr><td>Audio</td><td>1 x HDMI digital output</td></tr><tr><td>Cooler</td><td>1 x Passive heatsink ( 40x32x10 mm ) on the CPU of PCB board 1 x Hydraulic Bearing FAN \u2013 Rated Voltage : 5V \u2013 Rated Current : 100mA \u2013 Max Speed RPM : 4,000 \u2013 Air Flow CFM : 4.3 \u2013 Air Pressure (In H2O) : 0.053 \u2013 Noise Level(dBA) : 23.9 \u2013 Dimension : 40 x 40 x 10.6 mm \u2013 Wire &amp; Connector : 80mm, 4 pin 1.25mm pitch</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x Debug serial console (UART) 2 x SATA Connectors</td></tr><tr><td>Other features</td><td>IR receiver for remote controller System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running.</td></tr><tr><td>Power</td><td>1 x DC jack : outer (negative) diameter 5.5mm, inner (positive) diameter 2.1mm DC input : 14.5V ~ 15.5V \u2013 DC 15V/4A power adaptor is recommended. Sold separately. Power consumption with two ST2000DM006 HDDs : \u2013 IDLE(with HDD in spin-down) : \u2243 5.88W \u2013 Active(using SAMBA): \u2243 15.59W \u2013 Suspend: \u2243 0.29W</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a> </strong></p>\n<table class=\"table01\">\n<tbody>\n<tr>\n<td>TIER (for business account )</td>\n<td>DISCOUNT (bank transfer only)</td>\n</tr>\n<tr>\n<td>10 ~ 99</td>\n<td>5%</td>\n</tr>\n<tr>\n<td>100 ~ 299</td>\n<td>6%</td>\n</tr>\n<tr>\n<td>300 ~ and more</td>\n<td>7%</td>\n</tr>\n</tbody>\n</table>",
+      "categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        }
+      ],
+      "prices": {
+        "price": "7300",
+        "regular_price": "7300",
+        "sale_price": "7300",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 52492,
+      "name": "ODROID-N2+ with 4GByte RAM",
+      "type": "simple",
+      "slug": "odroid-n2-with-4gbyte-ram-2",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-n2-with-4gbyte-ram-2/",
+      "sku": "G200702239825",
+      "description": "<table><tr><td>A</td><td>S922X CPU</td><td>J</td><td>1 x SPI Flash 8MiB</td></tr><tr><td>B</td><td>4 x DDR4 RAM</td><td>K</td><td>1 x SPI Boot Select Switch</td></tr><tr><td>C</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>L</td><td>1 x eMMC Module Socket</td></tr><tr><td>D</td><td>1 x HDMI 2.0</td><td>M</td><td>1 x Micro SD Slot</td></tr><tr><td>E</td><td>4 x USB 3.0</td><td>N</td><td>1 x IR Receiver</td></tr><tr><td>F</td><td>2 x System LED Indicators</td><td>O</td><td>1 x RTC Backup Battery Holder</td></tr><tr><td>G</td><td>1 x DC Power Jack</td><td>P</td><td>1 x Active Cooling Fan Connector (2-pin)</td></tr><tr><td>H</td><td>1 x AV Out (Stereo Audio with Composite video)</td><td>Q</td><td>40 x GPIO Pins</td></tr><tr><td>I</td><td>1 x Micro USB2.0 OTG</td><td>R</td><td>1 x UART for System Console</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 90mm x 17mm Heatsink Dimensions: 100mm x 91mm x 18.75mm Weight: 200g including heatsink</td><td>Board Dimensions: 90mm x 90mm x 17mm Heatsink Dimensions: 100mm x 91mm x 18.75mm Weight: 200g including heatsink</td><td>Board Dimensions: 90mm x 90mm x 17mm Heatsink Dimensions: 100mm x 91mm x 18.75mm Weight: 200g including heatsink</td></tr><tr><td>Processor</td><td>Amlogic S922X Processor (12nm fab) Quad-core Cortex-A73(up to 2.4Ghz) and Dual-core Cortex-A53 (up to 2Ghz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 6 x Execution Engines (800Mhz)</td><td>Amlogic S922X Processor (12nm fab) Quad-core Cortex-A73(up to 2.4Ghz) and Dual-core Cortex-A53 (up to 2Ghz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 6 x Execution Engines (800Mhz)</td><td>Amlogic S922X Processor (12nm fab) Quad-core Cortex-A73(up to 2.4Ghz) and Dual-core Cortex-A53 (up to 2Ghz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 6 x Execution Engines (800Mhz)</td></tr><tr><td>Memory</td><td>DDR4 4GiB or 2GiB with 32-bit bus width Data rate: 2640 MT/s (PC4-21333 grade) 1.2Volt low power design</td><td>DDR4 4GiB or 2GiB with 32-bit bus width Data rate: 2640 MT/s (PC4-21333 grade) 1.2Volt low power design</td><td>DDR4 4GiB or 2GiB with 32-bit bus width Data rate: 2640 MT/s (PC4-21333 grade) 1.2Volt low power design</td></tr><tr><td>Storage</td><td>1 x eMMC connector (8G, 16G, 32G, 64G, 128G and 256G are available) 1 x microSD slot (DS/HS modes up to UHS-I SDR104)</td><td>1 x eMMC connector (8G, 16G, 32G, 64G, 128G and 256G are available) 1 x microSD slot (DS/HS modes up to UHS-I SDR104)</td><td>1 x eMMC connector (8G, 16G, 32G, 64G, 128G and 256G are available) 1 x microSD slot (DS/HS modes up to UHS-I SDR104)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F (Ethernet transceiver) \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection Optional WiFi USB adapters</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F (Ethernet transceiver) \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection Optional WiFi USB adapters</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F (Ethernet transceiver) \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection Optional WiFi USB adapters</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID) 1 x Composite video (3.5mm jack)</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID) 1 x Composite video (3.5mm jack)</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID) 1 x Composite video (3.5mm jack)</td></tr><tr><td>Audio</td><td>1 x Stereo Audio line-out (3.5mm jack) 1 x HDMI digital output 1 x Optional SPDIF optical output</td><td>1 x Stereo Audio line-out (3.5mm jack) 1 x HDMI digital output 1 x Optional SPDIF optical output</td><td>1 x Stereo Audio line-out (3.5mm jack) 1 x HDMI digital output 1 x Optional SPDIF optical output</td></tr><tr><td>External I/O</td><td>4 x USB 3.0 Host ports (shares one single root hub) 1 x USB 2.0 OTG port for Host or Device mode. (No power input) 1 x Debug serial console (UART) 1 x Peripheral Expansion Header (40-pin, 2.54mm pitch) \u2013 2 x DC 5V, 2 x DC 3.3V, 1 x DC 1.8V, 8 x GND \u2013 1 x SPI \u2013 1 x UART \u2013 2 x I2C \u2013 25 x GPIO (Max) \u2013 2 x ADC input (10bit, 1.8V Max) \u2013 All 3.3V I/O signal level except for ADC input at max 1.8Volt.</td><td>4 x USB 3.0 Host ports (shares one single root hub) 1 x USB 2.0 OTG port for Host or Device mode. (No power input) 1 x Debug serial console (UART) 1 x Peripheral Expansion Header (40-pin, 2.54mm pitch) \u2013 2 x DC 5V, 2 x DC 3.3V, 1 x DC 1.8V, 8 x GND \u2013 1 x SPI \u2013 1 x UART \u2013 2 x I2C \u2013 25 x GPIO (Max) \u2013 2 x ADC input (10bit, 1.8V Max) \u2013 All 3.3V I/O signal level except for ADC input at max 1.8Volt.</td><td>4 x USB 3.0 Host ports (shares one single root hub) 1 x USB 2.0 OTG port for Host or Device mode. (No power input) 1 x Debug serial console (UART) 1 x Peripheral Expansion Header (40-pin, 2.54mm pitch) \u2013 2 x DC 5V, 2 x DC 3.3V, 1 x DC 1.8V, 8 x GND \u2013 1 x SPI \u2013 1 x UART \u2013 2 x I2C \u2013 25 x GPIO (Max) \u2013 2 x ADC input (10bit, 1.8V Max) \u2013 All 3.3V I/O signal level except for ADC input at max 1.8Volt.</td></tr><tr><td>Other features</td><td>On board RTC(Real Time Clock) IC to keep date and time. A CR2032 coin battery holder was replaced with the 2-pin 1.25mm pitch connector. No battery is included in the board. Please purchase the very common bare CR2032 cell from your local store. You can keep the RTC time up to several years with a 200mAh CR2032 battery. 8MiB SPI Flash for boot manager IR receiver for remote controller Built with a large passive heatsink System LEDS Indicators: \u2013 Red (PWR) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Active Cooling Fan Connector (5V 2-pin) \u2013 Connector (2-pin, 1.25mm pitch)</td><td>On board RTC(Real Time Clock) IC to keep date and time. A CR2032 coin battery holder was replaced with the 2-pin 1.25mm pitch connector. No battery is included in the board. Please purchase the very common bare CR2032 cell from your local store. You can keep the RTC time up to several years with a 200mAh CR2032 battery. 8MiB SPI Flash for boot manager IR receiver for remote controller Built with a large passive heatsink System LEDS Indicators: \u2013 Red (PWR) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Active Cooling Fan Connector (5V 2-pin) \u2013 Connector (2-pin, 1.25mm pitch)</td><td>On board RTC(Real Time Clock) IC to keep date and time. A CR2032 coin battery holder was replaced with the 2-pin 1.25mm pitch connector. No battery is included in the board. Please purchase the very common bare CR2032 cell from your local store. You can keep the RTC time up to several years with a 200mAh CR2032 battery. 8MiB SPI Flash for boot manager IR receiver for remote controller Built with a large passive heatsink System LEDS Indicators: \u2013 Red (PWR) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Active Cooling Fan Connector (5V 2-pin) \u2013 Connector (2-pin, 1.25mm pitch)</td></tr><tr><td>Power</td><td>1 x DC jack : outer (negative) diameter 5.5mm, inner(positive) diameter 2.1mm DC 7.5V ~ 18V (up to 25W) *** 7.5V ~ 16V from 2022 production (LOT number starts with EL22) \u2013 DC 12V/2A power adaptor is recommended Power consumption: \u2013 IDLE : \u2243 2.2W (Performance governor) \u2013 CPU Stress : \u2243 5.9W (@2016/2208MHz), 6.2W (@2016/2400MHz) \u2013 Power-off : \u2243 0.2W</td><td>1 x DC jack : outer (negative) diameter 5.5mm, inner(positive) diameter 2.1mm DC 7.5V ~ 18V (up to 25W) *** 7.5V ~ 16V from 2022 production (LOT number starts with EL22) \u2013 DC 12V/2A power adaptor is recommended Power consumption: \u2013 IDLE : \u2243 2.2W (Performance governor) \u2013 CPU Stress : \u2243 5.9W (@2016/2208MHz), 6.2W (@2016/2400MHz) \u2013 Power-off : \u2243 0.2W</td><td>1 x DC jack : outer (negative) diameter 5.5mm, inner(positive) diameter 2.1mm DC 7.5V ~ 18V (up to 25W) *** 7.5V ~ 16V from 2022 production (LOT number starts with EL22) \u2013 DC 12V/2A power adaptor is recommended Power consumption: \u2013 IDLE : \u2243 2.2W (Performance governor) \u2013 CPU Stress : \u2243 5.9W (@2016/2208MHz), 6.2W (@2016/2400MHz) \u2013 Power-off : \u2243 0.2W</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a> </strong></p>\n<table class=\"table01\">\n<tbody>\n<tr>\n<td>TIER (for business account )</td>\n<td>DISCOUNT (bank transfer only)</td>\n</tr>\n<tr>\n<td>10 ~ 99</td>\n<td>5%</td>\n</tr>\n<tr>\n<td>100 ~ 299</td>\n<td>6%</td>\n</tr>\n<tr>\n<td>300 ~ and more</td>\n<td>7%</td>\n</tr>\n</tbody>\n</table>",
+      "categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        }
+      ],
+      "prices": {
+        "price": "9500",
+        "regular_price": "9500",
+        "sale_price": "9500",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 45491,
+      "name": "ODROID-C4 with 4GByte RAM",
+      "type": "simple",
+      "slug": "odroid-c4",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-c4/",
+      "sku": "G200409831255",
+      "description": "<table><tr><td>A</td><td>CPU (Amlogic S905X3)</td><td>H</td><td>2 x System LED indicators</td></tr><tr><td>B</td><td>DDR4 memory (4GiB)</td><td>I</td><td>1 x UART for system console</td></tr><tr><td>C</td><td>4 x USB 3.0 host ports</td><td>J</td><td>1 x IR receiver</td></tr><tr><td>D</td><td>1 x RJ45 Ethernet port (10/100/1000)</td><td>K</td><td>40 x GPIO pins</td></tr><tr><td>E</td><td>1 x HDMI 2.0</td><td>L</td><td>7 x GPIO pins</td></tr><tr><td>F</td><td>1 x Micro USB 2.0 port (OTG)</td><td>M</td><td>1 x eMMC module socket</td></tr><tr><td>G</td><td>1 x DC power jack (Outer diameter : 5.5mm, inner diameter : 2.1mm)</td><td>N</td><td>1 x Micro SD slot</td></tr></table><table><tr><td>Form factor</td><td>Board Dimensions: 85mm x 56mm x 1.0mm Heatsink Dimensions: 40mm x 32mm x 10mm Weight: 59g including heatsink</td></tr><tr><td>Processor</td><td>Amlogic S905X3 12nm Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processors Quad-Core Cortex-A55 (2.016GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G31 MP2 GPU with 4 x Execution Engines (650Mhz)</td></tr><tr><td>Memory</td><td>DDR4 4GiB with 32-bit bus width Data rate: 2640 MT/s (PC4-21333 grade) 1.2Volt low power design</td></tr><tr><td>Storage</td><td>1x eMMC connector (8/16/32/64GiB are available) 1x Micro SD slot (DS/HS mode up to UHS-I SDR104)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F (Ethernet transceiver) \u2013 LED indicators * Green LED: Flashing by data traffic at 100Mbps connection * Amber LED: Flashing by data traffic at 1000Mbps connection Optional WiFi USB adapters</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, CEC, EDID)</td></tr><tr><td>Audio</td><td>1 x HDMI digital output 1 x Optional SPDIF optical output</td></tr><tr><td>External I/O</td><td>4 x USB 3.0 Host ports (shares one single root hub) 1 x USB 2.0 OTG port for Host or Device mode. (No power input) 1 x Debug serial console (UART) 1 x Peripheral Expansion Header (40-pin, 2.54mm pitch) 2x DC 5V, 2x DC 3.3V, 1x DC 1.8V, 8x GND 1x SPI 1x UART 2x I2C 6x PWM 2x ADC input (12bit, 1.8V Max) 25x GPIO (Max) 1x Audio Expansion Header (7-pin, 2.54mm pitch) 1x DC 5V 1x SPDIF out 1x I2S \u2013 All 3.3V I/O signal level except for ADC input at max 1.8Volt.</td></tr><tr><td>Other features</td><td>IR receiver for remote controller System LEDS Indicators: \u2013 Red (PWR) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running.</td></tr><tr><td>Power</td><td>1 x DC jack : outer (negative) diameter 5.5mm, inner (positive) diameter 2.1mm DC input : 5.5V ~ 13V (*15V/4A PSU is not compatible with C4) \u2013 DC 12V/2A power adaptor is recommended Power consumption: \u2013 IDLE : \u2243 1.8W \u2013 CPU Stress : \u2243 3.64W (Performance governor) \u2013 Power-off : \u2243 0.14W</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a> </strong></p>\n<table class=\"table01\">\n<tbody>\n<tr>\n<td>TIER (for business account )</td>\n<td>DISCOUNT (bank transfer only)</td>\n</tr>\n<tr>\n<td>10 ~ 99</td>\n<td>5%</td>\n</tr>\n<tr>\n<td>100 ~ 299</td>\n<td>6%</td>\n</tr>\n<tr>\n<td>300 ~ and more</td>\n<td>7%</td>\n</tr>\n</tbody>\n</table>",
+      "categories": [
+        {
+          "id": 20882,
+          "name": "Amlogic",
+          "slug": "amlogic",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+        }
+      ],
+      "prices": {
+        "price": "7500",
+        "regular_price": "7500",
+        "sale_price": "7500",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    }
+  ],
+  "odroid_group_products": [
+    {
+      "id": 102497,
+      "name": "ODROID-M1S with 4GByte RAM",
+      "type": "grouped",
+      "slug": "odroid-m1s-with-4gbyte-ram",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram/",
+      "sku": "",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<h6></h6>\n<h6><span style=\"color: #0000ff\">Please closely check each option</span></h6>\n<p>&nbsp;</p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "6370",
+        "regular_price": "0",
+        "sale_price": "6370",
+        "price_range": {
+          "min_amount": "7900",
+          "max_amount": "7900"
+        },
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": [
+        102368,
+        102366,
+        102363,
+        102361,
+        102359
+      ]
+    },
+    {
+      "id": 102368,
+      "name": "ODROID-M1S with 4GByte RAM &#8211; US plug",
+      "type": "simple",
+      "slug": "odroid-m1s-with-4gbyte-ram-us-plug",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-us-plug/",
+      "sku": "G231031113233",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a></strong></p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "7900",
+        "regular_price": "7900",
+        "sale_price": "7900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 102366,
+      "name": "ODROID-M1S with 4GByte RAM &#8211; KR plug",
+      "type": "simple",
+      "slug": "odroid-m1s-with-4gbyte-ram-kr-plug",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-kr-plug/",
+      "sku": "G231031113234",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a></strong></p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "7900",
+        "regular_price": "7900",
+        "sale_price": "7900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 102363,
+      "name": "ODROID-M1S with 4GByte RAM &#8211; UK plug",
+      "type": "simple",
+      "slug": "odroid-m1s-with-4gbyte-ram-uk-plug",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-uk-plug/",
+      "sku": "G231031113235",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a></strong></p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "7900",
+        "regular_price": "7900",
+        "sale_price": "7900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 102361,
+      "name": "ODROID-M1S with 4GByte RAM &#8211; AU plug",
+      "type": "simple",
+      "slug": "odroid-m1s-with-4gbyte-ram-au-plug",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-au-plug/",
+      "sku": "G231031113236",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us.</a></strong></p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "7900",
+        "regular_price": "7900",
+        "sale_price": "7900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    },
+    {
+      "id": 102359,
+      "name": "ODROID-M1S with 4GByte RAM &#8211; EU plug",
+      "type": "simple",
+      "slug": "odroid-m1s-with-4gbyte-ram-eu-plug",
+      "parent": 0,
+      "permalink": "https://www.hardkernel.com/shop/odroid-m1s-with-4gbyte-ram-eu-plug/",
+      "sku": "G231031113237",
+      "description": "<table><tr><td>1</td><td>Rockchip RK3566 CPU</td><td>10</td><td>1 x MIPI DSI 4Lane</td></tr><tr><td>2</td><td>LPDDR4 RAM</td><td>11</td><td>1 x M.2 LED Indicator</td></tr><tr><td>3</td><td>1 x 64GB eMMC embedded</td><td>12</td><td>1 x Micro SD Slot</td></tr><tr><td>4</td><td>1 x Ethernet Transformer</td><td>13</td><td>1 x Micro USB2.0 OTG</td></tr><tr><td>5</td><td>1 x RJ45 Ethernet Port (10/100/1000)</td><td>14</td><td>40 x GPIO Pins Optional</td></tr><tr><td>6</td><td>1 x USB Type C Power Connector</td><td>15</td><td>14 x GPIO Pins Optional</td></tr><tr><td>7</td><td>1 x USB 2.0</td><td>16</td><td>1 x RTC Backup Battery Connector</td></tr><tr><td>8</td><td>1 x HDMI 2.0</td><td>17</td><td>1 x UART for System Console</td></tr><tr><td>9</td><td>1 x USB 3.0</td><td>18</td><td>1 x M.2. M-KEY PCIe2.1 1Lane</td></tr></table><table><tr><td>Form Factor</td><td>Board Dimensions: 90mm x 65mm x 16mm Weight: 52g including heatsink</td></tr><tr><td>Processor</td><td>Rockchip RK3566 Processor L1 instruction cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L1 data cache: 32 KB, 4-way set associative (128 sets), 64 byte lines, shared by 1 processor L3 data cache: 512KB , 16-way set associative (512 sets), 64 byte lines, shared by 4 processorsQuad-Core Cortex-A55 (1.8GHz) ARMv8-A architecture with Neon and Crypto extensions Mali-G52 GPU with 2 x Execution Engines (800Mhz)</td></tr><tr><td>NPU</td><td>0.8 TOPS@INT8, Integrated AI accelerator RKNN NPU Supports one-click switching of Caffe/TensorFlow/TFLite/ONNX/PyTorch/Keras/Darknet</td></tr><tr><td>Memory</td><td>LPDDR4 4 or 8GiB with 32-bit bus width, Data rate: 2112 MT/s, up to 1,055MHz</td></tr><tr><td>Storage</td><td>1 x 64GB eMMC embedded (soldered to the PCB) 1 x Micro SD slot (UHS-I SDR104, Boot priority is always higher than eMMC) 1 x NVME M.2 SSD (PCIe 2.1 x 1 lane)</td></tr><tr><td>Networking</td><td>1 x GbE LAN ports (RJ45, supports 10/100/1000 Mbps) \u2013 Realtek RTL8211F Ethernet transceiver \u2013 LED indicators * Green LED: Flashing by data traffics at 100Mbps connection * Amber LED: Flashing by data traffics at 1000Mbps connection</td></tr><tr><td>Video</td><td>1 x HDMI 2.0 (up to 4K@60Hz with HDR, EDID) 1 x MIPI DSI Interface (30pin connector which is different from 31pin of the original ODROID-M1)</td></tr><tr><td>External I/O</td><td>1 x USB 2.0 host port 1 x USB 3.0 host port 1 x USB 2.0 micro OTG port 1 x Debug serial console (UART) 1 x 40 pin GPIO and 1 x 14 pin GPIO</td></tr><tr><td>Other features</td><td>RTC backup battery connector (to keep time and date for several months without main power input) System LED Indicators: \u2013 Red (POWER) \u2013 Solid light when DC power is connected \u2013 Blue (ALIVE) \u2013 Flashing like heartbeat while Kernel is running. Solid On in the u-boot stage.</td></tr><tr><td>Power</td><td>1 x USB Type C for Power only DC input : 4.9V ~ 5.3V \u2013 USB Type C 5V/3A power adapter is recommended \u2013 IDLE : \u2243 1.1W \u2013 CPU Stress : \u2243 3.52W (Performance governor) \u2013 Power Off : \u2243 0W</td></tr></table><table><tr><td>Conf=0.25</td><td>CPU (ms)</td><td>NPU (ms)</td><td>NPU: Cam (fps)</td></tr><tr><td>M1S</td><td>1288.3</td><td>70</td><td>11.8</td></tr><tr><td>M1</td><td>1225.7</td><td>64.3</td><td>13</td></tr></table>",
+      "short_description": "<p><strong><a href=\"mailto:odroid@hardkernel.com\">For business accounts or tax exemptions, please email us</a></strong></p>",
+      "categories": [
+        {
+          "id": 20941,
+          "name": "RockChip",
+          "slug": "rockchip",
+          "link": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+        }
+      ],
+      "prices": {
+        "price": "7900",
+        "regular_price": "7900",
+        "sale_price": "7900",
+        "price_range": null,
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "currency_minor_unit": 2,
+        "currency_decimal_separator": ".",
+        "currency_thousand_separator": ",",
+        "currency_prefix": "$",
+        "currency_suffix": ""
+      },
+      "is_in_stock": true,
+      "attributes": [],
+      "variations": [],
+      "has_options": false,
+      "grouped_products": []
+    }
+  ],
+  "odroid_categories": [
+    {
+      "id": 18275,
+      "name": "Add-on Boards",
+      "slug": "add-on-boards",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 18,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/add-on-boards/"
+    },
+    {
+      "id": 20882,
+      "name": "Amlogic",
+      "slug": "amlogic",
+      "description": "ODROID",
+      "parent": 20864,
+      "count": 10,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/odroid-board/amlogic/"
+    },
+    {
+      "id": 18278,
+      "name": "Cables",
+      "slug": "cables",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 11,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/cables/"
+    },
+    {
+      "id": 18280,
+      "name": "Camera",
+      "slug": "camera",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 2,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/camera/"
+    },
+    {
+      "id": 18279,
+      "name": "Cases",
+      "slug": "cases",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 26,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/cases/"
+    },
+    {
+      "id": 18284,
+      "name": "Connectivity",
+      "slug": "connectivity",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 8,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/connectivity/"
+    },
+    {
+      "id": 18283,
+      "name": "Cooler",
+      "slug": "cooler",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 6,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/cooler/"
+    },
+    {
+      "id": 18282,
+      "name": "Development",
+      "slug": "development",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 3,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/development/"
+    },
+    {
+      "id": 18287,
+      "name": "Display",
+      "slug": "display",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 10,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/display/"
+    },
+    {
+      "id": 20912,
+      "name": "Dollar Shop",
+      "slug": "dollarshop",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 2,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/dollarshop/"
+    },
+    {
+      "id": 18288,
+      "name": "Memories",
+      "slug": "memories",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 80,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/memories/"
+    },
+    {
+      "id": 18290,
+      "name": "Obsolete Products",
+      "slug": "obsolete-products",
+      "description": "Others",
+      "parent": 0,
+      "count": 33,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/obsolete-products/"
+    },
+    {
+      "id": 20864,
+      "name": "ODROID BOARD",
+      "slug": "odroid-board",
+      "description": "",
+      "parent": 0,
+      "count": 45,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/odroid-board/"
+    },
+    {
+      "id": 18289,
+      "name": "Others",
+      "slug": "others",
+      "description": "Others",
+      "parent": 0,
+      "count": 2,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/others/"
+    },
+    {
+      "id": 18292,
+      "name": "Power Supply &amp; Battery",
+      "slug": "power-supply-battery",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 21,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/power-supply-battery/"
+    },
+    {
+      "id": 20941,
+      "name": "RockChip",
+      "slug": "rockchip",
+      "description": "ODROID",
+      "parent": 20864,
+      "count": 31,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/odroid-board/rockchip/"
+    },
+    {
+      "id": 18293,
+      "name": "Sensor",
+      "slug": "sensor",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 1,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/sensor/"
+    },
+    {
+      "id": 18291,
+      "name": "Sound",
+      "slug": "sound",
+      "description": "Accessory",
+      "parent": 0,
+      "count": 4,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/sound/"
+    },
+    {
+      "id": 20884,
+      "name": "x86",
+      "slug": "x86",
+      "description": "ODROID x86",
+      "parent": 20864,
+      "count": 4,
+      "image": null,
+      "review_count": 0,
+      "permalink": "https://www.hardkernel.com/product-category/odroid-board/x86/"
+    }
+  ],
+  "rpi_a_html": "<h1>Raspberry Pi Model A+</h1><p>SC0562</p><a href=\"/categories/505-computers\">Computers</a>",
+  "bpi_openwrt_html": "<title>OpenWrt One/AP-24.XY router board based on MediaTek MT7981B (Filogic 810) SoC and MediaTek MT7976C dual-band WiFi 6 chipset-Banana Pi open source hardware community,Single board computer, Router,IoT,STEM education</title><meta name=\"description\" content=\"The \u201cOpenWrt One/AP-24.XY\u201d router board based on MediaTek MT7981B (Filogic 810) SoC and MediaTek MT7976C dual-band WiFi 6 chipset.\nOpenWrt One is a device based on the MediaTek Filogic 810 SoC that has WiFi 6, dual-band, 3\u00d73/2\u00d72, 1 x 2.5Gbit WAN, 1 x 1Gbit LAN, 1GB DDR4 RAM, 128 MiB NAND, 16 MiB NOR, M.2 SSD and USB 2.0.\"><p>OpenWrt official board and support</p><p>MediaTek MT7981B (Filogic 820) SoC</p><p>Dual-band WiFI 6 via MediaTek MT7976C (2\u00d72 2.4 GHz + 3\u00d73/2\u00d72 + zero-wait DFS 5Ghz)</p><p>1GB DDR4</p><p>1 x 2.5GbE RJ45 port and |1 x Gigabit Ethernet RJ45 port</p><p>256 MB SPI NAND and 16 MB SPI NOR flash are used to make the board almost unbrickable</p><p>M.2 2242/2230 socket for NVMe SSD (PCIe gen 2 x1)</p><p>RTC support</p><p>PoE support</p><p>MikroBUS socket for expansion modules</p><p>SoC</p><p>MediaTek MT7981B (Filogic 820) dual-core Cortex-A53 processor @ 1.3 GHz</p><p>System Memory</p><p>1GB DDR4</p><p>Storage</p><p>256 MB SPI NAND flash for U-boot and Linux</p><p>16 MB SPI NOR flash for write-protected (by default) recovery bootloader (reflashing can be enabled with a jumper)</p><p>Two types of flash devices are used to make the board almost unbrickable</p><p>M.2 2242/2230 socket for NVMe SSD (PCIe gen 2 x1)</p><p>Networking</p><p>1 x 2.5GbE RJ45 port</p><p>1 x Gigabit Ethernet RJ45 port</p><p>Dual-band WiFI 6 via MediaTek MT7976C (2\u00d72 2.4 GHz + 3\u00d73/2\u00d72 + zero-wait DFS 5Ghz)</p><p>3x MMCX antenna connectors</p><p>USB</p><p>1x USB 2.0 Type-A host port</p><p>USB Type-C (device, console) port using Holtek HT42B534-2 UART to USB chip</p><p>Expansion</p><p>MikroBUS socket for expansion modules</p><p>Debugging</p><p>Console via USB-C port or 3-pin header, 10-pin JTAG/SWD header for main SoC</p><p>RTC</p><p>support RTC onboard</p><p>Misc</p><p>Reset and User buttons</p><p>Boot select switch: NAND (regular) or NOR (recovery)</p><p>2x PWM LEDs, 2x Ethernet LED (GPIO driven)</p><p>EM6324 External hardware watchdog</p><p>NXP PCF8563TS (I2C) RTC with battery backup holder for CR1220 coin-cell</p><p>Power Supply</p><div>OpenWrt One is the first board design with OpenWrt opensource communtity.and designed in collaboration with Banana Pi that will also handle manufacturing and distribution of the router board. The OpenWrt One/AP-24.XY router should provide a source of income for the project, for example, to cover the cost of hosting and OpenWrt conferences, with Banana Pi selling the board through their distribution network, and for every device sold, donating to the Software Freedom Conservancy (SDC) with the funds earmarked for OpenWrt.<br />\n<br />\n<span style=\"color: rgb(66, 66, 66); font-family: Roboto, sans-serif;\">Key Features</span>\n<div>\n<div>\n<ul>\n    <li>\n    <p>OpenWrt official board and support</p>\n    </li>\n    <li>\n    <p>MediaTek MT7981B (Filogic 820) SoC</p>\n    </li>\n    <li>\n    <p>Dual-band WiFI 6 via MediaTek MT7976C (2&times;2 2.4 GHz + 3&times;3/2&times;2 + zero-wait DFS 5Ghz)</p>\n    </li>\n    <li>\n    <p>1GB DDR4</p>\n    </li>\n    <li>\n    <p>1 x 2.5GbE RJ45 port and |1 x Gigabit Ethernet RJ45 port</p>\n    </li>\n    <li>\n    <p>256 MB SPI NAND and 16 MB SPI NOR flash are used to make the board almost unbrickable</p>\n    </li>\n    <li>\n    <p>M.2 2242/2230 socket for NVMe SSD (PCIe gen 2 x1)</p>\n    </li>\n    <li>\n    <p>RTC support</p>\n    </li>\n    <li>\n    <p>PoE support</p>\n    </li>\n    <li>\n    <p>MikroBUS socket for expansion modules</p>\n    </li>\n</ul>\n</div>"
+}

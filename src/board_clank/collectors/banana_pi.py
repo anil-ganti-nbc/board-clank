@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -153,6 +154,8 @@ def _title_head(title: str) -> str:
 
 
 def _model_of(title_head: str) -> str:
+    if re.match(r'^OpenWrt One(?:/AP-24\.XY)?\s+router board\b', title_head, re.I):
+        return 'OpenWrt One'
     match = _MODEL_RE.search(title_head)
     return match.group(1).strip() if match else ""
 
@@ -167,6 +170,8 @@ def _family_slug(model: str) -> str:
     naming: M5 Pro/M5, M7/M7S, M4 Berry/M4 Zero, R4/R4 Pro share lines),
     mirroring the Radxa ROCK-series precedent. Subtype words and trailing
     subtype letters (S/X) after the generation digits are stripped."""
+    if model == 'OpenWrt One':
+        return 'openwrt'
     words = model.split()
     base = words[0] if words else model  # BPI-xxxx or BPI-xxxx-sub
     while len(words) > 1 and words[1].rstrip("+") in [w.lower() for w in _SUBTYPE_WORDS]:
@@ -471,6 +476,13 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         board_type = BoardType.INDUSTRIAL_SBC
     soc_vendor, soc_name, soc_candidates = _extract_soc(identity_text)
     body_text = " ".join(parser.h3s + parser.paragraphs)
+    if model == 'OpenWrt One':
+        if category != 'bananapi-router' or not re.search(
+            r'OpenWrt One is.{0,160}collaboration with Banana Pi.{0,120}manufacturing',
+            re.sub(r'\s+',' ',unescape(re.sub(r'<[^>]*>',' ',html))), re.I
+        ):
+            raise CollectorError('OpenWrt One manufacturer relationship not evidenced')
+        diagnostics['manufacturer_alias'] = 'AP-24.XY' if '/AP-24.XY' in title_head else UNKNOWN
     conflict = soc_vendor == "CONFLICT"
 
     if conflict:
@@ -582,6 +594,7 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
                         spec=spec,
                         raw_fields={
                             "category": category,
+                            "manufacturer_alias": diagnostics.get('manufacturer_alias',UNKNOWN),
                             "ram_options": ram_opts,
                             "storage_options": storage_opts,
                             "title_head": title_head,

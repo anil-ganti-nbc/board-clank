@@ -173,6 +173,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
             args.source,
             experimental_live=experimental_live,
             corpus=getattr(args, "corpus", None) or "baseline",
+            capture_dir=getattr(args,'capture_dir',None),
         )
     except KeyError:
         # Fail closed: unknown or unregistered source, never a crash.
@@ -180,6 +181,9 @@ def cmd_collect(args: argparse.Namespace) -> int:
         return 2
     if experimental_live and not getattr(type(adapter), "supports_experimental_live", False):
         print(json.dumps({"status": "refused", "reason": f"experimental live is not implemented for {args.source}"}))
+        return 2
+    if getattr(args,'capture_dir',None) and (not experimental_live or not getattr(adapter,'supports_capture',False)):
+        print(json.dumps({'status':'refused','reason':'response capture requires a supporting experimental live adapter'}))
         return 2
     store = _open_store(args.db, migrate=True)
     sync_sources_to_store(store)
@@ -335,6 +339,7 @@ def build_parser() -> argparse.ArgumentParser:
     collect = sub.add_parser("collect")
     collect.add_argument("--fixture")
     collect.add_argument("--source", default="raspberry-pi-product")
+    collect.add_argument('--capture-dir', help='Explicit directory for supported live response snapshots (Forlinx)')
     collect.add_argument("--run-id")
     collect.add_argument("--live", action="store_true")
     collect.add_argument(

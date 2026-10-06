@@ -5,12 +5,15 @@ must be explicit; multi-chip option lists remain unresolved, never combined.
 """
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 from html import unescape
 import json
 from pathlib import Path
 import re
+import time
+import tempfile
+from datetime import datetime, timezone
 from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -18,6 +21,7 @@ from board_clank.collectors.base import CollectorAdapter, CollectorError
 from board_clank.identity import UNKNOWN, VariantDimensions, slugify
 from board_clank.models import CollectorRunRequest, NormalizedSpec, NoveltyEvidence, ObservationDraft
 from board_clank.taxonomy import Architecture, BoardType, NoveltyStatus, SourcePlane
+from board_clank._version import SOURCE_REVISION
 
 SOURCE_KEY = 'forlinx-product'
 BASE = 'https://www.forlinx.net'
@@ -257,26 +261,52 @@ class ForlinxProductAdapter(CollectorAdapter):
     source_key = collector_key = SOURCE_KEY
     supports_experimental_live = True
     live_network = False
+    supports_capture = True
 
-    def __init__(self, *, experimental_live=False, corpus='baseline'):
+    def __init__(self, *, experimental_live=False, corpus='baseline', capture_dir=None, max_seconds=900):
         self.experimental_live, self.corpus = experimental_live, corpus
+        self.capture_dir, self.max_seconds = capture_dir, max_seconds
 
     def collect(self, run_id, started_at):
         observations, documents, fetches, errors, excluded = [], [], [], [], []
         cards, products, seen = {}, {}, set()
+        clock = time.monotonic()
+        snapshot = None
+        if self.experimental_live and self.capture_dir is not None:
+            root = Path(self.capture_dir)
+            root.mkdir(parents=True, exist_ok=True)
+            snapshot = Path(tempfile.mkdtemp(prefix='forlinx-', dir=root))
 
         def read(url):
             try:
+                if time.monotonic()-clock > self.max_seconds:
+                    raise CollectorError('Forlinx capture budget exhausted')
+                began = time.monotonic()
                 result = fetch(url)
                 html = result.pop('text')
-                result.pop('raw_body', None)
-                return url, html, dict(result, ok=True), None
+                raw = result.pop('raw_body', None) or html.encode('utf-8')
+                receipt = dict(result, ok=True, captured_at=datetime.now(timezone.utc).isoformat(),
+                    seconds=round(time.monotonic()-began,3), raw_body_hash=hashlib.sha256(raw).hexdigest())
+                if snapshot:
+                    key = hashlib.sha256(url.encode()).hexdigest()
+                    (snapshot/(key+'.html')).write_bytes(raw)
+                    receipt['file'] = key+'.html'
+                    (snapshot/(key+'.receipt.json')).write_text(json.dumps(receipt,sort_keys=True))
+                return url, html, receipt, None
             except (OSError, ValueError, CollectorError) as exc:
                 return url, None, {'requested_url': url, 'ok': False, 'error': str(exc)}, str(exc)
 
         def batch(urls):
             with ThreadPoolExecutor(max_workers=4) as pool:
-                rows = list(pool.map(read, sorted(urls)))
+                pending = {pool.submit(read,url):url for url in sorted(urls)}
+                rows = []
+                for future in as_completed(pending):
+                    row = future.result()
+                    rows.append(row)
+                    # Completed receipts persist immediately, before batch closure.
+                    if snapshot:
+                        (snapshot/'progress.json').write_text(json.dumps(
+                            {'run_id':run_id,'complete':False,'fetches':fetches+[r[2] for r in rows]},sort_keys=True))
             bodies = {}
             for url, html, receipt, error in rows:
                 seen.add(url)
@@ -337,8 +367,15 @@ class ForlinxProductAdapter(CollectorAdapter):
         except (OSError, ValueError, KeyError, TypeError, CollectorError) as exc:
             errors.append({'error': str(exc)})
             observations = []  # A required-document failure admits no partial PRODUCT batch.
+        if snapshot:
+            (snapshot/'manifest.json').write_text(json.dumps({'source_key':SOURCE_KEY,'run_id':run_id,
+                'code_revision':SOURCE_REVISION,
+                'started_at':started_at,'finished_at':datetime.now(timezone.utc).isoformat(),
+                'complete':bool(observations) and not errors,'catalogue_models':cards,
+                'fetches':fetches,'errors':errors},indent=2,sort_keys=True))
         return CollectorRunRequest(run_id=run_id, source_key=SOURCE_KEY, collector_key=SOURCE_KEY,
             started_at=started_at, observations=observations, ok=bool(observations) and not errors,
             error='incomplete Forlinx collection' if errors else (None if observations else 'no PRODUCT observations'),
             diagnostics={'documents': documents, 'fetches': fetches, 'errors': errors,
-                         'discovered_urls': sorted(seen), 'catalogue_models': cards, 'excluded_cards': excluded})
+                         'discovered_urls': sorted(seen), 'catalogue_models': cards, 'excluded_cards': excluded,
+                         'capture_directory':str(snapshot) if snapshot else None})
