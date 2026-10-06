@@ -4,6 +4,10 @@ Parent94f5b95e;source-only adapter correction before inert NAS codeupdate.
 RPI:PIP legacyModelA+/B+ headings mapped to reviewed Pi1aliases only with
 matchingSC0562/SC0563. Raw original heading retained;unknownspecs stayunknown.
 Pico,keyboard computers andaccessories stayexcluded. PrimaryPIP remainsrequired.
+Current PCN titles are extracted from download anchors bound to the exact PCN
+category's own pip-assets PDF namespace and own PCN heading. Titles need not
+contain the literal letters PCN. Required role checker is unchanged;blank,
+foreign-category,wrong-heading or non-notice inputs remain failed-closed.
 BPI:exactOpenWrtOne/AP-24.XY router title plus controlledroutercategory and
 product-specificmanufacturing statement. Alias staysraw,notPCB revision.
 Title CPU extractor preservesMT7981B application vsMT7976C Wi-Fi companion.

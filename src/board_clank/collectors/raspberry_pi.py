@@ -109,6 +109,7 @@ class _PageParser(HTMLParser):
         self.heading = ""
         self.texts: list[str] = []
         self.hrefs: list[str] = []
+        self.download_links: list[tuple[str,str]] = []
         self._buf = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -117,6 +118,8 @@ class _PageParser(HTMLParser):
             href = dict(attrs).get("href")
             if href:
                 self.hrefs.append(href)
+                if dict(attrs).get('title'):
+                    self.download_links.append((href,dict(attrs)['title']))
         if tag in {"title", "h1", "h2", "li", "p"}:
             self._capture = True
             self._buf = ""
@@ -560,6 +563,17 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
             diagnostics["status"] = "lead-index"
             return [], diagnostics
         if pip_status == "pip-pcn":
+            # Current PIP notice names live in download-anchor attributes,
+            # not paragraph text. Bind every title to this exact PCN category.
+            if name.casefold() == 'pcn':
+                prefix=parsed_url.path.rstrip('/')+'/documents/'
+                for href,title in parser.download_links:
+                    target=urlparse(href)
+                    if (target.scheme=='https' and target.netloc=='pip-assets.raspberrypi.com'
+                            and target.path.startswith(prefix) and target.path.lower().endswith('.pdf')):
+                        if title.startswith('Open '):
+                            title=title[5:]
+                            if title not in diagnostics['pcns']:diagnostics['pcns'].append(title)
             diagnostics["status"] = "pip-pcn"
             diagnostics["evidence_roles"] = ["CHANGE_EVIDENCE"]
             return [], diagnostics

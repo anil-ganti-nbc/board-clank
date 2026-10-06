@@ -31,6 +31,17 @@ def test_legacy_alias_requires_matching_sku():
         r.parse_product_html(DATA['rpi_a_html'].replace('SC0562','SC0000'),page_url='https://pip.raspberrypi.com/categories/573-raspberry-pi-model-a',observed_at=OBS)
     assert not r._is_computer_name('Raspberry Pi Pico 2') and not r._is_computer_name('Raspberry Pi 500')
 
+def test_current_pcn_download_title_without_pcn_keyword():
+    # Distilled actual 889-pcn anchor, whose display name lacks the letters PCN.
+    body='<h1>PCN</h1><p>Product Change Notes</p><a title="Open RP-004577-PC-1-Raspberry Pi 2 Model B, Use of BCM2836 and BCM2837A1 SoC variants.pdf" href="https://pip-assets.raspberrypi.com/categories/889-pcn/documents/RP-004577-PC-1.pdf">Open notice</a>'
+    ds,info=r.parse_product_html(body,page_url='https://pip.raspberrypi.com/categories/889-pcn',observed_at=OBS)
+    from board_clank.collectors._http import require_document_role
+    require_document_role(ds,info,'pcn')
+    assert len(info['pcns'])==1 and 'BCM2837A1' in info['pcns'][0]
+    bad=body.replace('/categories/889-pcn/documents/','/categories/other/documents/')
+    ds,info=r.parse_product_html(bad,page_url='https://pip.raspberrypi.com/categories/889-pcn',observed_at=OBS)
+    with pytest.raises(CollectorError):require_document_role(ds,info,'pcn')
+
 def test_real_openwrt_identity_and_companion_safety():
     ds,info=b.parse_product_html(DATA['bpi_openwrt_html'],page_url='https://banana-pi.org/en/bananapi-router/173.html',observed_at=OBS)
     assert ds and info['status']=='resolved'
