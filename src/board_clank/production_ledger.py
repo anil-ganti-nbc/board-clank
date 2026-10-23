@@ -15,6 +15,7 @@ class Ledger:
                 CREATE TABLE IF NOT EXISTS requests(source TEXT, at REAL, url_hash TEXT);
                 CREATE INDEX IF NOT EXISTS request_window ON requests(source,at);
                 CREATE TABLE IF NOT EXISTS source_blocks(source TEXT,permission TEXT,status INTEGER,at REAL,PRIMARY KEY(source,permission));
+                CREATE TABLE IF NOT EXISTS source_limits(source TEXT,permission TEXT,next_at REAL,PRIMARY KEY(source,permission));
                 CREATE TABLE IF NOT EXISTS cycles(slot TEXT PRIMARY KEY, approval TEXT, status TEXT, started REAL, finished REAL);
                 CREATE TABLE IF NOT EXISTS source_runs(slot TEXT,source TEXT,status TEXT,receipt TEXT,PRIMARY KEY(slot,source));
                 CREATE TABLE IF NOT EXISTS deliveries(destination TEXT,event_key TEXT,status TEXT,attempts INTEGER,next_at REAL,message_id TEXT,
@@ -45,6 +46,8 @@ class Ledger:
             last = db.execute('SELECT MAX(at) FROM requests WHERE source=?', (source,)).fetchone()[0]
             # A backwards clock cannot reset a request budget.
             now = max(now, last or now)
+            limit=db.execute('SELECT MAX(next_at) FROM source_limits WHERE source=?',(source,)).fetchone()
+            if limit and limit[0] is not None and limit[0]>now:raise ValueError('source server backoff still active')
             hour, day = db.execute('SELECT SUM(at>?),SUM(at>?) FROM requests WHERE source=?',
                                   (now-3600, now-86400, source)).fetchone()
             if (hour or 0) >= budget.max_requests_per_hour or (day or 0) >= budget.max_requests_per_day:
@@ -55,6 +58,11 @@ class Ledger:
     def block_source(self,source,permission,status):
         with self.connect() as db:
             db.execute('INSERT OR IGNORE INTO source_blocks VALUES(?,?,?,?)',(source,permission,status,time.time()))
+
+    def defer_source(self,source,permission,next_at):
+        with self.connect() as db:
+            db.execute('INSERT INTO source_limits VALUES(?,?,?) ON CONFLICT(source,permission) DO UPDATE SET next_at=MAX(next_at,excluded.next_at)',
+                       (source,permission,next_at))
 
     def claim_cycle(self, slot, approval):
         with self.connect() as db:

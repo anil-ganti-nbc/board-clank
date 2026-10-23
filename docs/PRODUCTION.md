@@ -35,6 +35,9 @@ bounded retries. Daily budget must support 24 declared cycles, and aggregate
 source deadlines must fit 3300 seconds. Lack of a published rate limit is not an
 automatic measured budget. Account for observed catalogue closure, transient
 retries, storage retention and other traffic before approving values.
+Server Retry-After cooldowns persist across source processes and future hourly
+cycles; a delay longer than the bounded retry window stops the current source
+without forgetting the server's later retry time.
 
 Robots is fetched once per approved origin per cycle, before product requests,
 under the same budget. Rules, longest-match allow/disallow, query wildcards,
@@ -128,7 +131,8 @@ board-clank-discord credential-entry --secret-file <private-file>
 ```
 
 It refuses noninteractive input, Windows without verified POSIX permissions,
-existing files and unprivate directories. It creates a new 0600 file, never prints
+existing files and unprivate directories. A terminal unable to disable echo is
+refused, without getpass's fallback. It creates a new 0600 file, never prints
 the token and performs no network request. It returns only destination/credential hashes.
 Use an operator-supported secret mount owned/readable only by the runtime user;
 the actual NAS terminal/mount route still needs operational verification. Do not

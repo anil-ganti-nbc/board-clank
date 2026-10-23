@@ -38,7 +38,7 @@ def test_definite_get_retry_counts_every_attempt(approval_file,tmp_path,monkeypa
     b=load(approval_file).approval.source_budgets[SOURCES[0]]
     t=[0.0];waits=[];calls=[]
     def sleep(n):waits.append(n);t[0]+=n
-    guard=Guard(SOURCES[0],b,Ledger(tmp_path/'ledger'),tmp_path,clock=lambda:t[0],sleep=sleep)
+    guard=Guard(SOURCES[0],b,Ledger(tmp_path/'ledger'),tmp_path,clock=lambda:t[0],sleep=sleep,wall_clock=lambda:10000+t[0])
     origin=b.origins[0]
     def fake(opener,req,data=None,timeout=None):
         calls.append(req.full_url)
@@ -277,3 +277,45 @@ def test_concurrency_cap_and_existing_shorter_timeout_are_preserved(approval_fil
                 with http.build_opener().open(origin+'/product'+str(n),timeout=2) as r:return r.read()
             assert list(pool.map(fetch,range(4)))==[b'ok']*4
     assert peak[0]==1 and active[0]==0 and timeouts[1:]==[2]*4
+
+
+def test_long_server_backoff_survives_next_process_and_hour(approval_file,tmp_path,monkeypatch):
+    b=load(approval_file).approval.source_budgets[SOURCES[0]];origin=b.origins[0]
+    ledger=Ledger(tmp_path/'ledger');calls=[]
+    def fake(opener,req,data=None,timeout=None):
+        calls.append(req.full_url)
+        if req.full_url.endswith('/robots.txt'):return Response(req.full_url,b'User-agent: *')
+        return Response(req.full_url,b'limited',429,{'Retry-After':'7200'})
+    install_transport(monkeypatch,fake)
+    with pytest.raises(CollectorError):
+        with guarded_http(Guard(SOURCES[0],b,ledger,tmp_path,wall_clock=lambda:10000)):
+            http.build_opener().open(origin+'/product')
+    before=len(calls)
+    with pytest.raises(ValueError):
+        with guarded_http(Guard(SOURCES[0],b,ledger,tmp_path,wall_clock=lambda:13600)):pass
+    changed=b.model_copy(update={'access_evidence':b.access_evidence.model_copy(update={'sha256':'b'*64})})
+    with pytest.raises(ValueError):ledger.reserve(SOURCES[0],changed,'new-permission',now=13600)
+    assert len(calls)==before
+
+
+def test_hidden_input_never_falls_back_to_echo(monkeypatch):
+    import warnings,getpass
+    from board_clank.discord_delivery import hidden_input
+    def cannot_hide(prompt):
+        warnings.warn('cannot disable echo',getpass.GetPassWarning)
+        pytest.fail('fallback echoed input')
+    monkeypatch.setattr(getpass,'getpass',cannot_hide)
+    with pytest.raises(getpass.GetPassWarning):hidden_input()
+
+
+def test_malformed_server_backoff_never_becomes_an_immediate_retry(approval_file,tmp_path,monkeypatch):
+    b=load(approval_file).approval.source_budgets[SOURCES[0]];origin=b.origins[0];calls=[];ledger=Ledger(tmp_path/'ledger')
+    def fake(opener,req,data=None,timeout=None):
+        calls.append(req.full_url)
+        return Response(req.full_url,b'limited',429,{'Retry-After':'nan'})
+    install_transport(monkeypatch,fake)
+    with pytest.raises(CollectorError):
+        with guarded_http(Guard(SOURCES[0],b,ledger,tmp_path)):pass
+    with pytest.raises(ValueError):
+        with guarded_http(Guard(SOURCES[0],b,ledger,tmp_path)):pass
+    assert len(calls)==1

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
 import io
+import math
 import threading
 import time
 from urllib import request as http
@@ -58,9 +59,10 @@ class LimitedResponse:
 
 
 class Guard:
-    def __init__(self,source,budget,ledger,root,*,clock=time.monotonic,sleep=time.sleep,capture_dir=None):
+    def __init__(self,source,budget,ledger,root,*,clock=time.monotonic,sleep=time.sleep,capture_dir=None,wall_clock=time.time):
         self.source=source;self.budget=budget;self.ledger=ledger;self.root=root
         self.clock=clock;self.sleep=sleep;self.deadline=clock()+budget.cycle_timeout_seconds
+        self.wall_clock=wall_clock
         self.count=0;self.last=None;self.lock=threading.RLock();self.robots={};self.requests=[];self.url_attempts={}
         self.bytes=0;self.capture_dir=capture_dir;self.robots_records={}
         self.semaphore=threading.BoundedSemaphore(budget.max_concurrency);self.local=threading.local()
@@ -84,7 +86,7 @@ class Guard:
                 raise CollectorError('source total byte budget exhausted')
             if self.url_attempts.get(url,0)>=self.budget.retries+1:
                 raise CollectorError('source URL attempt budget exhausted')
-            self.ledger.reserve(self.source,self.budget,hashlib.sha256(url.encode()).hexdigest())
+            self.ledger.reserve(self.source,self.budget,hashlib.sha256(url.encode()).hexdigest(),now=self.wall_clock())
             self.url_attempts[url]=self.url_attempts.get(url,0)+1
             self.count+=1;self.last=self.clock()
             record={'url':url,'attempt':self.count,'requested_utc':datetime.now(timezone.utc).isoformat()}
@@ -152,14 +154,26 @@ class Guard:
                     self.ledger.block_source(self.source,self.budget.access_evidence.sha256,status)
                 if robots_request and status in {404,410} and self.budget.allow_missing_robots:
                     return LimitedResponse(addinfourl(io.BytesIO(b''),{},url,code=status),0,self,record)
-                if status not in {429,502,503,504} or attempt+1==attempts:
+                if status not in {429,502,503,504}:
                     raise CollectorError('source HTTP failure '+str(status)) from None
                 delay=2**attempt
                 if retry:
-                    try:delay=max(delay,float(retry))
+                    try:requested_delay=float(retry)
                     except ValueError:
-                        try:delay=max(delay,parsedate_to_datetime(retry).timestamp()-time.time())
-                        except (ValueError,TypeError):raise CollectorError('invalid source retry delay') from None
+                        try:
+                            date=parsedate_to_datetime(retry)
+                            if date.tzinfo is None:raise ValueError('retry date has no timezone')
+                            requested_delay=max(0,date.timestamp()-self.wall_clock())
+                        except (ValueError,TypeError,OverflowError):requested_delay=float('nan')
+                    if not math.isfinite(requested_delay) or requested_delay<0:
+                        self.ledger.block_source(self.source,self.budget.access_evidence.sha256,status)
+                        raise CollectorError('invalid source retry delay requires review') from None
+                    delay=max(delay,requested_delay)
+                if not math.isfinite(delay) or delay<0:
+                    self.ledger.block_source(self.source,self.budget.access_evidence.sha256,status)
+                    raise CollectorError('invalid source retry delay requires review') from None
+                self.ledger.defer_source(self.source,self.budget.access_evidence.sha256,self.wall_clock()+delay)
+                if attempt+1==attempts:raise CollectorError('source HTTP failure '+str(status)) from None
                 if not 0<=delay<min(60,self.remaining()):
                     raise CollectorError('source retry delay exceeds bounded budget') from None
                 self.sleep(delay)

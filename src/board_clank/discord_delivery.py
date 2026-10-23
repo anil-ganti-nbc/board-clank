@@ -20,6 +20,7 @@ import stat
 import sys
 import time
 import threading
+import warnings
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -73,7 +74,7 @@ def credential_entry(path):
     parent=path.parent.stat()
     if parent.st_uid!=os.geteuid() or parent.st_mode & 0o077:
         raise ValueError('secret directory must be owner-only')
-    value=getpass.getpass('Confirmed Board destination credential (hidden): ')
+    value=hidden_input()
     secret=Secret(value)
     fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600)
     try:
@@ -81,6 +82,13 @@ def credential_entry(path):
             f.write(value+'\n');f.flush();os.fsync(f.fileno())
     finally:value=''
     return {'status':'CONFIGURED_NOT_SENT','destination_sha256':secret.destination,'credential_sha256':secret.fingerprint}
+
+
+def hidden_input():
+    with warnings.catch_warnings():
+        # getpass otherwise falls back to echoing input on some broken TTYs.
+        warnings.simplefilter('error',getpass.GetPassWarning)
+        return getpass.getpass('Confirmed Board destination credential (hidden): ')
 
 
 class DeliveryPolicy(StrictModel):
@@ -245,7 +253,7 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
                     db.execute('INSERT OR REPLACE INTO deliveries(destination,event_key,status,attempts,next_at,message_id) VALUES(?,?,?,?,?,?)',
                                (secret.destination,row['event_key'],'SENDING',attempts,0,None))
                 # A crash after this committed claim is deliberately not auto-resubmitted.
-                status='UNKNOWN';message_id=None;delay=policy.min_interval_seconds;global_limit=False
+                status='UNKNOWN';message_id=None;delay=policy.min_interval_seconds;global_limit=False;code=None
                 try:
                     code,headers,raw=send(secret,payload_for(row))
                     headers={k.lower():v for k,v in headers.items()}
@@ -264,7 +272,7 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
                     elif 400<=code<500:status='DISABLED'
                     # 5xx, redirects,204 and connection failures are ambiguous: no automatic retry.
                 except Exception:
-                    status='UNKNOWN'
+                    status='DISABLED' if code==429 else 'UNKNOWN'
                 next_at=clock()+delay
                 with ledger.connect() as db:
                     db.execute('UPDATE deliveries SET status=?,next_at=?,message_id=? WHERE destination=? AND event_key=?',
