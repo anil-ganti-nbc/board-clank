@@ -20,6 +20,8 @@ class Ledger:
                 CREATE TABLE IF NOT EXISTS deliveries(destination TEXT,event_key TEXT,status TEXT,attempts INTEGER,next_at REAL,message_id TEXT,
                     PRIMARY KEY(destination,event_key));
                 CREATE TABLE IF NOT EXISTS delivery_limits(destination TEXT PRIMARY KEY,next_at REAL);
+                CREATE TABLE IF NOT EXISTS delivery_blocks(destination TEXT,permission TEXT,status INTEGER,PRIMARY KEY(destination,permission));
+                CREATE TABLE IF NOT EXISTS delivery_confirmations(confirmation TEXT PRIMARY KEY,destination TEXT,credential TEXT);
             ''')
 
     @contextmanager

@@ -41,7 +41,9 @@ class Secret:
                 or not re.fullmatch(r'/api(?:/v10)?/webhooks/[0-9]{15,22}/[A-Za-z0-9_-]{40,150}',p.path)):
             raise ValueError('invalid destination credential shape')
         self._url='https://discord.com/api/v10/webhooks/'+p.path.split('/webhooks/',1)[1]
-        self.destination=hashlib.sha256(self._url.encode()).hexdigest()
+        webhook_id=p.path.split('/webhooks/',1)[1].split('/',1)[0]
+        self.destination=hashlib.sha256(('https://discord.com/api/webhooks/'+webhook_id).encode()).hexdigest()
+        self.fingerprint=hashlib.sha256(self._url.encode()).hexdigest()
     def __repr__(self):return '<Secret REDACTED>'
     def __str__(self):return 'REDACTED'
 
@@ -78,13 +80,14 @@ def credential_entry(path):
         with os.fdopen(fd,'w',encoding='utf-8') as f:
             f.write(value+'\n');f.flush();os.fsync(f.fileno())
     finally:value=''
-    return {'status':'CONFIGURED_NOT_SENT','destination_sha256':secret.destination}
+    return {'status':'CONFIGURED_NOT_SENT','destination_sha256':secret.destination,'credential_sha256':secret.fingerprint}
 
 
 class DeliveryPolicy(StrictModel):
     enabled: StrictBool = False
     revision: str
     destination_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    credential_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     destination_label: str = Field(min_length=1,max_length=100)
     confirmed_by: str = Field(min_length=1)
     confirmation_id: str = Field(min_length=1)
@@ -99,7 +102,8 @@ class DeliveryPolicy(StrictModel):
     def validate_active(self,admission,secret,now):
         admission.validate()
         if not self.enabled:raise ValueError('delivery disabled')
-        if self.revision!=admission.revision or self.destination_sha256!=secret.destination:
+        if (self.revision!=admission.revision or self.destination_sha256!=secret.destination
+                or self.credential_sha256!=secret.fingerprint):
             raise ValueError('delivery destination or candidate mismatch')
         if not self.event_types or len(set(self.event_types))!=len(self.event_types) or not set(self.event_types)<=EVENTS:
             raise ValueError('explicit supported event scope required')
@@ -185,11 +189,19 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
     root=Path(root);assert_running(root)
     policy.validate_active(admission,secret,clock())
     ledger=Ledger(root/'operations.sqlite')
+    permission=hashlib.sha256((policy.confirmation_id+':'+secret.fingerprint).encode()).hexdigest()
     results=[]
     deadline=clock()+60
     # Serialize with collection too, so state and diagnostic review cannot race.
     with exclusive_lock(root/'runtime.lock'):
         assert_running(root)
+        with ledger.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            prior=db.execute('SELECT destination,credential FROM delivery_confirmations WHERE confirmation=?',(policy.confirmation_id,)).fetchone()
+            if prior and (prior['destination']!=secret.destination or prior['credential']!=secret.fingerprint):
+                raise ValueError('confirmation identity cannot be reused for another credential/destination')
+            db.execute('INSERT OR IGNORE INTO delivery_confirmations VALUES(?,?,?)',
+                       (policy.confirmation_id,secret.destination,secret.fingerprint))
         from board_clank.store import Store
         store=Store(root/'board.sqlite',migrate=False)
         try:
@@ -202,7 +214,8 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
                 if (not latest or latest['status']!='COMPLETE' or latest['approval']!=admission.raw_hash
                         or not 0<=clock()-latest['finished']<=3600):
                     raise ValueError('fresh complete production cycle required for delivery')
-                if db.execute("SELECT 1 FROM deliveries WHERE destination=? AND status='DISABLED' LIMIT 1",(secret.destination,)).fetchone():
+                if db.execute('SELECT 1 FROM delivery_blocks WHERE destination=? AND permission=?',
+                              (secret.destination,permission)).fetchone():
                     raise ValueError('destination disabled after permanent failure')
             placeholders=','.join('?' for _ in policy.event_types)
             rows=store.all(f'''SELECT e.* FROM events e JOIN notifications n ON e.event_key=n.event_key
@@ -246,7 +259,7 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
                     elif code==429:
                         body=json.loads(raw)
                         delay=max(delay,finite_delay(headers.get('retry-after',body.get('retry_after'))))
-                        global_limit=body.get('global') is True
+                        global_limit=body.get('global') is True or headers.get('x-ratelimit-global','').lower()=='true'
                         status='RETRY' if attempts<policy.max_attempts else 'RATE_LIMITED'
                     elif 400<=code<500:status='DISABLED'
                     # 5xx, redirects,204 and connection failures are ambiguous: no automatic retry.
@@ -258,6 +271,8 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
                                (status,next_at,message_id,secret.destination,row['event_key']))
                     db.execute('INSERT OR REPLACE INTO delivery_limits VALUES(?,?)',(secret.destination,next_at))
                     if global_limit:db.execute('INSERT OR REPLACE INTO delivery_limits VALUES(?,?)',('GLOBAL',next_at))
+                    if status=='DISABLED':db.execute('INSERT OR IGNORE INTO delivery_blocks VALUES(?,?,?)',
+                        (secret.destination,permission,code))
                 results.append({'event_key':row['event_key'],'status':status,'message_id':message_id})
                 if status!='SENT':break
         finally:store.close()

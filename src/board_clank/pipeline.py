@@ -113,7 +113,7 @@ class Pipeline:
 
         if self.production_admission is not None:
             from board_clank.production_policy import Admission
-            if (type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario
+            if (type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario is not None
                     or self.production_admission.revision != SOURCE_REVISION):
                 raise ValueError('production requires verified current-revision live PRODUCT admission')
             self.production_admission.authorize(request.source_key)
@@ -134,7 +134,7 @@ class Pipeline:
             return
         if self.production_admission is not None:
             from board_clank.production_policy import Admission, MOTHBALLED, SOURCES
-            if type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario:
+            if type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario is not None:
                 raise ValueError('production requires verified admission and live PRODUCT evidence')
             self.production_admission.authorize(request.source_key)
             if request.collector_key != request.source_key:

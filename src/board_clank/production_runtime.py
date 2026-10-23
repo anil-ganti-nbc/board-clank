@@ -136,7 +136,7 @@ def run_once(root, admission, *, collect=execute_child, now=None):
                 try:
                     request=collect(root,admission,source,slot,directory)
                     if (request.run_id!=slot+'-'+source or request.source_key!=source
-                            or request.collector_key!=source or request.fixture_scenario):
+                            or request.collector_key!=source or request.fixture_scenario is not None):
                         raise ValueError('source receipt binding mismatch')
                     result=pipeline.accept_run(request)
                     status='ACCEPTED' if result.status in {'accepted','replayed'} else 'FAILED'

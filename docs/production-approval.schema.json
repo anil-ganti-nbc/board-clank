@@ -8,7 +8,7 @@
           "type": "string"
         },
         "decision": {
-          "pattern": "^(accepted_uncertainty|excluded_coverage)$",
+          "pattern": "^(accepted_uncertainty|excluded_coverage|fixed_by_replay)$",
           "title": "Decision",
           "type": "string"
         },
@@ -89,6 +89,12 @@
           "title": "Cycle Timeout Seconds",
           "type": "integer"
         },
+        "max_concurrency": {
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
         "max_requests_per_cycle": {
           "maximum": 1000,
           "minimum": 1,
@@ -150,6 +156,7 @@
         "max_requests_per_cycle",
         "max_requests_per_hour",
         "max_requests_per_day",
+        "max_concurrency",
         "min_interval_seconds",
         "timeout_seconds",
         "cycle_timeout_seconds",

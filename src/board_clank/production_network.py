@@ -19,7 +19,7 @@ from board_clank.robots_policy import Robots
 class LimitedResponse:
     def __init__(self,response,limit,guard,record):
         self.response=response;self.limit=limit;self.used=0;self.guard=guard;self.record=record
-        self.hash=hashlib.sha256();self.capture=None
+        self.hash=hashlib.sha256();self.capture=None;self.on_close=None;self.closed=False
         if guard.capture_dir:
             guard.capture_dir.mkdir(parents=True,exist_ok=True)
             path=guard.capture_dir/(str(record['attempt'])+'.body')
@@ -28,10 +28,19 @@ class LimitedResponse:
     def __getattr__(self,key):return getattr(self.response,key)
     def __enter__(self):return self
     def __exit__(self,*args):self.close()
+    def __del__(self):
+        try:self.close()
+        except Exception:pass
     def close(self):
-        self.response.close()
-        if self.capture and not self.capture.closed:
-            self.capture.flush();self.capture.close()
+        if self.closed:return
+        self.closed=True
+        try:
+            self.response.close()
+            if self.capture and not self.capture.closed:
+                self.capture.flush();self.capture.close()
+        finally:
+            release=self.on_close;self.on_close=None
+            if release:release()
     def read(self,size=-1):
         with self.guard.lock:
             remaining=min(self.limit-self.used,self.guard.budget.max_total_response_bytes-self.guard.bytes)
@@ -44,6 +53,7 @@ class LimitedResponse:
             self.hash.update(data)
             self.record.update(body_sha256=self.hash.hexdigest(),body_bytes=self.used,
                                body_complete=len(data)<wanted or not data)
+            if self.record['body_complete']:self.close()
             return data
 
 
@@ -53,6 +63,7 @@ class Guard:
         self.clock=clock;self.sleep=sleep;self.deadline=clock()+budget.cycle_timeout_seconds
         self.count=0;self.last=None;self.lock=threading.RLock();self.robots={};self.requests=[];self.url_attempts={}
         self.bytes=0;self.capture_dir=capture_dir;self.robots_records={}
+        self.semaphore=threading.BoundedSemaphore(budget.max_concurrency);self.local=threading.local()
 
     def remaining(self):
         assert_running(self.root)
@@ -81,10 +92,27 @@ class Guard:
             return record
 
     def open(self,original,opener,fullurl,data=None,timeout=http.socket._GLOBAL_DEFAULT_TIMEOUT):
+        depth=getattr(self.local,'depth',0)
+        outer=depth==0
+        if outer and not self.semaphore.acquire(timeout=self.remaining()):
+            raise CollectorError('source concurrency deadline exhausted')
+        self.local.depth=depth+1
+        try:
+            response=self._open(original,opener,fullurl,data,timeout)
+            if outer:
+                if response.closed:self.semaphore.release()
+                else:response.on_close=self.semaphore.release
+            return response
+        except BaseException:
+            if outer:self.semaphore.release()
+            raise
+        finally:self.local.depth=depth
+
+    def _open(self,original,opener,fullurl,data=None,timeout=http.socket._GLOBAL_DEFAULT_TIMEOUT):
         req=fullurl if isinstance(fullurl,http.Request) else http.Request(fullurl)
         url=req.full_url;p=urlsplit(url);origin=p.scheme+'://'+p.netloc
         if (origin not in self.budget.origins or p.username or p.password or p.fragment
-                or req.get_method()!='GET' or data is not None):
+                or req.get_method()!='GET' or data is not None or req.data is not None):
             raise CollectorError('production HTTP boundary refused')
         req.add_header('User-Agent','BoardClank/1.0 (production first-party PRODUCT)')
         robots_request=p.path=='/robots.txt' and not p.query
@@ -96,8 +124,20 @@ class Guard:
         for attempt in range(attempts):
             record=self.reserve(url,interval)
             try:
-                response=original(opener,req,data,timeout=min(self.budget.timeout_seconds,self.remaining()))
+                deadline=min(self.budget.timeout_seconds,self.remaining())
+                if isinstance(timeout,(int,float)):deadline=min(deadline,timeout)
+                response=original(opener,req,data,timeout=deadline)
+                if isinstance(response,LimitedResponse):
+                    # urllib's redirect recursion already wrapped the final body.
+                    # Reuse it so bytes/captures are not counted twice.
+                    record.update(status='REDIRECT_FOLLOWED',final_status=response.status,
+                        final_url=response.geturl(),response_attempt=response.record['attempt'])
+                    return response
                 record.update(status=response.status,final_url=response.geturl())
+                if response.status>=400:
+                    status=response.status;headers=response.headers
+                    response.close()
+                    raise HTTPError(url,status,'source HTTP failure',headers,None)
                 # Redirects are guarded by this same process hook before being followed.
                 if response.geturl()!=url and robots_request:
                     response.close();raise CollectorError('robots redirect requires manual review')
@@ -134,16 +174,30 @@ class Guard:
 @contextmanager
 def guarded_http(guard):
     """Only use inside the dedicated source child process, never in a shared server."""
-    original=http.OpenerDirector.open
-    def bounded(opener,fullurl,data=None,timeout=http.socket._GLOBAL_DEFAULT_TIMEOUT):
-        return guard.open(original,opener,fullurl,data,timeout)
-    http.OpenerDirector.open=bounded
+    # do_open returns each raw HTTP response before redirect/error processors
+    # read its body. OpenerDirector.open is too high: it hides intermediate
+    # response reads and can double-count a final redirected body.
+    original=http.AbstractHTTPHandler.do_open
+    def bounded(handler,http_class,req,**kwargs):
+        def transport(_handler,request,data=None,timeout=http.socket._GLOBAL_DEFAULT_TIMEOUT):
+            request.timeout=timeout
+            return original(_handler,http_class,request,**kwargs)
+        return guard.open(transport,handler,req,timeout=getattr(req,'timeout',http.socket._GLOBAL_DEFAULT_TIMEOUT))
+    http.AbstractHTTPHandler.do_open=bounded
     try:
         class NoRobotsRedirect(http.HTTPRedirectHandler):
             def redirect_request(self,*args,**kwargs):
                 raise CollectorError('robots redirect requires manual review')
+        class MissingRobotsProcessor(http.HTTPErrorProcessor):
+            def http_response(self,req,response):
+                p=urlsplit(req.full_url)
+                if (guard.budget.allow_missing_robots and response.status in {404,410}
+                        and p.path=='/robots.txt' and not p.query):
+                    return response  # Preserve404/410; do not manufacture an HTTP200.
+                return super().http_response(req,response)
+            https_response=http_response
         for origin in guard.budget.origins:
-            with http.build_opener(NoRobotsRedirect()).open(http.Request(origin+'/robots.txt',headers={'User-Agent':'BoardClank/1.0 (production PRODUCT; robots compliance)'})) as response:
+            with http.build_opener(NoRobotsRedirect(),MissingRobotsProcessor()).open(http.Request(origin+'/robots.txt',headers={'User-Agent':'BoardClank/1.0 (production PRODUCT; robots compliance)'})) as response:
                 if response.status!=200 and not (response.status in {404,410} and guard.budget.allow_missing_robots):
                     raise CollectorError('robots requires successful policy response or explicit missing-policy approval')
                 if response.status==200 and response.headers.get('Content-Type','').split(';')[0].lower() not in {'text/plain','text/x-robots'}:
@@ -156,4 +210,4 @@ def guarded_http(guard):
                     'missing_policy_explicitly_allowed':response.status!=200}
         yield guard
     finally:
-        http.OpenerDirector.open=original
+        http.AbstractHTTPHandler.do_open=original

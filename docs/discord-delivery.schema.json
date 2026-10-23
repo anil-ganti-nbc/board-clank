@@ -11,6 +11,11 @@
       "title": "Confirmed By",
       "type": "string"
     },
+    "credential_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Credential Sha256",
+      "type": "string"
+    },
     "destination_label": {
       "maxLength": 100,
       "minLength": 1,
@@ -74,6 +79,7 @@
   "required": [
     "revision",
     "destination_sha256",
+    "credential_sha256",
     "destination_label",
     "confirmed_by",
     "confirmation_id",

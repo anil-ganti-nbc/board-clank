@@ -20,7 +20,7 @@ strict approval-file schema. A draft is not an approval. No production approval
 or real source budgets are shipped in this repository.
 
 An operator-reviewed approval binds the exact candidate revision AND installed
-code/config bytes, decision identity, bounded validity (at most seven days), all
+code/config bytes, decision identity, explicit validity within source permissions, all
 eight source budgets and content-addressed evidence files inside its directory.
 Required gates: source_access, diagnostics, integrity, replay, backup_restore,
 tests, locked_ci, container, independent_review and schedule_rollback. Each gate
@@ -30,7 +30,7 @@ Local tests deliberately use labelled synthetic approvals, never live authority.
 
 Every source budget must have current permission evidence, exact existing
 origins, request caps per cycle/rolling hour/rolling day (including robots,
-redirects and retries), response/aggregate byte limits, spacing, deadlines and
+redirects and retries), response/aggregate byte limits, concurrency, spacing, deadlines and
 bounded retries. Daily budget must support 24 declared cycles, and aggregate
 source deadlines must fit 3300 seconds. Lack of a published rate limit is not an
 automatic measured budget. Account for observed catalogue closure, transient
@@ -56,11 +56,15 @@ does not migrate, suppress, resolve or delete any condition. Preserve the origin
 payload, source receipts and state hash. The diagnostics gate must reference this
 snapshot by content hash. Every open condition requires a reviewer, rationale,
 evidence hash and an exact condition/source/state/payload binding. Supported
-dispositions explicitly document accepted uncertainty or excluded coverage;
+dispositions explicitly document accepted uncertainty, excluded coverage or a
+fixed-by-replay result bound to the exact candidate, successful source run,
+retained source capture hashes and a distinct read-only qualification snapshot;
 they do not alter canonical data or convert uncertainty to a product identity.
-Proven defects must instead be fixed and replayed into distinct qualification
+Proven defects must be fixed and replayed into distinct qualification
 state, with original evidence preserved and review repeated. New/changed open
 conditions block delivery and require fresh review before further acceptance.
+A fixed-by-replay disposition never permits that condition to remain OPEN in
+current production state, even if its old payload hash matches.
 
 The prior103 conditions are not automatically103 defects or103 distinct boards.
 Their actual rows and source captures still require review. Never create a
@@ -87,7 +91,7 @@ One externally invoked cycle owns an OS lock and a durable UTC-hour claim. A
 duplicate/incomplete hour is never recollected automatically; no catch-up runs
 are invented. Each source runs in its own bounded child process, and an owned
 timeout kills only that child. Per-source failure is retained and isolated from
-other sources. All HTTP bodies (complete or partial), metadata, request counts,
+other sources. Read HTTP response bodies (complete or partial), metadata, request counts,
 raw hashes, CollectorRunRequests, failure records and cycle receipts stay in the
 new runtime root. Aggregate byte caps and a free-space check bound acquisition;
 retention/capacity must still be approved. Nothing automatically deletes evidence.
@@ -125,13 +129,13 @@ board-clank-discord credential-entry --secret-file <private-file>
 
 It refuses noninteractive input, Windows without verified POSIX permissions,
 existing files and unprivate directories. It creates a new 0600 file, never prints
-the token and performs no network request. It returns only a destination hash.
+the token and performs no network request. It returns only destination/credential hashes.
 Use an operator-supported secret mount owned/readable only by the runtime user;
 the actual NAS terminal/mount route still needs operational verification. Do not
 pass tokens through CLI arguments, environment files, logs, Git or this chat.
 
 A separate DeliveryPolicy (schema from `board_clank.discord_delivery`) must be
-explicitly enabled, bind the same revision, destination hash, confirmed channel,
+explicitly enabled, bind the same revision, destination and credential hashes, confirmed channel,
 human confirmation ID, event scope, activation time, expiry and message budgets.
 It cannot outlive production approval. Only then may the operator invoke:
 
@@ -150,7 +154,10 @@ interrupted SENDING claims remain UNKNOWN and are never automatically resent.
 This prevents blind duplicate retries; it cannot promise exactly-once remote
 delivery after an ambiguous network failure. Manual reconciliation is required.
 Original event/outbox rows are not rewritten; the operational delivery ledger is
-the send-status authority. See Discord's
+the send-status authority. Event deduplication uses stable webhook identity, so
+credential rotation cannot resend a sent or ambiguous event. A new credential
+fingerprint requires a fresh confirmed policy; permanent denial blocks do not
+automatically clear under the same confirmation. See Discord's
 [execute webhook](https://docs.discord.com/developers/resources/webhook#execute-webhook)
 and [rate limits](https://docs.discord.com/developers/topics/rate-limits).
 

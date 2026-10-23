@@ -79,6 +79,7 @@ class SourceBudget(StrictModel):
     max_requests_per_cycle: StrictInt = Field(ge=1, le=1000)
     max_requests_per_hour: StrictInt = Field(ge=1, le=1000)
     max_requests_per_day: StrictInt = Field(ge=1, le=24000)
+    max_concurrency: StrictInt = Field(ge=1,le=4)
     min_interval_seconds: float = Field(ge=0, le=600, allow_inf_nan=False)
     timeout_seconds: StrictInt = Field(ge=1, le=60)
     cycle_timeout_seconds: StrictInt = Field(ge=1, le=1800)
@@ -104,7 +105,7 @@ class Disposition(StrictModel):
     source_key: str
     state_hash: str
     payload_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
-    decision: str = Field(pattern=r'^(accepted_uncertainty|excluded_coverage)$')
+    decision: str = Field(pattern=r'^(accepted_uncertainty|excluded_coverage|fixed_by_replay)$')
     rationale: str = Field(min_length=20)
     reviewed_by: str = Field(min_length=1)
     evidence: Evidence
@@ -127,8 +128,8 @@ class Approval(StrictModel):
         if self.format != 1 or self.revision != revision or self.code_sha256 != code_digest():
             raise ValueError('candidate identity changed or unverified')
         start, end = utc(self.approved_at), utc(self.expires_at)
-        if not start <= now < end or (end-start).total_seconds() > 7*86400:
-            raise ValueError('approval expired, future-dated or too broad')
+        if not start <= now < end:
+            raise ValueError('approval expired or future-dated')
         if set(self.source_budgets) != set(SOURCES) or set(self.gates) != GATES:
             raise ValueError('exact eight-source scope and all gates required')
         if sum(b.cycle_timeout_seconds for b in self.source_budgets.values()) > 3300:
@@ -153,14 +154,33 @@ class Approval(StrictModel):
         if len(keys) != len(set(keys)) or any(d.source_key not in SOURCES for d in self.dispositions):
             raise ValueError('duplicate or out-of-scope diagnostic disposition')
         for d in self.dispositions:
-            d.evidence.read(root)
+            raw=d.evidence.read(root)
+            if d.decision=='fixed_by_replay':
+                fix=json.loads(raw)
+                if (fix.get('revision')!=revision or fix.get('code_sha256')!=self.code_sha256
+                        or fix.get('condition_key')!=d.condition_key or fix.get('old_state_hash')!=d.state_hash
+                        or fix.get('status')!='RESOLVED_BY_REPLAY' or not fix.get('reviewed_by')):
+                    raise ValueError('fixed diagnostic lacks exact-candidate replay proof')
+                qualified=json.loads(Evidence.model_validate(fix['qualification_snapshot']).read(root))
+                last=qualified.get('source_last_runs',{}).get(d.source_key) or {}
+                if (qualified.get('read_only') is not True or qualified.get('sources')!=list(SOURCES)
+                        or last.get('status')!='accepted' or last.get('source_key')!=d.source_key
+                        or not last.get('run_id') or 'fixture_scenario' not in last or last['fixture_scenario'] is not None
+                        or any(row['condition_key']==d.condition_key and row['status']=='OPEN'
+                               for row in qualified['conditions'])):
+                    raise ValueError('fixed diagnostic remains open or source replay is incomplete')
+                if not fix.get('source_captures'):raise ValueError('retained source capture references required')
+                for capture in fix['source_captures']:Evidence.model_validate(capture).read(root)
         diagnostic_proof=json.loads(self.gates['diagnostics'].read(root))
         snapshot=json.loads(Evidence.model_validate(diagnostic_proof['diagnostic_snapshot']).read(root))
         if snapshot.get('sources')!=list(SOURCES) or snapshot.get('read_only') is not True:
             raise ValueError('diagnostic snapshot scope/provenance incomplete')
+        condition_keys=[row['condition_key'] for row in snapshot['conditions']]
+        if len(condition_keys)!=len(set(condition_keys)):raise ValueError('duplicate snapshot diagnostic condition')
         reviewed={d.condition_key:d for d in self.dispositions}
         for row in snapshot['conditions']:
             if row['source_key'] not in SOURCES:raise ValueError('snapshot source scope widened')
+            if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown snapshot diagnostic state')
             if row['status']=='OPEN':
                 d=reviewed.get(row['condition_key'])
                 if (not d or d.source_key!=row['source_key'] or d.state_hash!=row['state_hash']
@@ -194,10 +214,12 @@ class Admission:
         self.validate()
         reviewed = {d.condition_key: d for d in self.approval.dispositions}
         placeholders = ','.join('?' for _ in SOURCES)
-        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE status='OPEN' AND source_key IN ({placeholders})", SOURCES)
+        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", SOURCES)
         for row in rows:
+            if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown current diagnostic state')
+            if row['status']=='RESOLVED':continue
             d = reviewed.get(row['condition_key'])
-            if (not d or d.source_key != row['source_key'] or d.state_hash != row['state_hash']
+            if (not d or d.decision=='fixed_by_replay' or d.source_key != row['source_key'] or d.state_hash != row['state_hash']
                     or d.payload_sha256 != digest(row['payload_json'].encode())):
                 raise ValueError('undispositioned or changed diagnostic condition')
 

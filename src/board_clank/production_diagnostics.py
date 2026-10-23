@@ -22,6 +22,10 @@ def export(db_path,out_path):
         connection.execute('BEGIN')
         marks=','.join('?' for _ in SOURCES)
         rows=[dict(r) for r in connection.execute(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({marks}) ORDER BY source_key,condition_key",SOURCES)]
+        last_runs={}
+        for source in SOURCES:
+            run=connection.execute('SELECT * FROM collector_runs WHERE source_key=? ORDER BY finished_at DESC,run_id DESC LIMIT 1',(source,)).fetchone()
+            last_runs[source]=dict(run) if run else None
         counts={}
         for r in rows:
             if r['status']=='OPEN':
@@ -30,7 +34,7 @@ def export(db_path,out_path):
             r['review']={'decision':'UNREVIEWED','rationale':None,'reviewed_by':None,'evidence':None}
         result={'format':1,'observed_utc':datetime.now(timezone.utc).isoformat(),
             'source_database':str(path),'sources':list(SOURCES),'read_only':True,
-            'open_counts':counts,'conditions':rows,
+            'open_counts':counts,'conditions':rows,'source_last_runs':last_runs,
             'meaning':'Conditions preserve uncertainty/conflict; review requires exact payload/state and retained source evidence. No automatic disposition.'}
         with Path(out_path).open('x',encoding='utf-8') as f:json.dump(result,f,indent=2,sort_keys=True)
         connection.rollback()

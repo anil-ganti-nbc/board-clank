@@ -44,7 +44,7 @@ def approval_file(tmp_path):
         return {'path':name,'sha256':digest(p.read_bytes())}
     for source in SOURCES:
         b={'origins':['https://'+sorted(HOSTS[source])[0]],'max_requests_per_cycle':20,
-           'max_requests_per_hour':20,'max_requests_per_day':480,'min_interval_seconds':0,
+           'max_requests_per_hour':20,'max_requests_per_day':480,'max_concurrency':4,'min_interval_seconds':0,
            'timeout_seconds':10,'cycle_timeout_seconds':100,'max_response_bytes':1000000,
            'max_total_response_bytes':20000000,'allow_missing_robots':False,'retries':2}
         ref=evidence(source+'.json',{'source':source,'approved_budget':b,
@@ -180,9 +180,19 @@ def test_robots_cadence_and_invalid_values():
 
 
 class Response(io.BytesIO):
-    status=200;headers={'Content-Type':'text/plain'}
-    def __init__(self,url,body):super().__init__(body);self.url=url
+    def __init__(self,url,body,status=200,headers=None):
+        from email.message import Message
+        super().__init__(body);self.url=url;self.status=status;self.code=status;self.msg='synthetic response'
+        self.headers=Message();self.headers['Content-Type']='text/plain'
+        for key,value in (headers or {}).items():self.headers[key]=value
     def geturl(self):return self.url
+    def info(self):return self.headers
+
+
+def install_transport(monkeypatch,fake):
+    def transport(handler,http_class,req,**kwargs):
+        return fake(handler,req,timeout=getattr(req,'timeout',None))
+    monkeypatch.setattr(http.AbstractHTTPHandler,'do_open',transport)
 
 
 def test_every_thread_and_redirect_uses_persistent_request_budget(approval_file,tmp_path,monkeypatch):
@@ -191,7 +201,7 @@ def test_every_thread_and_redirect_uses_persistent_request_budget(approval_file,
     def fake(opener,req,data=None,timeout=None):
         seen.append(req.full_url)
         return Response(req.full_url,b'User-agent: *\nDisallow: /*?*' if req.full_url.endswith('robots.txt') else b'ok')
-    monkeypatch.setattr(http.OpenerDirector,'open',fake)
+    install_transport(monkeypatch,fake)
     ledger=Ledger(tmp_path/'ops.db');guard=Guard(source,budget,ledger,tmp_path)
     with guarded_http(guard):
         from concurrent.futures import ThreadPoolExecutor

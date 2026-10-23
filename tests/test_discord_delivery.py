@@ -34,6 +34,7 @@ def queue(approval_file,tmp_path):
     # This value is a clearly synthetic mock fixture, never an actual credential.
     secret=Secret('https://discord.com/api/webhooks/111111111111111111/SYNTHETIC_ONLY_'+('x'*50))
     policy=DeliveryPolicy(enabled=True,revision=REV,destination_sha256=secret.destination,
+        credential_sha256=secret.fingerprint,
         destination_label='SYNTHETIC mock channel',confirmed_by='offline-test',confirmation_id='SYNTHETIC_ONLY',
         not_before=admission.approval.approved_at,expires_at=admission.approval.expires_at,
         event_types=('NEW_BOARD',),max_event_age_seconds=3600,max_messages_per_run=2,
@@ -46,6 +47,7 @@ def test_secret_redaction_and_canonical_destination():
     first=Secret('https://discord.com/api/webhooks/111111111111111111/SYNTHETIC_ONLY_'+('x'*50))
     second=Secret('https://discord.com/api/v10/webhooks/111111111111111111/SYNTHETIC_ONLY_'+('x'*50))
     assert first.destination==second.destination
+    assert first.fingerprint==second.fingerprint
     assert 'SYNTHETIC' not in str(first) and 'SYNTHETIC' not in repr(first)
 
 
