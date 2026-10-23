@@ -168,6 +168,9 @@ def cmd_collect(args: argparse.Namespace) -> int:
         print(json.dumps({"status": "refused", "reason": "live collection is disabled in Foundation 0"}))
         return 2
     experimental_live = bool(getattr(args, "experimental_live", False))
+    if experimental_live and args.source in {'hardkernel-odroid-product','hardkernel-odroid'}:
+        print(json.dumps({'status':'refused','reason':'ODROID is mothballed; live acquisition is disabled'}))
+        return 2
     try:
         adapter = get_adapter(
             args.source,
@@ -301,6 +304,11 @@ def cmd_manifest(args: argparse.Namespace) -> int:
     return _json(report)
 
 
+def cmd_production_manifest(args: argparse.Namespace) -> int:
+    from board_clank.production_runtime import manifest
+    return _json(manifest())
+
+
 def cmd_observe(args: argparse.Namespace) -> int:
     from board_clank import observer
 
@@ -360,6 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--activate", action="store_true", help="Replace the target with the verified restore")
     restore.add_argument("--force", action="store_true", help="Allow replacing an existing target")
     sub.add_parser("manifest", help="Validate and emit the Board Clank manifest report")
+    sub.add_parser('production-manifest',help='Read-only explicit production capability identity; does not approve or activate')
     manifest_cmd = sub.add_parser("manifest-declared", help="Validate the committed declaration manifest")
     manifest_cmd.add_argument("--file", help="Optional declaration path (default: bundled manifest.json)")
     sub.add_parser("observe", help="Read-only observer surface snapshot (v0.2 contract)")
@@ -383,6 +392,7 @@ COMMANDS = {
     "backup": cmd_backup,
     "restore": cmd_restore,
     "manifest": cmd_manifest,
+    'production-manifest':cmd_production_manifest,
     "manifest-declared": cmd_manifest_declared,
     "observe": cmd_observe,
 }

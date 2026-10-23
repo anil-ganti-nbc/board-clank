@@ -13,7 +13,7 @@ Foundation 0 contracts plus Foundation 1's experimental Raspberry Pi PRODUCT ada
 - Channel: `foundation-0`
 - Live collection: disabled
 - Source promotion: none
-- Discord / webhooks: not present
+- Default Discord delivery: disabled; explicit guarded production capability requires separate approval/configuration
 - Jetson / NVIDIA: out of scope pending a later decision
 
 ## Install
@@ -84,3 +84,4 @@ Persistent state: `/app/data`.
 - [docs/EVENT_MODEL.md](docs/EVENT_MODEL.md)
 - [docs/SOURCE_PLANES.md](docs/SOURCE_PLANES.md)
 - [docs/NOVELTY_MODEL.md](docs/NOVELTY_MODEL.md)
+- [docs/PRODUCTION.md](docs/PRODUCTION.md): explicit eight-source runtime and optional Discord capability; not deployment acceptance

@@ -85,11 +85,11 @@ def build_manifest() -> dict[str, Any]:
             },
             "delivery": {
                 "state": "unsupported_by_policy",
-                "evidence": "notification rows are generated outbox-only; no send path exists; promotion_freeze=true",
+                "evidence": "default CLI is outbox-only; explicit production delivery requires confirmed policy and private credential",
             },
             "scheduler": {
                 "state": "unsupported_by_policy",
-                "evidence": "no scheduler authority declared or implemented",
+                "evidence": "default CLI installs no scheduler; hourly runtime requires separately reviewed operator activation",
             },
             "backup_restore": {
                 "state": "active",

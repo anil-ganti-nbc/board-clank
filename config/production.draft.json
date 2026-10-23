@@ -1,0 +1,16 @@
+{
+  "status": "DRAFT_NOT_AN_APPROVAL",
+  "enabled": false,
+  "cadence_seconds": 3600,
+  "sources": [
+    "raspberry-pi-product", "orange-pi-product", "radxa-product", "banana-pi-product",
+    "pine64-product", "friendlyelec-product", "khadas-product", "forlinx-product"
+  ],
+  "mothballed": ["hardkernel-odroid-product"],
+  "source_budgets": null,
+  "approval_file": null,
+  "discord_delivery_enabled": false,
+  "discord_policy_file": null,
+  "credential_file": null,
+  "instructions": "This file cannot pass Admission validation. Supply measured, reviewed evidence using docs/production-approval.schema.json; never fill gate PASS values without executed evidence."
+}

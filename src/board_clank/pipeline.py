@@ -88,8 +88,9 @@ class RunResult:
 
 
 class Pipeline:
-    def __init__(self, store: Store) -> None:
+    def __init__(self, store: Store, *, production_admission=None) -> None:
         self.store = store
+        self.production_admission = production_admission
 
     def accept_fixture_run(self, request: CollectorRunRequest) -> RunResult:
         """Explicit historic synthetic scenarios do not grant production authority."""
@@ -110,6 +111,12 @@ class Pipeline:
     def _validate_admission_source(self, request: CollectorRunRequest, fixture_source: str | None) -> None:
         from board_clank.sources import load_sources
 
+        if self.production_admission is not None:
+            from board_clank.production_policy import Admission
+            if (type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario
+                    or self.production_admission.revision != SOURCE_REVISION):
+                raise ValueError('production requires verified current-revision live PRODUCT admission')
+            self.production_admission.authorize(request.source_key)
         declared = {source.source_key: source for source in load_sources()}
         for key in {request.source_key, *(draft.source_key for draft in request.observations)}:
             trusted = declared.get(key)
@@ -125,8 +132,23 @@ class Pipeline:
             if request.source_key != fixture_source or durable is not None:
                 raise ValueError('unregistered source cannot enter PRODUCT admission')
             return
+        if self.production_admission is not None:
+            from board_clank.production_policy import Admission, MOTHBALLED, SOURCES
+            if type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario:
+                raise ValueError('production requires verified admission and live PRODUCT evidence')
+            self.production_admission.authorize(request.source_key)
+            if request.collector_key != request.source_key:
+                raise ValueError('production collector identity mismatch')
+            mothballed = self.store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (MOTHBALLED,))
+            if not mothballed or mothballed['enabled'] or mothballed['promotion_state'] != 'MOTHBALLED':
+                raise ValueError('ODROID mothball state drift')
+            unexpected = self.store.all('SELECT source_key FROM sources WHERE enabled!=0')
+            if {row['source_key'] for row in unexpected} != set(SOURCES):
+                raise ValueError('production source scope drift')
+            trusted = trusted.model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
-                or trusted.enabled or trusted.promotion_state != 'EXPERIMENTAL'
+                or (trusted.enabled != (self.production_admission is not None))
+                or trusted.promotion_state != ('PROMOTED' if self.production_admission is not None else 'EXPERIMENTAL')
                 or trusted.plane is not SourcePlane.PRODUCT
                 or trusted.authority is not SourceAuthority.FIRST_PARTY_CANONICAL):
             raise ValueError('source requires canonical PRODUCT authority')

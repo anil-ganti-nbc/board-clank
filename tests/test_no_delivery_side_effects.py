@@ -5,11 +5,11 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[1] / "src"
 
 
-def test_no_discord_webhook_surface() -> None:
-    for path in SRC.rglob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        assert "discord.com" not in text
-        assert "webhook" not in text.lower()
+def test_default_manifest_has_no_delivery_authority() -> None:
+    # Explicit opt-in delivery now exists. Foundation/default invocations still
+    # grant no notification authority; behavioral opt-in tests cover the sender.
+    from board_clank.manifest import build_manifest
+    assert build_manifest()['notification_authority'] == 'NONE'
 
 
 def test_collectors_are_inert() -> None:

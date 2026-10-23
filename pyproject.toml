@@ -18,6 +18,9 @@ dev = [
 
 [project.scripts]
 board-clank = "board_clank.cli:main"
+board-clank-hourly = "board_clank.production_runtime:main"
+board-clank-discord = "board_clank.discord_delivery:main"
+board-clank-diagnostic-export = "board_clank.production_diagnostics:main"
 
 [build-system]
 requires = ["setuptools>=68"]
