@@ -2,6 +2,8 @@
 from contextlib import contextmanager
 from pathlib import Path
 import os
+import hashlib
+import secrets
 import sqlite3
 import time
 
@@ -18,6 +20,8 @@ class Ledger:
                 CREATE TABLE IF NOT EXISTS source_limits(source TEXT,permission TEXT,next_at REAL,PRIMARY KEY(source,permission));
                 CREATE TABLE IF NOT EXISTS cycles(slot TEXT PRIMARY KEY, approval TEXT, status TEXT, started REAL, finished REAL);
                 CREATE TABLE IF NOT EXISTS source_runs(slot TEXT,source TEXT,status TEXT,receipt TEXT,PRIMARY KEY(slot,source));
+                CREATE TABLE IF NOT EXISTS source_permits(slot TEXT,source TEXT,approval TEXT,token_hash TEXT,owner_pid INTEGER,consumed INTEGER,
+                    PRIMARY KEY(slot,source));
                 CREATE TABLE IF NOT EXISTS deliveries(destination TEXT,event_key TEXT,status TEXT,attempts INTEGER,next_at REAL,message_id TEXT,
                     PRIMARY KEY(destination,event_key));
                 CREATE TABLE IF NOT EXISTS delivery_limits(destination TEXT PRIMARY KEY,next_at REAL);
@@ -78,6 +82,32 @@ class Ledger:
     def finish_cycle(self, slot, status):
         with self.connect() as db:
             db.execute('UPDATE cycles SET status=?,finished=? WHERE slot=?', (status, time.time(), slot))
+
+    def issue_source(self, slot, source, approval):
+        token = secrets.token_hex(32)
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            cycle = db.execute('SELECT status,approval FROM cycles WHERE slot=?', (slot,)).fetchone()
+            if not cycle or cycle['status'] != 'RUNNING' or cycle['approval'] != approval:
+                raise ValueError('source permit requires active matching cycle')
+            # One attempt per source/hour, including an interrupted subprocess.
+            db.execute('INSERT INTO source_permits VALUES(?,?,?,?,?,0)',
+                       (slot,source,approval,hashlib.sha256(token.encode()).hexdigest(),os.getpid()))
+        return token
+
+    def consume_source(self, slot, source, approval, token, parent_pid):
+        if not isinstance(token,str) or len(token)!=64:
+            raise ValueError('parent-issued source permit required')
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            cycle=db.execute('SELECT status,approval FROM cycles WHERE slot=?',(slot,)).fetchone()
+            permit=db.execute('SELECT * FROM source_permits WHERE slot=? AND source=?',(slot,source)).fetchone()
+            if (not cycle or cycle['status']!='RUNNING' or cycle['approval']!=approval
+                    or not permit or permit['consumed'] or permit['approval']!=approval
+                    or permit['owner_pid']!=parent_pid
+                    or not secrets.compare_digest(permit['token_hash'],hashlib.sha256(token.encode()).hexdigest())):
+                raise ValueError('source permit absent, stale, consumed or owned by another parent')
+            db.execute('UPDATE source_permits SET consumed=1 WHERE slot=? AND source=?',(slot,source))
 
 
 @contextmanager

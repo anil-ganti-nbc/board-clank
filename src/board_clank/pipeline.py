@@ -133,18 +133,13 @@ class Pipeline:
                 raise ValueError('unregistered source cannot enter PRODUCT admission')
             return
         if self.production_admission is not None:
-            from board_clank.production_policy import Admission, MOTHBALLED, SOURCES
+            from board_clank.production_policy import Admission, validate_registry
             if type(self.production_admission) is not Admission or fixture_source or request.fixture_scenario is not None:
                 raise ValueError('production requires verified admission and live PRODUCT evidence')
             self.production_admission.authorize(request.source_key)
             if request.collector_key != request.source_key:
                 raise ValueError('production collector identity mismatch')
-            mothballed = self.store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (MOTHBALLED,))
-            if not mothballed or mothballed['enabled'] or mothballed['promotion_state'] != 'MOTHBALLED':
-                raise ValueError('ODROID mothball state drift')
-            unexpected = self.store.all('SELECT source_key FROM sources WHERE enabled!=0')
-            if {row['source_key'] for row in unexpected} != set(SOURCES):
-                raise ValueError('production source scope drift')
+            validate_registry(self.store)
             trusted = trusted.model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
                 or (trusted.enabled != (self.production_admission is not None))

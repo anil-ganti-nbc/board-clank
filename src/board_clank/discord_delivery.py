@@ -213,7 +213,8 @@ def drain(root,admission,policy,secret,*,send=post,clock=time.time,sleep=time.sl
         from board_clank.store import Store
         store=Store(root/'board.sqlite',migrate=False)
         try:
-            admission.check_diagnostics(store)
+            from board_clank.production_policy import validate_state
+            validate_state(store,admission)
             marks=','.join('?' for _ in SOURCES)
             if len(store.all(f'SELECT source_key FROM source_baselines WHERE source_key IN ({marks})',SOURCES))!=len(SOURCES):
                 raise ValueError('eight silent source baselines required before delivery')

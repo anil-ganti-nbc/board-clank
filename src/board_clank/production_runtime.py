@@ -20,7 +20,7 @@ from board_clank.models import CollectorRunRequest
 from board_clank.pipeline import Pipeline
 from board_clank.production_ledger import Ledger, assert_running, exclusive_lock
 from board_clank.production_network import Guard, guarded_http
-from board_clank.production_policy import Admission, SOURCES, MOTHBALLED, code_digest
+from board_clank.production_policy import Admission, SOURCES, MOTHBALLED, code_digest, validate_state
 from board_clank.sources import sync_sources_to_store
 from board_clank.store import Store
 
@@ -75,6 +75,24 @@ def child(root, admission, source, slot, directory):
     """Dedicated process: guard all urllib openers, including Forlinx workers."""
     admission.authorize(source)
     assert_running(root)
+    token=sys.stdin.buffer.read(129).decode('ascii')
+    try:
+        with exclusive_lock(root/'runtime.lock'):
+            pass
+    except OSError:
+        pass
+    else:
+        raise ValueError('source child requires a parent holding the runtime lock')
+    Ledger(root/'operations.sqlite').consume_source(slot,source,admission.raw_hash,token,os.getppid())
+    # Retained by the child if its parent exits, preventing overlap with a new
+    # parent's acquisition while this bounded child finishes.
+    with exclusive_lock(root/'source.lock'):
+        collect_child(root,admission,source,slot,directory)
+
+
+def collect_child(root, admission, source, slot, directory):
+    with Store(root/'board.sqlite',migrate=False) as store:
+        validate_state(store,admission)
     budget=admission.approval.source_budgets[source]
     guard=Guard(source,budget,Ledger(root/'operations.sqlite'),root,capture_dir=directory/(source+'-http'))
     from board_clank.collectors import get_adapter
@@ -95,8 +113,14 @@ def execute_child(root, admission, source, slot, directory):
         '--approval',str(admission.path),'child','--source',source,'--slot',slot]
     env={k:v for k,v in os.environ.items() if not any(secret in k.upper() for secret in ('DISCORD','WEBHOOK','TOKEN','PASSWORD','SECRET'))}
     env['PYTHONDONTWRITEBYTECODE']='1'
+    permit=Ledger(root/'operations.sqlite').issue_source(slot,source,admission.raw_hash)
     with (directory/(source+'.stdout')).open('xb') as stdout, (directory/(source+'.stderr')).open('xb') as stderr:
-        process=subprocess.Popen(command,env=env,stdin=subprocess.DEVNULL,stdout=stdout,stderr=stderr)
+        process=subprocess.Popen(command,env=env,stdin=subprocess.PIPE,stdout=stdout,stderr=stderr)
+        try:
+            process.stdin.write(permit.encode('ascii'))
+            process.stdin.close()
+        except (OSError, BrokenPipeError):
+            process.stdin.close()
         try:code=process.wait(timeout=budget.cycle_timeout_seconds+10)
         except subprocess.TimeoutExpired:
             process.kill();process.wait(timeout=15)
@@ -128,11 +152,13 @@ def run_once(root, admission, *, collect=execute_child, now=None):
         store=None
         try:
             store=Store(root/'board.sqlite',migrate=False)
-            admission.check_diagnostics(store)
+            validate_state(store,admission)
             pipeline=Pipeline(store,production_admission=admission)
             for source in SOURCES:
                 assert_running(root)
                 admission.authorize(source)
+                # Recheck global state outside per-source failure isolation.
+                validate_state(store,admission)
                 try:
                     request=collect(root,admission,source,slot,directory)
                     if (request.run_id!=slot+'-'+source or request.source_key!=source
@@ -191,7 +217,8 @@ def main(argv=None):
         else:result=run_once(root,admission)
         print(json.dumps(result,sort_keys=True));return 0 if result.get('status')!='DEGRADED' else 1
     except Exception as exc:
-        print(json.dumps({'status':'REFUSED','error_type':type(exc).__name__,'collection_or_delivery_claimed':False}),file=sys.stderr)
+        print(json.dumps({'status':'REFUSED','error_type':type(exc).__name__,'collection_or_delivery_claimed':'UNKNOWN',
+                          'evidence':'inspect retained cycle and source receipts; failure can follow acquisition'}),file=sys.stderr)
         return 2
 
 

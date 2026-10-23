@@ -62,6 +62,18 @@ def test_disabled_delivery_does_not_read_or_send(queue):
     with pytest.raises(ValueError):drain(root,a,policy.model_copy(update={'enabled':False}),secret,send=lambda *args:pytest.fail('disabled send'))
 
 
+@pytest.mark.parametrize('drift',['registry','foreign-key'])
+def test_delivery_state_preflight_prevents_post(queue,drift):
+    root,a,store,ledger,secret,policy,add=queue;add()
+    if drift=='registry':store.execute('UPDATE sources SET enabled=0 WHERE source_key=?',(SOURCES[-1],))
+    else:
+        store.execute('PRAGMA foreign_keys=OFF')
+        store.execute('INSERT INTO diagnostic_sightings(condition_key,run_id,source_key,observed_at,state_hash) VALUES(?,?,?,?,?)',
+                      ('missing','synthetic',SOURCES[0],'2026-01-01T00:00:00Z','state'))
+    with pytest.raises(ValueError):drain(root,a,policy,secret,send=lambda *args:pytest.fail('delivery before state preflight'))
+    with ledger.connect() as db:assert db.execute('SELECT COUNT(*) FROM deliveries').fetchone()[0]==0
+
+
 def test_no_baseline_historical_or_other_source_messages(queue):
     root,a,store,ledger,secret,policy,add=queue
     add('baseline',baseline=1);add('odroid',source='hardkernel-odroid-product');add('review',disposition='REVIEW')

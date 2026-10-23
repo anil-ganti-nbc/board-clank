@@ -99,6 +99,15 @@ raw hashes, CollectorRunRequests, failure records and cycle receipts stay in the
 new runtime root. Aggregate byte caps and a free-space check bound acquisition;
 retention/capacity must still be approved. Nothing automatically deletes evidence.
 
+Global registry, ODROID mothball state, SQLite integrity/foreign keys and
+diagnostic admission are checked before acquisition and delivery. Acquisition
+children require an active parent-held runtime lock and a one-use permit bound
+to parent process, source, hour and approval. The permit travels over a private
+stdin pipe and is consumed durably before HTTP. A separate child-held OS lock
+prevents acquisition overlap if the parent exits while its child is finishing.
+Failed CLI calls report unknown collection status and point to retained receipts;
+an exception is never proof that no acquisition occurred.
+
 `PAUSED` and `HUMAN_REQUIRED.json` are emergency stops; code never removes them.
 The runtime stops before acquisition on approval/scope/integrity drift. Missing
 or changed diagnostic dispositions prevent a readiness claim or delivery.

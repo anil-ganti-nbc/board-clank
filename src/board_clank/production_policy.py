@@ -224,6 +224,35 @@ class Admission:
                 raise ValueError('undispositioned or changed diagnostic condition')
 
 
+def validate_state(store, admission):
+    """Refuse global state faults before acquisition or delivery."""
+    if store.one('PRAGMA integrity_check')[0]!='ok' or store.all('PRAGMA foreign_key_check'):
+        raise ValueError('production state integrity failure')
+    validate_registry(store)
+    admission.check_diagnostics(store)
+
+
+def validate_registry(store):
+    """Shared durable scope/provenance check, including before acquisition."""
+    from board_clank.sources import load_sources
+    declared = {r.source_key: r for r in load_sources()}
+    mothballed = store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (MOTHBALLED,))
+    if not mothballed or mothballed['enabled'] or mothballed['promotion_state'] != 'MOTHBALLED':
+        raise ValueError('ODROID mothball state drift')
+    enabled = store.all('SELECT source_key FROM sources WHERE enabled!=0')
+    if {row['source_key'] for row in enabled} != set(SOURCES):
+        raise ValueError('production source scope drift')
+    for source in SOURCES:
+        trusted = declared[source].model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
+        row = store.one('SELECT * FROM sources WHERE source_key=?', (source,))
+        if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
+                or trusted.plane != 'PRODUCT' or trusted.authority != 'FIRST_PARTY_CANONICAL'
+                or row is None or any(row[key] != getattr(trusted, key)
+                    for key in ('vendor', 'plane', 'authority', 'registered_state', 'enabled',
+                                'promotion_state', 'placeholder', 'out_of_scope'))):
+            raise ValueError('durable source provenance differs from trusted registry')
+
+
 def promote_registry(store, admission: Admission):
     """An explicit transition, called only for a separately initialized production DB."""
     admission.check_diagnostics(store)

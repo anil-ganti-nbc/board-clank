@@ -162,6 +162,98 @@ def test_diagnostic_review_is_bound_to_actual_open_state(approval_file,tmp_path)
     store.close()
 
 
+@pytest.mark.parametrize('drift',['odroid','scope','vendor','foreign-key','integrity'])
+def test_global_state_preflight_refuses_before_any_acquisition(approval_file,tmp_path,monkeypatch,drift):
+    admission=load(approval_file);root=tmp_path/'runtime';initialize(root,admission)
+    with Store(root/'board.sqlite',migrate=False) as store:
+        if drift=='odroid':store.execute('UPDATE sources SET enabled=1 WHERE source_key=?',(MOTHBALLED,))
+        elif drift=='scope':store.execute('UPDATE sources SET enabled=0 WHERE source_key=?',(SOURCES[-1],))
+        elif drift=='vendor':store.execute("UPDATE sources SET vendor='untrusted' WHERE source_key=?",(SOURCES[-1],))
+        elif drift=='foreign-key':
+            store.execute('PRAGMA foreign_keys=OFF')
+            store.execute('INSERT INTO diagnostic_sightings(condition_key,run_id,source_key,observed_at,state_hash) VALUES(?,?,?,?,?)',
+                          ('missing','synthetic',SOURCES[0],'2026-01-01T00:00:00Z','state'))
+        else:
+            original=Store.one
+            monkeypatch.setattr(Store,'one',lambda self,sql,*args:('corrupt',) if sql=='PRAGMA integrity_check' else original(self,sql,*args))
+    with pytest.raises(ValueError):run_once(root,admission,collect=lambda *a:pytest.fail('acquisition before state preflight'))
+    assert (root/'HUMAN_REQUIRED.json').exists()
+    cycle=json.loads(next((root/'runs').glob('*/cycle.json')).read_text())
+    assert cycle['status']=='HUMAN_REQUIRED' and not cycle['sources']
+
+
+def test_source_child_permit_is_one_use_and_parent_cycle_bound(tmp_path):
+    import os
+    ledger=Ledger(tmp_path/'operations.sqlite');source=SOURCES[0]
+    with pytest.raises(ValueError):ledger.issue_source('slot',source,'approval')
+    ledger.claim_cycle('slot','approval');token=ledger.issue_source('slot',source,'approval')
+    for approval,provided,parent in [('other',token,os.getpid()),('approval','x'*64,os.getpid()),('approval',token,-1)]:
+        with pytest.raises(ValueError):ledger.consume_source('slot',source,approval,provided,parent)
+    ledger.consume_source('slot',source,'approval',token,os.getpid())
+    with pytest.raises(ValueError):ledger.consume_source('slot',source,'approval',token,os.getpid())
+    with pytest.raises(Exception):ledger.issue_source('slot',source,'approval')
+    second=ledger.issue_source('slot',SOURCES[1],'approval');ledger.finish_cycle('slot','DEGRADED')
+    with pytest.raises(ValueError):ledger.consume_source('slot',SOURCES[1],'approval',second,os.getpid())
+
+
+def test_standalone_child_cli_refuses_before_collector(approval_file,tmp_path,monkeypatch,capsys):
+    from board_clank import production_runtime as runtime
+    admission=load(approval_file);root=tmp_path/'runtime';initialize(root,admission)
+    slot='20261023T040000Z';(root/'runs'/slot).mkdir(parents=True)
+    class Input:
+        buffer=io.BytesIO(b'')
+    monkeypatch.setattr(runtime.sys,'stdin',Input())
+    monkeypatch.setattr('board_clank.collectors.get_adapter',lambda *a,**kw:pytest.fail('standalone acquisition'))
+    assert runtime.main(['--root',str(root),'--approval',str(approval_file),'child','--source',SOURCES[0],'--slot',slot])==2
+    assert json.loads(capsys.readouterr().err)['collection_or_delivery_claimed']=='UNKNOWN'
+
+
+@pytest.mark.parametrize('case',['no-parent-lock','child-lock-held','accepted'])
+def test_child_requires_parent_and_retains_own_acquisition_lock(approval_file,tmp_path,monkeypatch,case):
+    from contextlib import ExitStack,nullcontext
+    from types import SimpleNamespace
+    from board_clank import production_runtime as runtime
+    admission=load(approval_file);root=tmp_path/'runtime';initialize(root,admission)
+    source=SOURCES[0];slot='20261023T040000Z';directory=root/'runs'/slot;directory.mkdir(parents=True)
+    ledger=Ledger(root/'operations.sqlite');ledger.claim_cycle(slot,admission.raw_hash)
+    token=ledger.issue_source(slot,source,admission.raw_hash)
+    class Input:
+        buffer=io.BytesIO(token.encode())
+    monkeypatch.setattr(runtime.sys,'stdin',Input())
+    monkeypatch.setattr(runtime.os,'getppid',runtime.os.getpid)
+    request=get_adapter(source).collect(slot+'-'+source,datetime.now(timezone.utc).isoformat())
+    request.fixture_scenario=None
+    calls=[]
+    def collect(*args):
+        calls.append(1)
+        # The child itself must retain this lock during acquisition, separately
+        # from its parent's runtime lock; no network is used by this adapter.
+        with pytest.raises(OSError):
+            with exclusive_lock(root/'source.lock'):pytest.fail('child acquisition lock absent')
+        return request
+    monkeypatch.setattr('board_clank.collectors.get_adapter',lambda *a,**kw:SimpleNamespace(collect=collect))
+    monkeypatch.setattr(runtime,'guarded_http',lambda guard:nullcontext())
+    with ExitStack() as stack:
+        if case!='no-parent-lock':stack.enter_context(exclusive_lock(root/'runtime.lock'))
+        if case=='child-lock-held':stack.enter_context(exclusive_lock(root/'source.lock'))
+        if case=='accepted':runtime.child(root,admission,source,slot,directory)
+        else:
+            with pytest.raises((ValueError,OSError)):runtime.child(root,admission,source,slot,directory)
+    assert calls==([1] if case=='accepted' else [])
+    assert (directory/(source+'.request.json')).exists()==(case=='accepted')
+
+
+def test_cli_error_never_claims_no_acquisition_after_partial_cycle(approval_file,tmp_path,monkeypatch,capsys):
+    from board_clank import production_runtime as runtime
+    admission=load(approval_file);root=tmp_path/'runtime';initialize(root,admission)
+    def interrupted(*args,**kwargs):
+        Ledger(root/'operations.sqlite').claim_cycle('partial',admission.raw_hash)
+        raise ValueError('synthetic failure after a durable claim')
+    monkeypatch.setattr(runtime,'run_once',interrupted)
+    assert runtime.main(['--root',str(root),'--approval',str(approval_file),'once'])==2
+    assert json.loads(capsys.readouterr().err)['collection_or_delivery_claimed']=='UNKNOWN'
+
+
 @pytest.mark.parametrize('text,url,allowed',[
     ('User-agent: *\nDisallow: /*?*','https://example.test/shop?a=1',False),
     ('User-agent: *\nDisallow: /private\nAllow: /private/public','https://example.test/private/public/a',True),
