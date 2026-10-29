@@ -23,6 +23,7 @@ from board_clank.production_network import Guard, guarded_http
 from board_clank.production_policy import Admission, SOURCES, MOTHBALLED, code_digest, validate_state
 from board_clank.sources import sync_sources_to_store
 from board_clank.store import Store
+from board_clank.campaign_acceptance import identity_for_root, cycle_binding, native_facts, file_ref, captures
 
 
 def stamp():
@@ -59,6 +60,7 @@ def manifest():
 def initialize(root, admission):
     assert_running(root)
     admission.validate()
+    campaign=identity_for_root(root,admission)
     root.mkdir(parents=True, exist_ok=True)
     with exclusive_lock(root/'runtime.lock'):
         db = root/'board.sqlite'
@@ -71,7 +73,7 @@ def initialize(root, admission):
             sync_sources_to_store(store)
             from board_clank.production_policy import promote_registry
             promote_registry(store,admission)
-            immutable(root/'initialization-complete.json',{'at':stamp(),'approval':admission.raw_hash,'baseline':'pending eight silent source baselines'})
+            immutable(root/'initialization-complete.json',{'at':stamp(),'approval':admission.raw_hash,'baseline':'pending eight silent source baselines','campaign':campaign})
         finally:store.close()
 
 
@@ -136,6 +138,7 @@ def execute_child(root, admission, source, slot, directory):
 
 
 def run_once(root, admission, *, collect=execute_child, now=None):
+    native_execution=collect is execute_child and now is None
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:raise ValueError('UTC-aware cycle time required')
     slot=now.astimezone(timezone.utc).strftime('%Y%m%dT%H0000Z')
@@ -144,6 +147,11 @@ def run_once(root, admission, *, collect=execute_child, now=None):
     if not (root/'initialization-complete.json').exists():raise ValueError('production root not initialized')
     with exclusive_lock(root/'runtime.lock'):
         assert_running(root)
+        admission.validate()
+        campaign=cycle_binding(root,admission,slot,native_execution=native_execution)
+        initialized=json.loads((root/'initialization-complete.json').read_bytes())
+        if initialized.get('campaign') != identity_for_root(root,admission) or initialized['approval'] != admission.raw_hash:
+            raise ValueError('attempt/admission differs from initialized root')
         required=sum(b.max_total_response_bytes for b in admission.approval.source_budgets.values())+64_000_000
         if shutil.disk_usage(root).free<required:raise ValueError('insufficient free space for bounded retained source evidence')
         ledger=Ledger(root/'operations.sqlite')
@@ -152,7 +160,7 @@ def run_once(root, admission, *, collect=execute_child, now=None):
         directory=root/'runs'/slot
         directory.mkdir(parents=True,exist_ok=False)
         receipt={'slot':slot,'started_utc':stamp(),'revision':SOURCE_REVISION,'approval_sha256':admission.raw_hash,
-                 'sources':{},'delivery_invoked':False}
+                 'sources':{},'delivery_invoked':False,'campaign':campaign}
         store=None
         try:
             store=Store(root/'board.sqlite',migrate=False)
@@ -171,6 +179,13 @@ def run_once(root, admission, *, collect=execute_child, now=None):
                     result=pipeline.accept_run(request)
                     status='ACCEPTED' if result.status in {'accepted','replayed'} else 'FAILED'
                     receipt['sources'][source]={'status':status,'result':result.as_dict()}
+                    if result.status == 'accepted':
+                        request_path=directory/(source+'.accepted-request.json')
+                        immutable(request_path,request.model_dump(mode='json'))
+                        receipt['sources'][source].update(native=native_facts(store,request),
+                            request=file_ref(request_path,root))
+                        if native_execution:
+                            receipt['sources'][source]['captures']=captures(root,directory,source)
                     # New/changed uncertain evidence remains in canonical diagnostics,
                     # but prevents any delivery or further acceptance declaration.
                     admission.check_diagnostics(store)
@@ -204,14 +219,18 @@ def main(argv=None):
     p.add_argument('--root',type=Path,required=True)
     p.add_argument('--approval',type=Path,required=True)
     sub=p.add_subparsers(dest='action',required=True)
-    for action in ('check','init','once'):sub.add_parser(action)
+    for action in ('check','init','once','reconcile'):sub.add_parser(action)
     c=sub.add_parser('child');c.add_argument('--source',choices=SOURCES,required=True);c.add_argument('--slot',required=True)
     args=p.parse_args(argv)
     try:
         root=root_path(args.root)
         admission=Admission(args.approval,SOURCE_REVISION)
-        assert_running(root)
+        if args.action!='reconcile':
+            assert_running(root)
         if args.action=='check':result={'status':'CONFIG_VALID','manifest':manifest(),'collection_invoked':False}
+        elif args.action=='reconcile':
+            from board_clank.campaign_acceptance import reconcile
+            result=reconcile(root,admission)
         elif args.action=='init':initialize(root,admission);result={'status':'INITIALIZED','collection_invoked':False}
         elif args.action=='child':
             if not re.fullmatch(r'\d{8}T\d{2}0000Z',args.slot):raise ValueError('invalid child slot')

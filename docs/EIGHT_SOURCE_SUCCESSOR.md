@@ -62,6 +62,64 @@ Preserve zero results as actual zero only when source completeness supports it;
 otherwise unknown. A failed slot blocks acceptance; operator must disposition
 it and authorise any new window, never erase it or silently reset the clock.
 
+## Executable prospective acceptance seam (still not activated)
+
+`board-clank-hourly --root <owned-runtime> --approval <external-approval> reconcile`
+uses `campaign_acceptance.reconcile`, the same root lock, immutable `cycle.json`,
+operational ledger and read-only native SQL joins. It does not collect or install
+anything and may inspect stopped roots. `Approval.campaign` is an optional hashed
+`Evidence` reference; without it existing guarded runtime behavior remains usable,
+but acceptance reports NOT_ADMITTED, zero credit and UNKNOWN t0. It is not a new
+scheduler. Existing initialized roots without an attempt binding are not adoptable
+by editing a receipt; a separately authorized fresh root/attempt is required.
+
+The external JSON `Campaign` schema in `campaign_acceptance.py` is the executable
+contract: format1, exact profile/ordered eight-source roster/roster hash, a fresh
+canonical UUID attempt, candidate revision/code digest, absolute runtime root,
+admission UTC time, baseline hourly slot, mode OPERATIONAL or SYNTHETIC, and
+hashed scheduler/target `Evidence` references relative to the approval directory.
+The approval hash binds the entire effective configuration and this record;
+there is no self-referential approval hash inside its own dependency closure.
+Scheduler evidence binds scheduler_id, attempt_id, root, mode, cadence_seconds3600
+and external evidence_references. Target evidence binds attempt/root/mode,
+revision/code hash and external client/target evidence_references. These files
+are operator-provisioned authority under the existing Admission trust boundary:
+hashes authenticate retained bytes/joins, **not consent or NAS origin**. Real
+source permissions, intended client, target and scheduler attestation remain
+separate external qualifications; synthetic files establish none of them.
+
+A separately admitted external scheduler must retain an operator-controlled
+`<root>/scheduler/<YYYYMMDDTHH0000Z>.json` before invoking `once`: exact attempt,
+approval_sha256, scheduler_id, slot, unique dispatch_id, dispatched_at, mode and
+role (`baseline` for the pinned baseline slot, otherwise `scheduled`). Dispatch
+and actual start must be in the same hour, within five minutes, after admission.
+There is one baseline plus168 consecutive subsequent hourly slots; no catch-up,
+window replacement or historical attempt import. Runtime refuses injected
+transport/clock for OPERATIONAL mode and authenticates the dispatch again inside
+the root lock before the ledger claim/acquisition. No scheduler is supplied or
+enabled by this implementation. SYNTHETIC mode always has zero natural credit.
+
+Each accepted source retains the full accepted request hash and native run,
+semantic receipt, baseline, observation/occurrence/distinct-item/event/diagnostic
+counts. Native execution additionally retains verified HTTP manifest and original
+body hashes/lengths; reconciliation reopens the captures, source permits, ledger
+and native rows rather than trusting caller counts/flags. Empty source requests
+are conservatively ineligible: none of the eight current catalogue contracts
+qualifies a legitimate empty production baseline. Replay/manual/fixture/failed/
+origin-only evidence cannot supply a credited cycle. Terminal native timestamps
+have whole-second precision; reconciliation preserves this declared interval
+rather than manufacturing subsecond clocks. Accepted baselines must be silent.
+
+The bounded consumer authenticates at most169 cycles. It reports missing slots,
+consecutive valid UTC dates, collecting span and elapsed observer time separately.
+Full acceptance requires168 eligible postbaseline slots, at least seven
+consecutive valid dates and604800 elapsed seconds since actual baseline finish.
+An early last-slot finish can be reconciled later without another collection;
+waiting cannot repair a missing or failed slot. The pure `assess_window` kernel
+never awards natural credit; only the native-joined consumer can do so. Synthetic
+kernel populations are not DB runs and keep actual t0 UNKNOWN. No automatic
+promotion follows any acceptance result.
+
 ## Remaining admission gates, in order
 
 1. Parent verifies frozen candidate and performs fresh independent review.

@@ -122,11 +122,15 @@ class Approval(StrictModel):
     source_budgets: dict[str, SourceBudget]
     gates: dict[str, Evidence]
     dispositions: tuple[Disposition, ...] = ()
+    campaign: Evidence | None = None
 
     def validate_current(self, root: Path, revision: str, now: datetime | None = None):
         now = now or datetime.now(timezone.utc)
         if self.format != 1 or self.revision != revision or self.code_sha256 != code_digest():
             raise ValueError('candidate identity changed or unverified')
+        if self.campaign is not None:
+            from board_clank.campaign_acceptance import campaign_spec
+            campaign_spec(self, root)
         start, end = utc(self.approved_at), utc(self.expires_at)
         if not start <= now < end:
             raise ValueError('approval expired or future-dated')
