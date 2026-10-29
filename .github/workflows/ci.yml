@@ -28,11 +28,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install locked dependencies
+      - name: Install locked dependencies in isolated environment
+        shell: python
         run: |
-          python -m pip install -r requirements.lock -r requirements-dev.lock
-          python -m pip install --no-deps -e .
-          python -m pip check
+          import os, pathlib, subprocess, sys
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'board-locked-venv'
+          subprocess.run([sys.executable,'-m','venv',str(root)],check=True)
+          py=str(root/('Scripts/python.exe' if os.name=='nt' else 'bin/python'))
+          subprocess.run([py,'-m','pip','install','-r','requirements.lock','-r','requirements-dev.lock'],check=True)
+          subprocess.run([py,'-m','pip','install','--no-deps','-e','.'],check=True)
+          subprocess.run([py,'-m','pip','check'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              f.write('BOARD_CI_PYTHON='+py+'\n')
       - name: Exact portable selection, network denial and mothball fence
         shell: python
         env:
@@ -46,9 +53,10 @@ jobs:
           env=dict(os.environ)
           env['PYTHONPATH']=str(pathlib.Path('.github/qualification').resolve())
           wrong=dict(env);wrong['BOARD_CI_GUARD']='0'
-          denied=subprocess.run([sys.executable,'-B','-c',"import os; assert os.environ.get('BOARD_SEAM_GUARD_ENTERED')=='1'"],env=wrong,capture_output=True)
+          py=os.environ['BOARD_CI_PYTHON']
+          denied=subprocess.run([py,'-B','-c',"import os; assert os.environ.get('BOARD_SEAM_GUARD_ENTERED')=='1'"],env=wrong,capture_output=True)
           assert denied.returncode!=0, 'wrong guard unexpectedly entered'
-          subprocess.run([sys.executable,'-B','-m','pytest','-p','permitted_plugin','-p','no:cacheprovider','--tb=short','--junitxml=permitted.xml'],env=env,check=True)
+          subprocess.run([py,'-B','-m','pytest','-p','permitted_plugin','-p','no:cacheprovider','--tb=short','--junitxml=permitted.xml'],env=env,check=True)
       - uses: actions/upload-artifact@v4
         if: always()
         with:
