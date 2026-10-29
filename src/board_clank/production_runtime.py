@@ -45,7 +45,11 @@ def root_path(value):
 
 
 def manifest():
+    from board_clank.eight_source_campaign import load_manifest, roster_hash
+    campaign = load_manifest()
     return {'format':1,'component':'board-production-hourly','revision':SOURCE_REVISION,
+        'campaign_id':campaign['campaign_id'],'roster_sha256':roster_hash(list(SOURCES)),
+        'natural_credit':0,
         'code_sha256':code_digest(),'sources':list(SOURCES),'mothballed':[MOTHBALLED],
         'cadence_seconds':3600,'automatic_installation':False,'activation':'requires explicit hash-bound approval',
         'emergency_stops':['PAUSED','HUMAN_REQUIRED.json'],

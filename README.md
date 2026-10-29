@@ -16,6 +16,17 @@ Foundation 0 contracts plus Foundation 1's experimental Raspberry Pi PRODUCT ada
 - Default Discord delivery: disabled; explicit guarded production capability requires separate approval/configuration
 - Jetson / NVIDIA: out of scope pending a later decision
 
+## Eight-source successor (offline candidate, not activated)
+
+The explicit successor is `board-eight-production-v1`; see
+[contract and operational checklist](docs/EIGHT_SOURCE_SUCCESSOR.md).
+`board-clank-eight manifest` reports its disabled versioned scope.
+`board-clank-eight qualify-offline --root <fresh-owned-root>` exercises all eight
+shipped corpora, native baselines/replay/change and isolated backup/restore.
+It is fixture qualification, not a production baseline or natural soak credit.
+Hardkernel/ODROID remain mothballed; the failed nine-source campaign is immutable.
+No new scheduler, source request, notification or runtime activation is implied.
+
 ## Install
 
 Python 3.12+.
