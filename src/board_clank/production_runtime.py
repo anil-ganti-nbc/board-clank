@@ -6,7 +6,7 @@ All live acquisition happens in bounded owned subprocesses with source budgets.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import os
 import re
@@ -81,7 +81,12 @@ def initialize(root, admission):
 
 def child(root, admission, source, slot, directory):
     """Dedicated process: guard all urllib openers, including Forlinx workers."""
-    admission.authorize(source)
+    if admission.approval.initialization is not None:
+        admission.initialization_spec(root)
+        if source not in admission.sources:
+            admission.authorize(source)
+    else:
+        admission.authorize(source)
     assert_running(root)
     token=sys.stdin.buffer.read(129).decode('ascii')
     try:
@@ -92,17 +97,34 @@ def child(root, admission, source, slot, directory):
     else:
         raise ValueError('source child requires a parent holding the runtime lock')
     Ledger(root/'operations.sqlite').consume_source(slot,source,admission.raw_hash,token,os.getppid())
+    if admission.approval.initialization is not None:
+        with Ledger(root/'operations.sqlite').connect() as db:
+            active = db.execute('SELECT 1 FROM initialization_claims WHERE slot=? AND approval=? AND status=?',
+                                (slot, admission.raw_hash, 'RUNNING')).fetchone()
+        if active:
+            admission._initialization_context = (root, slot)
+            admission.stage_active()
+    admission.authorize(source)
     # Retained by the child if its parent exits, preventing overlap with a new
     # parent's acquisition while this bounded child finishes.
     with exclusive_lock(root/'source.lock'):
         collect_child(root,admission,source,slot,directory)
 
 
+def request_admission(root, admission, source):
+    assert_running(root)
+    admission.authorize(source)
+    with Store(root/'board.sqlite',migrate=False) as store:
+        validate_state(store,admission)
+
+
 def collect_child(root, admission, source, slot, directory):
+    request_admission(root, admission, source)
     with Store(root/'board.sqlite',migrate=False) as store:
         validate_state(store,admission)
     budget=admission.approval.source_budgets[source]
-    guard=Guard(source,budget,Ledger(root/'operations.sqlite'),root,capture_dir=directory/(source+'-http'))
+    guard=Guard(source,budget,Ledger(root/'operations.sqlite'),root,capture_dir=directory/(source+'-http'),
+                admission_check=lambda: request_admission(root, admission, source))
     from board_clank.collectors import get_adapter
     try:
         with guarded_http(guard):
@@ -139,30 +161,61 @@ def execute_child(root, admission, source, slot, directory):
     return CollectorRunRequest.model_validate_json(path.read_bytes())
 
 
-def run_once(root, admission, *, collect=execute_child, now=None):
+def run_stage(root, admission, *, collect=execute_child, now=None):
+    return run_once(root, admission, collect=collect, now=now, initialization_stage=True)
+
+
+def run_once(root, admission, *, collect=execute_child, now=None, initialization_stage=False):
     native_execution=collect is execute_child and now is None
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:raise ValueError('UTC-aware cycle time required')
     slot=now.astimezone(timezone.utc).strftime('%Y%m%dT%H0000Z')
     assert_running(root)
     admission.validate()
+    stage_spec = admission.initialization_spec(root) if initialization_stage else None
+    if not initialization_stage and admission.approval.initialization is not None:
+        from board_clank.campaign_acceptance import baseline_seal
+        baseline_seal(root, admission)
     if not (root/'initialization-complete.json').exists():raise ValueError('production root not initialized')
     with exclusive_lock(root/'runtime.lock'):
         assert_running(root)
         admission.validate()
-        campaign=cycle_binding(root,admission,slot,native_execution=native_execution)
+        if initialization_stage:
+            campaign=cycle_binding(root,admission,slot,native_execution=native_execution,stage=True)
+        else:
+            if getattr(admission, '_initialization_context', None) is not None:
+                raise ValueError('ordinary once cannot use staging context')
+            campaign=cycle_binding(root,admission,slot,native_execution=native_execution)
+            if admission.approval.initialization is not None:
+                from board_clank.campaign_acceptance import baseline_seal
+                from board_clank.production_policy import utc
+                seal = baseline_seal(root, admission)
+                due = utc(seal['sealed_utc'])+timedelta(hours=campaign['sequence'])
+                if not due <= now < due+timedelta(hours=1):
+                    raise ValueError('hourly work not yet due or stale; no catchup')
         initialized=json.loads((root/'initialization-complete.json').read_bytes())
         if initialized.get('campaign') != identity_for_root(root,admission) or initialized['approval'] != admission.raw_hash:
             raise ValueError('attempt/admission differs from initialized root')
         required=sum(b.max_total_response_bytes for b in admission.approval.source_budgets.values())+64_000_000
         if shutil.disk_usage(root).free<required:raise ValueError('insufficient free space for bounded retained source evidence')
         ledger=Ledger(root/'operations.sqlite')
-        if not ledger.claim_cycle(slot,admission.raw_hash):
+        if initialization_stage:
+            ledger.claim_initialization(slot, admission, root)
+            admission._initialization_context = (root, slot)
+            admission.stage_active()
+        elif not (ledger.claim_scheduled(slot, admission, root) if admission.approval.initialization is not None
+                  else ledger.claim_cycle(slot,admission.raw_hash)):
             return {'status':'ALREADY_CLAIMED','slot':slot,'collection_invoked':False}
         directory=root/'runs'/slot
         directory.mkdir(parents=True,exist_ok=False)
         receipt={'slot':slot,'started_utc':stamp(),'revision':SOURCE_REVISION,'approval_sha256':admission.raw_hash,
                  'sources':{},'delivery_invoked':False,'campaign':campaign}
+        if initialization_stage:
+            from board_clank.campaign_acceptance import predecessor_custody
+            receipt.update(phase='INITIALIZATION_ACQUISITION', t0=None, natural_credit=0,
+                           stage_authority=admission.approval.initialization.model_dump(),
+                           recovery_sha256=stage_spec.recovery_sha256,
+                           predecessor_custody=predecessor_custody(root, stage_spec))
         store=None
         try:
             store=Store(root/'board.sqlite',migrate=False)
@@ -199,6 +252,10 @@ def run_once(root, admission, *, collect=execute_child, now=None):
                     db.execute('INSERT INTO source_runs VALUES(?,?,?,?)',
                         (slot,source,receipt['sources'][source]['status'],str(directory)))
             receipt['status']='COMPLETE' if all(r['status']=='ACCEPTED' for r in receipt['sources'].values()) else 'DEGRADED'
+            if initialization_stage:
+                from board_clank.campaign_acceptance import store_fingerprint, condition_facts
+                receipt['status'] = 'STAGED_PENDING_REVIEW' if receipt['status']=='COMPLETE' else 'STAGE_FAILED'
+                receipt.update(store_sha256=store_fingerprint(store), conditions=condition_facts(store))
             receipt['integrity']=store.one('PRAGMA integrity_check')[0]
             receipt['foreign_key_errors']=len(store.all('PRAGMA foreign_key_check'))
             if receipt['integrity']!='ok' or receipt['foreign_key_errors']:
@@ -213,6 +270,9 @@ def run_once(root, admission, *, collect=execute_child, now=None):
             receipt['finished_utc']=stamp()
             immutable(directory/'cycle.json',receipt)
             ledger.finish_cycle(slot,receipt.get('status','INTERRUPTED'))
+            if initialization_stage:
+                ledger.finish_initialization(stage_spec.attempt_id, receipt.get('status','INTERRUPTED'))
+                del admission._initialization_context
         return receipt
 
 
@@ -221,7 +281,8 @@ def main(argv=None):
     p.add_argument('--root',type=Path,required=True)
     p.add_argument('--approval',type=Path,required=True)
     sub=p.add_subparsers(dest='action',required=True)
-    for action in ('check','init','once','reconcile'):sub.add_parser(action)
+    for action in ('check','init','once','stage','reconcile'):sub.add_parser(action)
+    f=sub.add_parser('finalize'); f.add_argument('--review', type=Path, required=True)
     c=sub.add_parser('child');c.add_argument('--source',choices=SOURCES,required=True);c.add_argument('--slot',required=True)
     args=p.parse_args(argv)
     try:
@@ -234,13 +295,17 @@ def main(argv=None):
             from board_clank.campaign_acceptance import reconcile
             result=reconcile(root,admission)
         elif args.action=='init':initialize(root,admission);result={'status':'INITIALIZED','collection_invoked':False}
+        elif args.action=='stage':result=run_stage(root, admission)
+        elif args.action=='finalize':
+            from board_clank.campaign_acceptance import finalize_initialization
+            result=finalize_initialization(root, admission, args.review)
         elif args.action=='child':
             if not re.fullmatch(r'\d{8}T\d{2}0000Z',args.slot):raise ValueError('invalid child slot')
             directory=root/'runs'/args.slot
             if not directory.is_dir():raise ValueError('child directory absent')
             child(root,admission,args.source,args.slot,directory);result={'status':'CHILD_COMPLETE'}
         else:result=run_once(root,admission)
-        print(json.dumps(result,sort_keys=True));return 0 if result.get('status')!='DEGRADED' else 1
+        print(json.dumps(result,sort_keys=True));return 0 if result.get('status') not in {'DEGRADED','STAGE_FAILED'} else 1
     except Exception as exc:
         print(json.dumps({'status':'REFUSED','error_type':type(exc).__name__,'collection_or_delivery_claimed':'UNKNOWN',
                           'evidence':'inspect retained cycle and source receipts; failure can follow acquisition'}),file=sys.stderr)

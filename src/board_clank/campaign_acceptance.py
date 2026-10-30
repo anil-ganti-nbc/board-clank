@@ -83,7 +83,7 @@ def read_json(ref, root):
     return json.loads(Evidence.model_validate(ref).read(Path(root)))
 
 
-def cycle_binding(root, admission, slot, *, native_execution):
+def cycle_binding(root, admission, slot, *, native_execution, stage=False):
     value = identity(admission)
     spec = campaign_spec(admission.approval, admission.path.parent)
     value.update(mode="UNADMITTED", role="manual", dispatch=None)
@@ -91,6 +91,33 @@ def cycle_binding(root, admission, slot, *, native_execution):
         return value
     if Path(root).resolve() != Path(spec.root).resolve():
         raise ValueError("attempt is bound to a different runtime root")
+    if admission.approval.initialization is not None and not stage:
+        seal = baseline_seal(root, admission)
+        ref = file_ref(Path(root)/'scheduler'/(slot+'.json'), root)
+        dispatch = read_json(ref, root)
+        sequence = dispatch.get('sequence')
+        if type(sequence) is not int or not 1 <= sequence <= 168:
+            raise ValueError('finite future hourly sequence required')
+        due = utc(seal['sealed_utc'])+timedelta(hours=sequence)
+        issued = utc(dispatch['dispatched_at'])
+        scheduler = read_json(spec.scheduler.model_dump(), admission.path.parent)
+        if (slot != due.strftime('%Y%m%dT%H0000Z')
+                or dispatch.get('baseline_seal_sha256') != digest((Path(root)/'baseline-seal.json').read_bytes())
+                or dispatch.get('attempt_id') != spec.attempt_id
+                or dispatch.get('approval_sha256') != admission.raw_hash
+                or dispatch.get('scheduler_id') != scheduler['scheduler_id']
+                or dispatch.get('slot') != slot or dispatch.get('role') != 'scheduled'
+                or dispatch.get('mode') != spec.mode or not dispatch.get('dispatch_id')
+                or not due <= issued < due+timedelta(hours=1)
+                or issued > utc(admission.approval.expires_at)
+                or (spec.mode=='OPERATIONAL' and (not native_execution or issued > datetime.now(timezone.utc)))):
+            raise ValueError('future dispatch does not bind sealed baseline/due/lease')
+        value.update(attempt_id=spec.attempt_id, campaign_sha256=admission.approval.campaign.sha256,
+                     mode=spec.mode, role='scheduled', dispatch=ref, sequence=sequence,
+                     natural_eligible=spec.mode=='OPERATIONAL' and native_execution)
+        return value
+    if stage and (slot != spec.baseline_slot or admission.approval.initialization is None):
+        raise ValueError('stage requires exact admitted baseline slot')
     if (
         not slot_time(spec.baseline_slot)
         <= slot_time(slot)
@@ -275,7 +302,9 @@ def reconcile(root, admission):
             ):
                 raise ValueError("native integrity failure")
             cycles = ops.execute("SELECT * FROM cycles ORDER BY slot").fetchall()
-            if len(cycles) > 169:
+            initialization = admission.approval.initialization is not None
+            seal = baseline_seal(root, admission) if initialization else None
+            if len(cycles) > (170 if initialization else 169):
                 raise ValueError("bounded campaign exceeds baseline plus 168 slots")
             paths = list((root / "runs").glob("*/cycle.json"))
             if {p.parent.name for p in paths} != {c["slot"] for c in cycles}:
@@ -284,6 +313,8 @@ def reconcile(root, admission):
             dispatch_ids = set()
             for cycle in cycles:
                 slot = cycle["slot"]
+                if initialization and (cycle['approval'] != admission.raw_hash or slot == spec.baseline_slot):
+                    continue  # Retained predecessor failure/stage are not natural slots.
                 directory = root / "runs" / slot
                 path = directory / "cycle.json"
                 row = read_json(file_ref(path, root), root)
@@ -353,12 +384,12 @@ def reconcile(root, admission):
                     ):
                         raise ValueError("source native/result/clock mismatch")
                     baseline_id = spec.baseline_slot + "-" + source
-                    if native["baseline_run_id"] != baseline_id:
+                    if not initialization and native["baseline_run_id"] != baseline_id:
                         raise ValueError("baseline belongs to another attempt/window")
                     baseline = db.execute(
                         "SELECT * FROM source_baselines WHERE source_key=?", (source,)
                     ).fetchone()
-                    if slot == spec.baseline_slot and (
+                    if not initialization and slot == spec.baseline_slot and (
                         baseline["observation_count"] != native["observations"]
                         or db.execute(
                             "SELECT 1 FROM events WHERE run_id=? AND baseline_silent=0",
@@ -384,8 +415,11 @@ def reconcile(root, admission):
                 if spec.mode == "SYNTHETIC"
                 else datetime.now(timezone.utc)
             )
-            report = assess_window(spec, rows, observed_at=observed_at)
-            if spec.mode == "OPERATIONAL" and rows:
+            report = assess_initialized_window(seal, rows, observed_at=observed_at) if initialization else assess_window(spec, rows, observed_at=observed_at)
+            if initialization and spec.mode == 'OPERATIONAL':
+                report.update(t0=seal['sealed_utc'], natural_credit=report['eligible_slots'],
+                              status='ACCEPTANCE_WINDOW_COMPLETE' if report['window_complete'] else 'PENDING')
+            if not initialization and spec.mode == "OPERATIONAL" and rows:
                 baseline = next((r for r in rows if r["slot"] == spec.baseline_slot), None)
                 if baseline is not None:
                     report.update(
@@ -417,6 +451,276 @@ def identity_for_root(root, admission):
             mode=spec.mode,
         )
     return result
+
+
+class InitializationReview(StrictModel):
+    format: StrictInt = Field(ge=1, le=1)
+    reviewed_by: str = Field(min_length=1)
+    decision_id: str = Field(min_length=1)
+    approval_sha256: str
+    attempt_id: str
+    stage: Evidence
+    store_sha256: str
+    conditions: list[dict]
+    dispositions: list[dict]
+
+
+def authenticate_stage(root, admission, store, *, require_current_image):
+    """Rejoin complete seven native runs and immutable captures to one claim."""
+    from board_clank.production_ledger import Ledger
+    from board_clank.production_policy import validate_registry
+    spec = admission.initialization_spec(root)
+    campaign = campaign_spec(admission.approval, admission.path.parent)
+    initialized = json.loads((root/'initialization-complete.json').read_bytes())
+    if (initialized.get('approval') != admission.raw_hash
+            or initialized.get('campaign') != identity_for_root(root, admission)
+            or not admission.recovery_matches(root, spec)):
+        raise ValueError('stage attempt/custody differs from initialized successor')
+    validate_registry(store, admission.sources)
+    if store.one('PRAGMA integrity_check')[0] != 'ok' or store.all('PRAGMA foreign_key_check'):
+        raise ValueError('stage native integrity failure')
+    with Ledger(root/'operations.sqlite').connect() as db:
+        claim = db.execute('SELECT * FROM initialization_claims WHERE attempt=?', (spec.attempt_id,)).fetchone()
+        if (not claim or claim['approval'] != admission.raw_hash
+                or claim['slot'] != campaign.baseline_slot
+                or claim['status'] not in {'STAGED_PENDING_REVIEW', 'FINALIZED'}):
+            raise ValueError('complete one-use initialization claim absent')
+        slot = claim['slot']
+        cycle = db.execute('SELECT * FROM cycles WHERE slot=?', (slot,)).fetchone()
+        if not cycle or cycle['approval'] != admission.raw_hash or cycle['status'] != 'STAGED_PENDING_REVIEW':
+            raise ValueError('stage cycle not complete pending review')
+        if db.execute('SELECT COUNT(*) FROM cycles').fetchone()[0] > spec.aggregate_reservations:
+            raise ValueError('aggregate prospective reservation exhausted')
+        old = db.execute('SELECT status FROM cycles WHERE slot=?', (spec.predecessor_slot,)).fetchone()
+        if not old or old[0] != 'HUMAN_REQUIRED' or db.execute('SELECT COUNT(*) FROM requests').fetchone()[0] < spec.charged_requests:
+            raise ValueError('predecessor consumption/history lost')
+        directory = root/'runs'/slot
+        ref = file_ref(directory/'cycle.json', root)
+        stage = read_json(ref, root)
+        if predecessor_custody(root, spec, stage['predecessor_custody']) != stage['predecessor_custody']:
+            raise ValueError('predecessor history/charges/custody changed')
+        start, finish = utc(stage['started_utc']), utc(stage['finished_utc'])
+        if (not slot_time(slot) <= start < slot_time(slot)+timedelta(hours=1)
+                or not utc(campaign.admitted_at) <= start <= finish
+                or (finish-start).total_seconds() > 3600
+                or abs(cycle['started']-start.timestamp()) > 5
+                or cycle['finished'] is None or abs(cycle['finished']-finish.timestamp()) > 5):
+            raise ValueError('stage clocks do not match actual finite acquisition')
+        if (stage.get('status') != 'STAGED_PENDING_REVIEW' or stage.get('slot') != slot
+                or stage.get('approval_sha256') != admission.raw_hash or stage.get('revision') != spec.revision
+                or stage.get('stage_authority') != admission.approval.initialization.model_dump()
+                or stage.get('recovery_sha256') != spec.recovery_sha256
+                or stage.get('phase') != 'INITIALIZATION_ACQUISITION'
+                or stage.get('t0') is not None or stage.get('natural_credit') != 0
+                or stage.get('delivery_invoked') is not False
+                or stage.get('integrity') != 'ok' or stage.get('foreign_key_errors') != 0
+                or set(stage.get('sources', {})) != set(admission.sources)
+                or stage.get('campaign') != cycle_binding(root, admission, slot,
+                    native_execution=campaign.mode=='OPERATIONAL', stage=True)):
+            raise ValueError('stage receipt scope/identity/status mismatch')
+        if require_current_image and (stage.get('store_sha256') != store_fingerprint(store)
+                                      or stage.get('conditions') != condition_facts(store)):
+            raise ValueError('current Store/condition state changed after stage')
+        if require_current_image:
+            expected_history = {p.relative_to(root).as_posix()
+                                for folder in (root/'runs'/spec.predecessor_slot, root/'cycle-reservations', root/'predecessor')
+                                for p in folder.rglob('*') if p.is_file()}
+            old_dispatch = root/'scheduler'/(spec.predecessor_slot+'.json')
+            if old_dispatch.exists(): expected_history.add(old_dispatch.relative_to(root).as_posix())
+            expected_history.add('state-preserving-recovery.json')
+            if {r['path'] for r in stage['predecessor_custody']['history']} != expected_history:
+                raise ValueError('predecessor custody membership changed')
+        sources = db.execute('SELECT * FROM source_runs WHERE slot=?', (slot,)).fetchall()
+        if {r['source'] for r in sources if r['status']=='ACCEPTED'
+                and Path(r['receipt']).resolve()==directory.resolve()} != set(admission.sources):
+            raise ValueError('stage source ledger partial or foreign')
+        for source, result in stage['sources'].items():
+            request = CollectorRunRequest.model_validate(read_json(result['request'], root))
+            native = native_facts(store, request)
+            if (request.run_id != slot+'-'+source or request.source_key != source
+                    or request.collector_key != source or not request.ok
+                    or request.fixture_scenario is not None or not request.observations
+                    or result.get('status') != 'ACCEPTED' or result.get('native') != native
+                    or result.get('result', {}).get('status') != 'accepted'
+                    or result['result'].get('replayed') is not False
+                    or result['result'].get('run_id') != request.run_id
+                    or result['result'].get('observations') != native['observations']
+                    or len(result['result']['events']) != native['events']
+                    or not start <= utc(native['started_at']) <= finish
+                    or not start.replace(microsecond=0) <= utc(native['finished_at']) <= finish
+                    or store.one('SELECT 1 FROM events WHERE run_id=? AND baseline_silent=0', (request.run_id,))):
+                raise ValueError('stage native receipt/result/identity mismatch')
+            if campaign.mode == 'OPERATIONAL':
+                if result.get('captures') != captures(root, directory, source):
+                    raise ValueError('stage native capture mismatch')
+                permit = db.execute('SELECT * FROM source_permits WHERE slot=? AND source=?', (slot, source)).fetchone()
+                if not permit or permit['approval'] != admission.raw_hash or permit['consumed'] != 1:
+                    raise ValueError('stage native permit absent')
+    return spec, stage, ref
+
+
+def reviewed_conditions(root, admission, review, stage):
+    from board_clank.production_policy import Disposition
+    spec = admission.initialization_spec(root)
+    if (review.reviewed_by not in spec.reviewers or review.approval_sha256 != admission.raw_hash
+            or review.attempt_id != spec.attempt_id or review.store_sha256 != stage['store_sha256']
+            or review.conditions != stage['conditions']):
+        raise ValueError('exact evidence-bound initialization review required')
+    decisions = [Disposition.model_validate(d) for d in review.dispositions]
+    current = {c['condition_key']: c for c in stage['conditions'] if c['status']=='OPEN'}
+    if len(decisions) != len(current) or {d.condition_key for d in decisions} != set(current):
+        raise ValueError('all and only OPEN conditions need precise dispositions')
+    for d in decisions:
+        c = current[d.condition_key]
+        d.evidence.read(root)
+        if (d.reviewed_by != review.reviewed_by or d.source_key != c['source_key']
+                or d.state_hash != c['state_hash'] or d.payload_sha256 != c['payload_sha256']
+                or d.decision not in {'accepted_uncertainty', 'excluded_coverage'}):
+            raise ValueError('changed/foreign/unapproved diagnostic disposition')
+    return decisions
+
+
+def baseline_seal(root, admission):
+    """Read and reauthenticate a seal; never fetch, reserve or create t0."""
+    from board_clank.production_ledger import Ledger
+    root = Path(root)
+    spec = admission.initialization_spec(root)
+    seal_path = root/'baseline-seal.json'
+    if not seal_path.is_file():
+        raise ValueError('baseline not finalized; ordinary acquisition refused')
+    seal = read_json(file_ref(seal_path, root), root)
+    with Ledger(root/'operations.sqlite').connect() as db:
+        claim = db.execute('SELECT * FROM initialization_claims WHERE attempt=?', (spec.attempt_id,)).fetchone()
+        saved = db.execute('SELECT sha256 FROM initialization_seals WHERE attempt=?', (spec.attempt_id,)).fetchone()
+        if (not claim or claim['status'] != 'FINALIZED' or not saved
+                or saved[0] != digest(seal_path.read_bytes())):
+            raise ValueError('baseline seal lacks matching durable finalization')
+    from board_clank.store import Store
+    with Store(root/'board.sqlite', migrate=False) as store:
+        _, stage, ref = authenticate_stage(root, admission, store, require_current_image=False)
+    review = InitializationReview.model_validate(read_json(seal['review'], root))
+    reviewed_conditions(root, admission, review, stage)
+    campaign = campaign_spec(admission.approval, admission.path.parent)
+    origin = utc(seal['sealed_utc'])
+    if (seal.get('status') != 'BASELINE_FINALIZED' or seal.get('approval_sha256') != admission.raw_hash
+            or seal.get('attempt_id') != spec.attempt_id or seal.get('stage') != ref
+            or review.stage.model_dump() != ref or seal.get('mode') != campaign.mode
+            or seal.get('t0') != (seal['sealed_utc'] if campaign.mode=='OPERATIONAL' else None)
+            or seal.get('natural_credit') != 0 or seal.get('collection_invoked') is not False
+            or utc(seal['first_due_utc']) != origin+timedelta(hours=1)
+            or utc(seal['last_due_utc']) != origin+timedelta(hours=168)
+            or origin+timedelta(seconds=604800) > utc(spec.expires_at)):
+        raise ValueError('baseline seal identity/clock/lease mismatch')
+    return seal
+
+
+def finalize_initialization(root, admission, review_path):
+    """Zero acquisition; only a successful immutable seal establishes current t0."""
+    from board_clank.production_ledger import Ledger, exclusive_lock, assert_running
+    from board_clank.production_runtime import immutable
+    from board_clank.store import Store
+    root = Path(root)
+    assert_running(root)
+    with exclusive_lock(root/'runtime.lock'):
+        assert_running(root)
+        if (root/'baseline-seal.json').exists():
+            raise ValueError('baseline already sealed; no second baseline reservation')
+        with Store(root/'board.sqlite', migrate=False) as store:
+            spec, stage, ref = authenticate_stage(root, admission, store, require_current_image=True)
+            review_ref = file_ref(Path(review_path), root)
+            review = InitializationReview.model_validate(read_json(review_ref, root))
+            if review.stage.model_dump() != ref:
+                raise ValueError('review bound to another stage')
+            reviewed_conditions(root, admission, review, stage)
+            now = datetime.now(timezone.utc)
+            if now+timedelta(seconds=604800) > utc(spec.expires_at):
+                raise ValueError('remaining real lease cannot fit full 604800 seconds')
+            if utc(stage['finished_utc']) > now:
+                raise ValueError('stage clock is in the future')
+            campaign = campaign_spec(admission.approval, admission.path.parent)
+            seal = dict(format=1, status='BASELINE_FINALIZED', attempt_id=spec.attempt_id,
+                approval_sha256=admission.raw_hash, stage=ref, review=review_ref, mode=campaign.mode,
+                sealed_utc=now.isoformat(), t0=now.isoformat() if campaign.mode=='OPERATIONAL' else None,
+                natural_credit=0, collection_invoked=False,
+                first_due_utc=(now+timedelta(hours=1)).isoformat(),
+                last_due_utc=(now+timedelta(hours=168)).isoformat(), expires_at=spec.expires_at)
+            immutable(root/'baseline-seal.json', seal)
+            ledger = Ledger(root/'operations.sqlite')
+            with ledger.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                db.execute('INSERT INTO initialization_seals VALUES(?,?)',
+                           (spec.attempt_id, digest((root/'baseline-seal.json').read_bytes())))
+                db.execute("UPDATE initialization_claims SET status='FINALIZED' WHERE attempt=?", (spec.attempt_id,))
+        baseline_seal(root, admission)
+        return seal
+
+
+def assess_initialized_window(seal, rows, *, observed_at):
+    """Pure eligibility kernel; only authenticated reconcile awards natural credit."""
+    origin = utc(seal['sealed_utc'])
+    sequences = set()
+    for row in rows:
+        sequence = row['campaign']['sequence']
+        due = origin+timedelta(hours=sequence)
+        if (sequence in sequences or not 1 <= sequence <= 168 or row['status']!='COMPLETE'
+                or not due <= utc(row['started_utc']) < due+timedelta(hours=1)):
+            raise ValueError('duplicate/non-natural post-finalization hourly cycle')
+        sequences.add(sequence)
+    elapsed = (observed_at-origin).total_seconds()
+    operational = seal['mode']=='OPERATIONAL'
+    complete = len(sequences)==168 and elapsed>=604800
+    return dict(status='PENDING' if operational else 'SYNTHETIC_PENDING',
+                t0=None,
+                synthetic_t0=seal['sealed_utc'] if not operational else None,
+                natural_credit=0,
+                synthetic_slots=len(sequences) if not operational else 0, eligible_slots=len(sequences),
+                missing_sequences=sorted(set(range(1,169))-sequences),
+                elapsed_seconds=elapsed, observed_at=observed_at.isoformat(), window_complete=complete)
+
+
+def store_fingerprint(store):
+    """Logical SQLite image, including retained history; no WAL/file-copy race."""
+    values = []
+    for row in store.all("SELECT name,sql FROM sqlite_master WHERE type='table' ORDER BY name"):
+        name = row['name']
+        quoted = '"'+name.replace('"', '""')+'"'
+        rows = sorted(json.dumps(dict(r), sort_keys=True, separators=(',', ':'))
+                      for r in store.all('SELECT * FROM '+quoted))
+        values.append((name, row['sql'], rows))
+    return digest(json.dumps(values, separators=(',', ':')).encode())
+
+
+def condition_facts(store):
+    return [dict(condition_key=r['condition_key'], source_key=r['source_key'], status=r['status'],
+                 state_hash=r['state_hash'], payload_sha256=digest(r['payload_json'].encode()),
+                 row_sha256=digest(json.dumps(dict(r), sort_keys=True, separators=(',', ':')).encode()))
+            for r in store.all('SELECT * FROM diagnostic_conditions ORDER BY condition_key')]
+
+
+def predecessor_custody(root, spec, reference=None):
+    """Bind retained charges/failed-slot/unknown-reservation files, without refunds."""
+    root = Path(root)
+    with closing(sqlite3.connect((root/'operations.sqlite').as_uri()+'?mode=ro', uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        cutoff = reference['request_max_rowid'] if reference is not None else db.execute('SELECT MAX(rowid) FROM requests').fetchone()[0]
+        requests = [dict(r) for r in db.execute('SELECT rowid,* FROM requests WHERE rowid<=? ORDER BY rowid', (cutoff,))]
+        old = {table: [dict(r) for r in db.execute('SELECT * FROM '+table+' WHERE slot=? ORDER BY rowid', (spec.predecessor_slot,))]
+               for table in ('cycles', 'source_runs', 'source_permits')}
+    if len(requests) != spec.charged_requests:
+        raise ValueError('predecessor charged request population changed')
+    if reference is None:
+        files = [p for folder in (root/'runs'/spec.predecessor_slot, root/'cycle-reservations', root/'predecessor')
+                 for p in folder.rglob('*') if p.is_file()]
+        dispatch = root/'scheduler'/(spec.predecessor_slot+'.json')
+        if dispatch.exists(): files.append(dispatch)
+        files.append(root/'state-preserving-recovery.json')
+        refs = [file_ref(p, root) for p in sorted(set(files))]
+    else:
+        refs = reference['history']
+        for ref in refs:
+            Evidence.model_validate(ref).read(root)
+    return dict(request_max_rowid=cutoff, requests_sha256=digest(json.dumps(requests, sort_keys=True).encode()),
+                operational_sha256=digest(json.dumps(old, sort_keys=True).encode()), history=refs)
 
 
 def assess_window(spec, rows, *, observed_at=None):

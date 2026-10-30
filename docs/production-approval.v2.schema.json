@@ -235,6 +235,13 @@
       "title": "Dispositions",
       "type": "array"
     },
+    "initialization": {
+      "anyOf": [
+        {"$ref": "#/$defs/Evidence"},
+        {"type": "null"}
+      ],
+      "default": null
+    },
     "campaign": {
       "anyOf": [
         {

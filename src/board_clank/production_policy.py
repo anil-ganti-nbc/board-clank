@@ -109,6 +109,31 @@ class Disposition(StrictModel):
     evidence: Evidence
 
 
+class Initialization(StrictModel):
+    """Separate one-use authority; never inferred from a caller's mode flag."""
+    format: StrictInt = Field(ge=1, le=1)
+    enabled: StrictBool
+    phase: str
+    attempt_id: str
+    root: str
+    revision: str
+    code_sha256: str
+    image_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    profile_id: ProfileId
+    sources: list[str]
+    expires_at: str
+    aggregate_reservations: StrictInt
+    predecessor_consumed: StrictInt
+    baseline_reservations: StrictInt
+    future_slots: StrictInt
+    predecessor_slot: str
+    charged_requests: StrictInt
+    reviewers: tuple[str, ...]
+    approved_by: str = Field(min_length=1)
+    decision_id: str = Field(min_length=1)
+    recovery_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
 class Approval(StrictModel):
     format: StrictInt = 1
     profile_id: ProfileId = EIGHT_PROFILE
@@ -122,6 +147,7 @@ class Approval(StrictModel):
     gates: dict[str, Evidence]
     dispositions: tuple[Disposition, ...] = ()
     campaign: Evidence | None = None
+    initialization: Evidence | None = None
 
     @property
     def sources(self):
@@ -221,10 +247,98 @@ class Admission:
         self.validate()
         if source not in self.sources:
             raise ValueError('source not approved; ODROID remains mothballed')
+        if self.approval.initialization is not None:
+            if not self.stage_active():
+                from board_clank.campaign_acceptance import baseline_seal, campaign_spec
+                campaign = campaign_spec(self.approval, self.path.parent)
+                baseline_seal(Path(campaign.root), self)
+
+    def initialization_spec(self, root):
+        self.validate()
+        if self.approval.initialization is None:
+            raise ValueError('separate initialization authority required')
+        spec = Initialization.model_validate_json(self.approval.initialization.read(self.path.parent))
+        from board_clank.campaign_acceptance import campaign_spec
+        campaign = campaign_spec(self.approval, self.path.parent)
+        target = json.loads(campaign.target.read(self.path.parent)) if campaign else {}
+        if (not spec.enabled or spec.phase != 'INITIALIZATION_ACQUISITION' or not campaign
+                or spec.profile_id != 'board-seven-production-v1'
+                or spec.profile_id != self.approval.profile_id or spec.sources != list(self.sources)
+                or spec.attempt_id != campaign.attempt_id or spec.root != campaign.root
+                or Path(spec.root).resolve() != Path(root).resolve()
+                or spec.revision != self.revision or spec.code_sha256 != self.approval.code_sha256
+                or spec.image_sha256 != target.get('image_sha256')
+                or spec.expires_at != self.approval.expires_at or not spec.reviewers
+                or (spec.aggregate_reservations, spec.predecessor_consumed,
+                    spec.baseline_reservations, spec.future_slots, spec.charged_requests) != (170, 1, 1, 168, 92)):
+            raise ValueError('initialization phase/identity/finite reservation authority mismatch')
+        return spec
+
+    def stage_active(self):
+        """Reauthenticate the durable one-use claim, not an in-memory boolean."""
+        context = getattr(self, '_initialization_context', None)
+        if context is None:
+            return False
+        root, slot = context
+        spec = self.initialization_spec(root)
+        from board_clank.production_ledger import Ledger, assert_running
+        assert_running(root)
+        from board_clank.campaign_acceptance import identity_for_root
+        initialized = json.loads((root/'initialization-complete.json').read_bytes())
+        if (initialized.get('approval') != self.raw_hash
+                or initialized.get('campaign') != identity_for_root(root, self)
+                or not self.recovery_matches(root, spec)
+                or (root/'baseline-seal.json').exists()):
+            raise ValueError('initialization custody/phase changed')
+        with Ledger(root/'operations.sqlite').connect() as db:
+            row = db.execute('SELECT * FROM initialization_claims WHERE attempt=?', (spec.attempt_id,)).fetchone()
+            cycle = db.execute('SELECT * FROM cycles WHERE slot=?', (slot,)).fetchone()
+            if (not row or row['approval'] != self.raw_hash or row['slot'] != slot
+                    or row['status'] != 'RUNNING' or not cycle or cycle['status'] != 'RUNNING'
+                    or cycle['approval'] != self.raw_hash
+                    or db.execute('SELECT COUNT(*) FROM cycles').fetchone()[0] > spec.aggregate_reservations):
+                raise ValueError('active one-use stage claim required')
+        return True
+
+    def recovery_matches(self, root, spec):
+        recovery = json.loads((Path(root)/'state-preserving-recovery.json').read_bytes())
+        return (recovery.get('input_manifest_sha256') == spec.recovery_sha256
+                and recovery.get('approval_sha256') == self.raw_hash
+                and recovery.get('status') == 'PREPARED_PAUSED'
+                and recovery.get('requests_retained') == spec.charged_requests
+                and recovery.get('quota_refund') == 0
+                and recovery.get('old_failed_slot_preserved') is True
+                and recovery.get('collection_invoked') is False
+                and recovery.get('t0') is None)
 
     def check_diagnostics(self, store):
         self.validate()
-        reviewed = {d.condition_key: d for d in self.approval.dispositions}
+        if self.stage_active():
+            # Only the native uncertainty types may remain pending review.
+            rows = store.all('SELECT * FROM diagnostic_conditions')
+            from board_clank.models import content_hash
+            for r in rows:
+                payload = json.loads(r['payload_json'])
+                key = content_hash({k: r[k] for k in ('source_key', 'plane', 'entity_key', 'diagnostic_type')})
+                if (r['source_key'] not in self.sources or r['status'] not in {'OPEN', 'RESOLVED'}
+                        or r['plane'] != 'PRODUCT'
+                        or r['diagnostic_type'] not in {'IDENTITY_ANOMALY', 'NOVELTY_UNRESOLVED'}
+                        or not isinstance(payload, dict) or payload.get('entity_key') != r['entity_key']
+                        or payload.get('diagnostic_type') != r['diagnostic_type']
+                        or not isinstance(payload.get('pages'), list) or not payload['pages']
+                        or key != r['condition_key'] or content_hash(payload) != r['state_hash']):
+                    raise ValueError('corrupt initialization diagnostic fact')
+            return
+        decisions = self.approval.dispositions
+        if self.approval.initialization is not None:
+            from board_clank.campaign_acceptance import baseline_seal, campaign_spec, read_json, InitializationReview
+            campaign = campaign_spec(self.approval, self.path.parent)
+            root = Path(campaign.root)
+            if (root/'baseline-seal.json').exists():
+                seal = baseline_seal(root, self)
+                review = InitializationReview.model_validate(read_json(seal['review'], root))
+                decisions = tuple(Disposition.model_validate(d) for d in review.dispositions)
+        reviewed = {d.condition_key: d for d in decisions}
         placeholders = ','.join('?' for _ in self.sources)
         rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", self.sources)
         for row in rows:

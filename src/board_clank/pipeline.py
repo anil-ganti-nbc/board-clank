@@ -216,7 +216,9 @@ class Pipeline:
                 diagnostics=dict(request.diagnostics or {}),
             )
 
-        baseline = self._is_baseline(request.source_key)
+        new_source_baseline = self._is_baseline(request.source_key)
+        baseline = new_source_baseline or (self.production_admission is not None
+                                          and self.production_admission.stage_active())
         event_keys: list[str] = []
         occurrences = 0
         unresolved: list[tuple[ObservationDraft, "_UnresolvedIdentity"]] = []
@@ -242,7 +244,7 @@ class Pipeline:
                 occ, keys = self._admit_observation(request, draft, baseline=baseline, unresolved_out=unresolved)
                 occurrences += occ
                 event_keys.extend(keys)
-            if baseline:
+            if new_source_baseline:
                 self.store.execute(
                     """
                     INSERT INTO source_baselines(source_key, baseline_run_id, established_at, observation_count)

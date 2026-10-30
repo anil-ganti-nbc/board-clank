@@ -22,6 +22,8 @@ class Ledger:
                 CREATE TABLE IF NOT EXISTS source_runs(slot TEXT,source TEXT,status TEXT,receipt TEXT,PRIMARY KEY(slot,source));
                 CREATE TABLE IF NOT EXISTS source_permits(slot TEXT,source TEXT,approval TEXT,token_hash TEXT,owner_pid INTEGER,consumed INTEGER,
                     PRIMARY KEY(slot,source));
+                CREATE TABLE IF NOT EXISTS initialization_claims(attempt TEXT PRIMARY KEY,slot TEXT UNIQUE,approval TEXT,status TEXT);
+                CREATE TABLE IF NOT EXISTS initialization_seals(attempt TEXT PRIMARY KEY,sha256 TEXT);
                 CREATE TABLE IF NOT EXISTS deliveries(destination TEXT,event_key TEXT,status TEXT,attempts INTEGER,next_at REAL,message_id TEXT,
                     PRIMARY KEY(destination,event_key));
                 CREATE TABLE IF NOT EXISTS delivery_limits(destination TEXT PRIMARY KEY,next_at REAL);
@@ -77,6 +79,46 @@ class Ledger:
                     raise ValueError('approval changed inside existing hour; manual review required')
                 return False
             db.execute('INSERT INTO cycles VALUES(?,?,?,?,NULL)', (slot, approval, 'RUNNING', time.time()))
+        return True
+
+    def claim_initialization(self, slot, admission, root):
+        spec = admission.initialization_spec(root)
+        if not admission.recovery_matches(root, spec):
+            raise ValueError('authenticated successor recovery required')
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            old = db.execute('SELECT * FROM cycles WHERE slot=?', (spec.predecessor_slot,)).fetchone()
+            if (not old or old['status'] != 'HUMAN_REQUIRED'
+                    or db.execute('SELECT COUNT(*) FROM cycles').fetchone()[0] != spec.predecessor_consumed
+                    or db.execute('SELECT COUNT(*) FROM requests').fetchone()[0] != spec.charged_requests
+                    or db.execute('SELECT 1 FROM initialization_claims').fetchone()
+                    or spec.aggregate_reservations-spec.predecessor_consumed != 1+spec.future_slots):
+                raise ValueError('one-use initialization reservation/custody refused')
+            db.execute('INSERT INTO initialization_claims VALUES(?,?,?,?)',
+                       (spec.attempt_id, slot, admission.raw_hash, 'RUNNING'))
+            db.execute('INSERT INTO cycles VALUES(?,?,?,?,NULL)', (slot, admission.raw_hash, 'RUNNING', time.time()))
+
+    def finish_initialization(self, attempt, status):
+        with self.connect() as db:
+            db.execute('UPDATE initialization_claims SET status=? WHERE attempt=?', (status, attempt))
+
+    def claim_scheduled(self, slot, admission, root):
+        from board_clank.campaign_acceptance import baseline_seal
+        spec = admission.initialization_spec(root)
+        baseline_seal(root, admission)
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            prior = db.execute('SELECT approval FROM cycles WHERE slot=?', (slot,)).fetchone()
+            if prior:
+                if prior[0] != admission.raw_hash:
+                    raise ValueError('approval changed inside existing hour')
+                return False
+            if db.execute('SELECT COUNT(*) FROM cycles').fetchone()[0] >= spec.aggregate_reservations:
+                raise ValueError('finite aggregate reservation exhausted; no refunds')
+            claim = db.execute('SELECT * FROM initialization_claims WHERE attempt=?', (spec.attempt_id,)).fetchone()
+            if not claim or claim['status'] != 'FINALIZED':
+                raise ValueError('sealed initialization required before future reservation')
+            db.execute('INSERT INTO cycles VALUES(?,?,?,?,NULL)', (slot, admission.raw_hash, 'RUNNING', time.time()))
         return True
 
     def finish_cycle(self, slot, status):
