@@ -134,8 +134,9 @@ def _ascii(text: str) -> str:
 class _PageParser(HTMLParser):
     """Capture h3 headings, paragraphs, links, and specification table rows."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, preserve_cell_breaks: bool = False) -> None:
         super().__init__()
+        self.preserve_cell_breaks = preserve_cell_breaks
         self.h3s: list[str] = []
         self.paragraphs: list[str] = []
         self.hrefs: list[str] = []
@@ -147,6 +148,8 @@ class _PageParser(HTMLParser):
         self._buf = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "br" and self._capture == "cell" and self.preserve_cell_breaks:
+            self._cell_buf.append("\n")
         if tag == "a":
             href = dict(attrs).get("href")
             if href:
@@ -174,7 +177,8 @@ class _PageParser(HTMLParser):
             self._buf = ""
         elif tag in {"td", "th"} and self._capture == "cell":
             if self._row is not None:
-                text = re.sub(r"\s+", " ", _ascii("".join(self._cell_buf))).strip()
+                whitespace = r"[^\S\n]+" if self.preserve_cell_breaks else r"\s+"
+                text = re.sub(whitespace, " ", _ascii("".join(self._cell_buf))).strip()
                 self._row.append(text)
             self._cell_buf = []
             self._capture = None
@@ -194,7 +198,7 @@ class _PageParser(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "br" and self._capture == "cell":
-            self._cell_buf.append(" ")
+            self._cell_buf.append("\n" if self.preserve_cell_breaks else " ")
 
 
 def _spec_rows(tables: list[list[list[str]]]) -> list[tuple[str, str]]:
@@ -358,6 +362,28 @@ def _soc_candidates_from_value(value: str) -> list[tuple[str, str]]:
     return found
 
 
+def _processor_candidates(value: str) -> list[tuple[str, str]]:
+    """Respect source line roles inside a mixed Processor/CPU cell.
+
+    A named DSP/GPU or a named *core* is not a second application chip.
+    Unlabelled model-bearing lines remain candidates (and can conflict).
+    No chip model or vendor is inferred from CPU/core architecture names.
+    """
+    found: list[tuple[str, str]] = []
+    for line in value.splitlines():
+        line = line.strip()
+        if re.match(r"^(?:GPU|VPU|NPU|DSP)\s*:", line, re.I):
+            continue
+        if re.match(r"^\S+\s+(?:Audio\s+)?DSP\b", line, re.I):
+            continue
+        if re.match(r"^(?:\d+\s+)?\S+\s+(?:AI|processor)\s+cores?\b", line, re.I):
+            continue
+        for candidate in _soc_candidates_from_value(line):
+            if candidate not in found:
+                found.append(candidate)
+    return found
+
+
 def _extract_soc(rows: list[tuple[str, str]]) -> tuple[str, str, list[str]]:
     """Resolve the application processor from labelled table rows only.
 
@@ -368,11 +394,11 @@ def _extract_soc(rows: list[tuple[str, str]]) -> tuple[str, str, list[str]]:
     candidates: list[tuple[str, str]] = []
     soc_value = _row_value(rows, "soc", "soc|master chip", "soc|chip", "processor", "master chip")
     if soc_value:
-        candidates = _soc_candidates_from_value(soc_value)
+        candidates = _processor_candidates(soc_value)
     if not candidates:
         cpu_value = _row_value(rows, "cpu")
         if cpu_value:
-            candidates = _soc_candidates_from_value(cpu_value)
+            candidates = _processor_candidates(cpu_value)
     if not candidates:
         return UNKNOWN, UNKNOWN, []
     if len(candidates) > 1:
@@ -668,9 +694,15 @@ def parse_product_html(html: str, *, page_url: str, observed_at: str, historical
         return [], diagnostics
 
     rows = _spec_rows(parser.tables)
+    # Keep the historical flattened evidence projection unchanged, but do not
+    # erase BR clause boundaries before interpreting mixed processor roles.
+    role_parser = _PageParser(preserve_cell_breaks=True)
+    role_parser.feed(html)
+    role_parser.close()
+    processor_rows = _spec_rows(role_parser.tables)
     board_slug = _board_slug(name)
     family_slug, family_name, board_type = _family_and_type(name)
-    soc_vendor, soc_name, soc_candidates = _extract_soc(rows)
+    soc_vendor, soc_name, soc_candidates = _extract_soc(processor_rows)
     ram_type, ram_opts = _ram_evidence(rows, parser.paragraphs)
     storage_opts = _storage_options(rows)
     wireless_opts = _wireless_options(rows)
