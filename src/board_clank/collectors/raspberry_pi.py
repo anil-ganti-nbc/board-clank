@@ -20,6 +20,7 @@ from board_clank.collectors._http import ValidatedRedirect, document_url_validat
 from urllib.error import HTTPError, URLError
 
 from board_clank.collectors.base import CollectorAdapter, CollectorError
+from board_clank.collectors.holds import raspberry_pi_hold
 from board_clank.identity import UNKNOWN, VariantDimensions, slugify
 from board_clank.models import CollectorRunRequest, NormalizedSpec, NoveltyEvidence, ObservationDraft
 from board_clank.taxonomy import (
@@ -845,10 +846,12 @@ def _document_role(url: str) -> str:
     return "index" if parsed.path.rstrip("/") == "/products" else "detail"
 
 
+@raspberry_pi_hold
 def fetch_official(url: str, *, timeout: int = 20) -> str:
     return fetch_official_meta(url, timeout=timeout)["text"]
 
 
+@raspberry_pi_hold
 def fetch_official_meta(url: str, *, timeout: int = 20) -> dict[str, Any]:
     _assert_official_url(url)
     validate_selected = document_url_validator(url, _assert_official_url, _document_role)
@@ -886,6 +889,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
         self.experimental_live = experimental_live
         self.corpus = corpus
 
+    @raspberry_pi_hold
     def collect(self, run_id: str, started_at: str) -> CollectorRunRequest:
         if self.experimental_live:
             return self._collect_live(run_id, started_at)
@@ -903,6 +907,7 @@ class RaspberryPiProductAdapter(CollectorAdapter):
         )
         return drafts
 
+    @raspberry_pi_hold
     def _collect_live(self, run_id: str, started_at: str) -> CollectorRunRequest:
         """PIP-primary live path. Marketing catalogue is supplementary and optional."""
         diagnostics: dict[str, Any] = {

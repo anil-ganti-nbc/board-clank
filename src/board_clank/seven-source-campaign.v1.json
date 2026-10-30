@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "campaign_id": "board-seven-production-v1",
+  "sources": ["orange-pi-product", "radxa-product", "banana-pi-product", "pine64-product", "friendlyelec-product", "khadas-product", "forlinx-product"],
+  "mothballed": ["raspberry-pi-product", "hardkernel-odroid-product"],
+  "excluded": ["raspberry-pi-product"],
+  "predecessor_profile": "board-eight-production-v1",
+  "predecessor_disposition": "BLOCKED_SOURCE_POLICY_NO_OPERATIONAL_BASELINE",
+  "historical_campaign": "cops-000182-seven-day-d952-r2",
+  "historical_disposition": "FAILED_NINE_SOURCE_IMMUTABLE",
+  "natural_credit": 0,
+  "acceptance_seconds": 604800,
+  "cadence_seconds": 3600,
+  "enabled": false,
+  "notifications_enabled": false,
+  "clock_origin": "UNKNOWN_NOT_ACTIVATED",
+  "baseline_policy": "fresh separately authorised production baseline; offline fixtures earn no natural credit"
+}

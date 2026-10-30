@@ -8,9 +8,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from board_clank.eight_source_campaign import load_manifest, roster_hash
+from board_clank.eight_source_campaign import roster_hash
+from board_clank.source_profiles import ProfileId, profile_manifest
 from board_clank.models import CollectorRunRequest
-from board_clank.production_policy import SOURCES, digest, Evidence, StrictModel, utc
+from board_clank.production_policy import digest, Evidence, StrictModel, utc
 from datetime import datetime, timezone, timedelta
 from typing import Literal
 from uuid import UUID
@@ -21,7 +22,7 @@ from contextlib import closing
 
 class Campaign(StrictModel):
     format: StrictInt = Field(ge=1, le=1)
-    profile_id: Literal["board-eight-production-v1"]
+    profile_id: ProfileId
     attempt_id: str
     sources: list[str]
     roster_sha256: str
@@ -48,8 +49,9 @@ def campaign_spec(approval, directory):
     spec = Campaign.model_validate_json(approval.campaign.read(directory))
     if (
         str(UUID(spec.attempt_id)) != spec.attempt_id
-        or spec.sources != list(SOURCES)
-        or spec.roster_sha256 != roster_hash(list(SOURCES))
+        or spec.profile_id != approval.profile_id
+        or spec.sources != list(approval.sources)
+        or spec.roster_sha256 != roster_hash(list(approval.sources))
         or spec.revision != approval.revision
         or spec.code_sha256 != approval.code_sha256
         or not Path(spec.root).is_absolute()
@@ -127,12 +129,12 @@ def cycle_binding(root, admission, slot, *, native_execution):
 
 
 def identity(admission):
-    profile = load_manifest()
+    profile = profile_manifest(admission.approval.profile_id)
     return {
         "profile_id": profile["campaign_id"],
         "attempt_id": None,
-        "sources": list(SOURCES),
-        "roster_sha256": roster_hash(list(SOURCES)),
+        "sources": list(admission.sources),
+        "roster_sha256": roster_hash(list(admission.sources)),
         "revision": admission.revision,
         "code_sha256": admission.approval.code_sha256,
         "approval_sha256": admission.raw_hash,
@@ -261,7 +263,12 @@ def reconcile(root, admission):
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA query_only=ON")
                 connection.execute("BEGIN")
-            store = SimpleNamespace(one=lambda sql, args=(): db.execute(sql, args).fetchone())
+            store = SimpleNamespace(
+                one=lambda sql, args=(): db.execute(sql, args).fetchone(),
+                all=lambda sql, args=(): db.execute(sql, args).fetchall(),
+            )
+            from board_clank.production_policy import validate_state
+            validate_state(store, admission)
             if (
                 db.execute("PRAGMA integrity_check").fetchone()[0] != "ok"
                 or db.execute("PRAGMA foreign_key_check").fetchall()
@@ -293,7 +300,7 @@ def reconcile(root, admission):
                     or row["status"] != "COMPLETE"
                     or row["integrity"] != "ok"
                     or row["foreign_key_errors"] != 0
-                    or set(row["sources"]) != set(SOURCES)
+                    or set(row["sources"]) != set(admission.sources)
                 ):
                     raise ValueError("cycle identity/status/roster mismatch")
                 dispatch = read_json(expected["dispatch"], root)
@@ -317,7 +324,7 @@ def reconcile(root, admission):
                     for r in source_rows
                     if r["status"] == "ACCEPTED"
                     and Path(r["receipt"]).resolve() == directory.resolve()
-                } != set(SOURCES):
+                } != set(admission.sources):
                     raise ValueError("operational source ledger mismatch")
                 for source, result in row["sources"].items():
                     request = CollectorRunRequest.model_validate(read_json(result["request"], root))

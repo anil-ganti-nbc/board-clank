@@ -31,7 +31,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-board_clank = ["eight-source-campaign.v1.json", "py.typed", "schema.sql", "sources.yaml", "manifest.json", "fixture_data/*.json", "fixture_data/*/*", "fixture_data/*/html/*"]
+board_clank = ["eight-source-campaign.v1.json", "seven-source-campaign.v1.json", "py.typed", "schema.sql", "sources.yaml", "manifest.json", "fixture_data/*.json", "fixture_data/*/*", "fixture_data/*/html/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

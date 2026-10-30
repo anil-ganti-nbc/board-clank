@@ -139,7 +139,7 @@ class Pipeline:
             self.production_admission.authorize(request.source_key)
             if request.collector_key != request.source_key:
                 raise ValueError('production collector identity mismatch')
-            validate_registry(self.store)
+            validate_registry(self.store, self.production_admission.sources)
             trusted = trusted.model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
                 or (trusted.enabled != (self.production_admission is not None))

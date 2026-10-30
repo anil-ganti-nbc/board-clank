@@ -1,0 +1,262 @@
+{
+  "$defs": {
+    "Disposition": {
+      "additionalProperties": false,
+      "properties": {
+        "condition_key": {
+          "title": "Condition Key",
+          "type": "string"
+        },
+        "source_key": {
+          "title": "Source Key",
+          "type": "string"
+        },
+        "state_hash": {
+          "title": "State Hash",
+          "type": "string"
+        },
+        "payload_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        },
+        "decision": {
+          "pattern": "^(accepted_uncertainty|excluded_coverage|fixed_by_replay)$",
+          "title": "Decision",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 20,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "reviewed_by": {
+          "minLength": 1,
+          "title": "Reviewed By",
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "condition_key",
+        "source_key",
+        "state_hash",
+        "payload_sha256",
+        "decision",
+        "rationale",
+        "reviewed_by",
+        "evidence"
+      ],
+      "title": "Disposition",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "SourceBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "origins": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Origins",
+          "type": "array"
+        },
+        "max_requests_per_cycle": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Max Requests Per Cycle",
+          "type": "integer"
+        },
+        "max_requests_per_hour": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Max Requests Per Hour",
+          "type": "integer"
+        },
+        "max_requests_per_day": {
+          "maximum": 24000,
+          "minimum": 1,
+          "title": "Max Requests Per Day",
+          "type": "integer"
+        },
+        "max_concurrency": {
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "min_interval_seconds": {
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Min Interval Seconds",
+          "type": "number"
+        },
+        "timeout_seconds": {
+          "maximum": 60,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "cycle_timeout_seconds": {
+          "maximum": 1800,
+          "minimum": 1,
+          "title": "Cycle Timeout Seconds",
+          "type": "integer"
+        },
+        "max_response_bytes": {
+          "maximum": 8000000,
+          "minimum": 1,
+          "title": "Max Response Bytes",
+          "type": "integer"
+        },
+        "max_total_response_bytes": {
+          "maximum": 256000000,
+          "minimum": 1,
+          "title": "Max Total Response Bytes",
+          "type": "integer"
+        },
+        "allow_missing_robots": {
+          "default": false,
+          "title": "Allow Missing Robots",
+          "type": "boolean"
+        },
+        "retries": {
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "access_evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "origins",
+        "max_requests_per_cycle",
+        "max_requests_per_hour",
+        "max_requests_per_day",
+        "max_concurrency",
+        "min_interval_seconds",
+        "timeout_seconds",
+        "cycle_timeout_seconds",
+        "max_response_bytes",
+        "max_total_response_bytes",
+        "retries",
+        "access_evidence"
+      ],
+      "title": "SourceBudget",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "default": 1,
+      "title": "Format",
+      "type": "integer"
+    },
+    "profile_id": {
+      "default": "board-eight-production-v1",
+      "enum": [
+        "board-eight-production-v1",
+        "board-seven-production-v1"
+      ],
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "revision": {
+      "pattern": "^[a-f0-9]{40}$",
+      "title": "Revision",
+      "type": "string"
+    },
+    "code_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Code Sha256",
+      "type": "string"
+    },
+    "approved_by": {
+      "minLength": 1,
+      "title": "Approved By",
+      "type": "string"
+    },
+    "decision_id": {
+      "minLength": 1,
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "approved_at": {
+      "title": "Approved At",
+      "type": "string"
+    },
+    "expires_at": {
+      "title": "Expires At",
+      "type": "string"
+    },
+    "source_budgets": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SourceBudget"
+      },
+      "title": "Source Budgets",
+      "type": "object"
+    },
+    "gates": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "title": "Gates",
+      "type": "object"
+    },
+    "dispositions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Disposition"
+      },
+      "title": "Dispositions",
+      "type": "array"
+    },
+    "campaign": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Evidence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "revision",
+    "code_sha256",
+    "approved_by",
+    "decision_id",
+    "approved_at",
+    "expires_at",
+    "source_budgets",
+    "gates"
+  ],
+  "title": "Approval",
+  "type": "object"
+}

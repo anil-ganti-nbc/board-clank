@@ -1,0 +1,15 @@
+{
+  "campaign_id": "board-seven-production-v1",
+  "profile_id": "board-seven-production-v1",
+  "campaign_manifest": "packaged:seven-source-campaign.v1.json",
+  "status": "DRAFT_NOT_AN_APPROVAL",
+  "enabled": false,
+  "cadence_seconds": 3600,
+  "sources": ["orange-pi-product", "radxa-product", "banana-pi-product", "pine64-product", "friendlyelec-product", "khadas-product", "forlinx-product"],
+  "excluded": ["raspberry-pi-product"],
+  "mothballed": ["raspberry-pi-product", "hardkernel-odroid-product"],
+  "source_budgets": null,
+  "approval_file": null,
+  "discord_delivery_enabled": false,
+  "instructions": "Not an Approval. Provision separately reviewed finite seven-source source/resource/scheduler evidence after independent code review. Preserve all 22 predecessor preflight charges and unknown denied bytes. No t0 or inherited natural credit."
+}

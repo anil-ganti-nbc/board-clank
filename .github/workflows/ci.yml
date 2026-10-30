@@ -1,17 +1,17 @@
-name: Eight-source locked CI
+name: Seven-source bounded locked CI
 on:
   pull_request:
   push:
-    branches: [hermes/board-eight-readiness-20261028]
+    branches: [hermes/board-seven-readiness-20261030]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: board-eight-${{ github.ref }}
+  group: board-seven-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   tests:
-    name: ci / permitted-731 / ${{ matrix.os }}
+    name: ci / seven-causal-38 / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,7 +22,7 @@ jobs:
       CLANKOPS_ACTOR: hermes-board-golive-engineer
       CLANKOPS_CLANK_ID: 01a0ca71-1b64-7423-af57-385119dfbe81
       CLANKOPS_MISSION_ID: 01a166a9-7fa0-7752-b870-b89c3f1f2481
-      CLANKOPS_SESSION_ID: 01a1878e-4a99-705c-8813-093e4d18204f
+      CLANKOPS_SESSION_ID: 01a18b17-fbd2-7106-a884-5efa25f40e30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,7 +56,14 @@ jobs:
           py=os.environ['BOARD_CI_PYTHON']
           denied=subprocess.run([py,'-B','-c',"import os; assert os.environ.get('BOARD_SEAM_GUARD_ENTERED')=='1'"],env=wrong,capture_output=True)
           assert denied.returncode!=0, 'wrong guard unexpectedly entered'
-          subprocess.run([py,'-B','-m','pytest','-p','permitted_plugin','-p','no:cacheprovider','--tb=short','--junitxml=permitted.xml'],env=env,check=True)
+          import json
+          selection=json.loads(pathlib.Path('.github/qualification/seven_selection.json').read_text())
+          prior=json.loads(pathlib.Path('.github/qualification/selection.json').read_text())
+          assert len(selection['selected'])==len(set(selection['selected']))==38
+          assert set(selection['prior_executed_nodes']) <= set(prior['allowed'])
+          assert not set(selection['selected']) & set(prior['NOT_RUN'])
+          subprocess.run([py,'-B','-m','pytest','-p','seven_guard','-p','no:cacheprovider','--tb=short','--junitxml=permitted.xml',*selection['selected']],env=env,check=True)
+          assert not pathlib.Path(env['BOARD_REVIEW_FENCE_LOG']).exists(), 'mothball fence attempted'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

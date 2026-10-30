@@ -16,7 +16,16 @@ Foundation 0 contracts plus Foundation 1's experimental Raspberry Pi PRODUCT ada
 - Default Discord delivery: disabled; explicit guarded production capability requires separate approval/configuration
 - Jetson / NVIDIA: out of scope pending a later decision
 
-## Eight-source successor (offline candidate, not activated)
+## Current prospective scope: seven sources (not deployed)
+
+The owner has excluded Raspberry Pi. The distinct `board-seven-production-v1`
+candidate covers the other seven sources, keeps ODROID mothballed and preserves
+all historical eight-/nine-source manifests, failures and model memory. See
+[seven-source contract and next gate](docs/SEVEN_SOURCE_SUCCESSOR.md).
+Independent review and genuine target/source admission remain pending; no
+operational baseline, scheduler, t0 or natural credit is claimed.
+
+## Historical eight-source successor (offline candidate, not activated)
 
 The explicit successor is `board-eight-production-v1`; see
 [contract and operational checklist](docs/EIGHT_SOURCE_SUCCESSOR.md).

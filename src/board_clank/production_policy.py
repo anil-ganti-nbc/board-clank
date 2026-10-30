@@ -10,9 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
-SOURCES = ('raspberry-pi-product', 'orange-pi-product', 'radxa-product',
-           'banana-pi-product', 'pine64-product', 'friendlyelec-product',
-           'khadas-product', 'forlinx-product')
+from board_clank.source_profiles import EIGHT_SOURCES as SOURCES, EIGHT_PROFILE, ProfileId, source_scope
 MOTHBALLED = 'hardkernel-odroid-product'
 HOSTS = {
     SOURCES[0]: {'pip.raspberrypi.com', 'pip-assets.raspberrypi.com', 'www.raspberrypi.com'},
@@ -113,6 +111,7 @@ class Disposition(StrictModel):
 
 class Approval(StrictModel):
     format: StrictInt = 1
+    profile_id: ProfileId = EIGHT_PROFILE
     revision: str = Field(pattern=r'^[a-f0-9]{40}$')
     code_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     approved_by: str = Field(min_length=1)
@@ -124,6 +123,10 @@ class Approval(StrictModel):
     dispositions: tuple[Disposition, ...] = ()
     campaign: Evidence | None = None
 
+    @property
+    def sources(self):
+        return source_scope(self.profile_id)
+
     def validate_current(self, root: Path, revision: str, now: datetime | None = None):
         now = now or datetime.now(timezone.utc)
         if self.format != 1 or self.revision != revision or self.code_sha256 != code_digest():
@@ -134,8 +137,9 @@ class Approval(StrictModel):
         start, end = utc(self.approved_at), utc(self.expires_at)
         if not start <= now < end:
             raise ValueError('approval expired or future-dated')
-        if set(self.source_budgets) != set(SOURCES) or set(self.gates) != GATES:
-            raise ValueError('exact eight-source scope and all gates required')
+        sources = self.sources
+        if set(self.source_budgets) != set(sources) or set(self.gates) != GATES:
+            raise ValueError('exact versioned source scope and all gates required')
         if sum(b.cycle_timeout_seconds for b in self.source_budgets.values()) > 3300:
             raise ValueError('aggregate source deadlines exceed hourly envelope')
         for source, budget in self.source_budgets.items():
@@ -155,7 +159,7 @@ class Approval(StrictModel):
                     or not proof.get('reviewed_by') or not proof.get('evidence_references')):
                 raise ValueError('unverified production gate: '+gate)
         keys = [d.condition_key for d in self.dispositions]
-        if len(keys) != len(set(keys)) or any(d.source_key not in SOURCES for d in self.dispositions):
+        if len(keys) != len(set(keys)) or any(d.source_key not in sources for d in self.dispositions):
             raise ValueError('duplicate or out-of-scope diagnostic disposition')
         for d in self.dispositions:
             raw=d.evidence.read(root)
@@ -167,7 +171,7 @@ class Approval(StrictModel):
                     raise ValueError('fixed diagnostic lacks exact-candidate replay proof')
                 qualified=json.loads(Evidence.model_validate(fix['qualification_snapshot']).read(root))
                 last=qualified.get('source_last_runs',{}).get(d.source_key) or {}
-                if (qualified.get('read_only') is not True or qualified.get('sources')!=list(SOURCES)
+                if (qualified.get('read_only') is not True or qualified.get('sources')!=list(sources)
                         or last.get('status')!='accepted' or last.get('source_key')!=d.source_key
                         or not last.get('run_id') or 'fixture_scenario' not in last or last['fixture_scenario'] is not None
                         or any(row['condition_key']==d.condition_key and row['status']=='OPEN'
@@ -177,13 +181,13 @@ class Approval(StrictModel):
                 for capture in fix['source_captures']:Evidence.model_validate(capture).read(root)
         diagnostic_proof=json.loads(self.gates['diagnostics'].read(root))
         snapshot=json.loads(Evidence.model_validate(diagnostic_proof['diagnostic_snapshot']).read(root))
-        if snapshot.get('sources')!=list(SOURCES) or snapshot.get('read_only') is not True:
+        if snapshot.get('sources')!=list(sources) or snapshot.get('read_only') is not True:
             raise ValueError('diagnostic snapshot scope/provenance incomplete')
         condition_keys=[row['condition_key'] for row in snapshot['conditions']]
         if len(condition_keys)!=len(set(condition_keys)):raise ValueError('duplicate snapshot diagnostic condition')
         reviewed={d.condition_key:d for d in self.dispositions}
         for row in snapshot['conditions']:
-            if row['source_key'] not in SOURCES:raise ValueError('snapshot source scope widened')
+            if row['source_key'] not in sources:raise ValueError('snapshot source scope widened')
             if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown snapshot diagnostic state')
             if row['status']=='OPEN':
                 d=reviewed.get(row['condition_key'])
@@ -209,16 +213,20 @@ class Admission:
             raise ValueError('in-memory approval state changed')
         self.approval.validate_current(self.path.parent, self.revision)
 
+    @property
+    def sources(self):
+        return self.approval.sources
+
     def authorize(self, source: str):
         self.validate()
-        if source not in SOURCES:
+        if source not in self.sources:
             raise ValueError('source not approved; ODROID remains mothballed')
 
     def check_diagnostics(self, store):
         self.validate()
         reviewed = {d.condition_key: d for d in self.approval.dispositions}
-        placeholders = ','.join('?' for _ in SOURCES)
-        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", SOURCES)
+        placeholders = ','.join('?' for _ in self.sources)
+        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", self.sources)
         for row in rows:
             if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown current diagnostic state')
             if row['status']=='RESOLVED':continue
@@ -232,21 +240,25 @@ def validate_state(store, admission):
     """Refuse global state faults before acquisition or delivery."""
     if store.one('PRAGMA integrity_check')[0]!='ok' or store.all('PRAGMA foreign_key_check'):
         raise ValueError('production state integrity failure')
-    validate_registry(store)
+    validate_registry(store, admission.sources)
     admission.check_diagnostics(store)
 
 
-def validate_registry(store):
+def validate_registry(store, sources=SOURCES):
     """Shared durable scope/provenance check, including before acquisition."""
     from board_clank.sources import load_sources
     declared = {r.source_key: r for r in load_sources()}
     mothballed = store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (MOTHBALLED,))
     if not mothballed or mothballed['enabled'] or mothballed['promotion_state'] != 'MOTHBALLED':
         raise ValueError('ODROID mothball state drift')
+    if SOURCES[0] not in sources:
+        excluded = store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (SOURCES[0],))
+        if not excluded or excluded['enabled'] or excluded['promotion_state'] != 'MOTHBALLED':
+            raise ValueError('Raspberry Pi mothball state drift')
     enabled = store.all('SELECT source_key FROM sources WHERE enabled!=0')
-    if {row['source_key'] for row in enabled} != set(SOURCES):
+    if {row['source_key'] for row in enabled} != set(sources):
         raise ValueError('production source scope drift')
-    for source in SOURCES:
+    for source in sources:
         trusted = declared[source].model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
         row = store.one('SELECT * FROM sources WHERE source_key=?', (source,))
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
@@ -264,13 +276,15 @@ def promote_registry(store, admission: Admission):
     declared = {r.source_key: r for r in load_sources()}
     store.begin()
     try:
-        for source in SOURCES:
+        for source in admission.sources:
             trusted = declared[source]
             row = store.one('SELECT * FROM sources WHERE source_key=?', (source,))
             if not row or trusted.placeholder or trusted.out_of_scope or row['vendor'] != trusted.vendor:
                 raise ValueError('production registry identity mismatch')
             store.execute("UPDATE sources SET enabled=1,promotion_state='PROMOTED' WHERE source_key=?", (source,))
         store.execute("UPDATE sources SET enabled=0,promotion_state='MOTHBALLED' WHERE source_key=?", (MOTHBALLED,))
+        if SOURCES[0] not in admission.sources:
+            store.execute("UPDATE sources SET enabled=0,promotion_state='MOTHBALLED' WHERE source_key=?", (SOURCES[0],))
         store.commit()
     except Exception:
         store.rollback()

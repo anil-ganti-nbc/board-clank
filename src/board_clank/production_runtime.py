@@ -45,13 +45,15 @@ def root_path(value):
     return raw.resolve()
 
 
-def manifest():
-    from board_clank.eight_source_campaign import load_manifest, roster_hash
-    campaign = load_manifest()
+def manifest(profile_id='board-eight-production-v1'):
+    from board_clank.eight_source_campaign import roster_hash
+    from board_clank.source_profiles import profile_manifest, source_scope
+    campaign = profile_manifest(profile_id)
+    sources = source_scope(profile_id)
     return {'format':1,'component':'board-production-hourly','revision':SOURCE_REVISION,
-        'campaign_id':campaign['campaign_id'],'roster_sha256':roster_hash(list(SOURCES)),
+        'campaign_id':campaign['campaign_id'],'roster_sha256':roster_hash(list(sources)),
         'natural_credit':0,
-        'code_sha256':code_digest(),'sources':list(SOURCES),'mothballed':[MOTHBALLED],
+        'code_sha256':code_digest(),'sources':list(sources),'mothballed':campaign['mothballed'],
         'cadence_seconds':3600,'automatic_installation':False,'activation':'requires explicit hash-bound approval',
         'emergency_stops':['PAUSED','HUMAN_REQUIRED.json'],
         'discord':'separate opt-in command and separate confirmed destination policy; disabled by default'}
@@ -67,13 +69,13 @@ def initialize(root, admission):
         if db.exists():
             raise ValueError('initialization never overwrites existing state; use verified distinct staging restore')
         # Reserve identity before creating state; an interrupted init requires inspection.
-        immutable(root/'initialization-start.json',{'at':stamp(),'approval':admission.raw_hash,'manifest':manifest()})
+        immutable(root/'initialization-start.json',{'at':stamp(),'approval':admission.raw_hash,'manifest':manifest(admission.approval.profile_id)})
         store=Store(db)
         try:
             sync_sources_to_store(store)
             from board_clank.production_policy import promote_registry
             promote_registry(store,admission)
-            immutable(root/'initialization-complete.json',{'at':stamp(),'approval':admission.raw_hash,'baseline':'pending eight silent source baselines','campaign':campaign})
+            immutable(root/'initialization-complete.json',{'at':stamp(),'approval':admission.raw_hash,'baseline':'pending '+str(len(admission.sources))+' silent source baselines','campaign':campaign})
         finally:store.close()
 
 
@@ -166,7 +168,7 @@ def run_once(root, admission, *, collect=execute_child, now=None):
             store=Store(root/'board.sqlite',migrate=False)
             validate_state(store,admission)
             pipeline=Pipeline(store,production_admission=admission)
-            for source in SOURCES:
+            for source in admission.sources:
                 assert_running(root)
                 admission.authorize(source)
                 # Recheck global state outside per-source failure isolation.
@@ -227,7 +229,7 @@ def main(argv=None):
         admission=Admission(args.approval,SOURCE_REVISION)
         if args.action!='reconcile':
             assert_running(root)
-        if args.action=='check':result={'status':'CONFIG_VALID','manifest':manifest(),'collection_invoked':False}
+        if args.action=='check':result={'status':'CONFIG_VALID','manifest':manifest(admission.approval.profile_id),'collection_invoked':False}
         elif args.action=='reconcile':
             from board_clank.campaign_acceptance import reconcile
             result=reconcile(root,admission)
