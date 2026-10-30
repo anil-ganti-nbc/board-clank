@@ -1,24 +1,18 @@
-"""Seven-scope execution fence; excluded parser bodies are never test coverage."""
-import importlib.abc
-import importlib.machinery
+"""Seven-scope precollection proof; startup owns the one inherited fence."""
+import json
 import os
 from pathlib import Path
-import sys
 
-from sitecustomize import FenceLoader
-
-assert 'board_clank.collectors.raspberry_pi' not in sys.modules, 'RPi fence installed too late'
+from seven_preflight import preflight
 
 
-class RaspberryPiFence(importlib.abc.MetaPathFinder):
-    def find_spec(self, fullname, path=None, target=None):
-        if fullname == 'board_clank.collectors.raspberry_pi':
-            spec = importlib.machinery.PathFinder.find_spec(fullname, path)
-            spec.loader = FenceLoader(spec.loader)
-            return spec
+def pytest_sessionstart(session):
+    # Runs before collection/import of test modules.
+    proof = preflight()
+    print('Seven guard precollection: ' + json.dumps(proof, sort_keys=True))
+    if os.environ.get('BOARD_GUARD_PROOF'):
+        Path(os.environ['BOARD_GUARD_PROOF']).write_text(json.dumps(proof, indent=2))
 
-
-sys.meta_path.insert(0, RaspberryPiFence())
 
 
 def pytest_runtest_teardown(item, nextitem):

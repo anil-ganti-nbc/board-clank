@@ -19,10 +19,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      CLANKOPS_ACTOR: hermes-board-golive-engineer
-      CLANKOPS_CLANK_ID: 01a0ca71-1b64-7423-af57-385119dfbe81
-      CLANKOPS_MISSION_ID: 01a166a9-7fa0-7752-b870-b89c3f1f2481
-      CLANKOPS_SESSION_ID: 01a18b17-fbd2-7106-a884-5efa25f40e30
+      # Hosted runs are attributed by GitHub's immutable run/job/SHA fields,
+      # not by an ended local engineer's ClankOps Session.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,8 +47,12 @@ jobs:
           TMP: ${{ runner.temp }}
           TMPDIR: ${{ runner.temp }}
         run: |
-          import os, pathlib, subprocess, sys
+          import os, pathlib, subprocess, sys, json
           env=dict(os.environ)
+          assert env['GITHUB_ACTIONS']=='true'
+          fields=('GITHUB_REPOSITORY','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_JOB','RUNNER_OS')
+          pathlib.Path('hosted-provenance.json').write_text(json.dumps({k:env[k] for k in fields},indent=2))
+          env['BOARD_GUARD_PROOF']=str(pathlib.Path('guard-proof.json').resolve())
           env['PYTHONPATH']=str(pathlib.Path('.github/qualification').resolve())
           wrong=dict(env);wrong['BOARD_CI_GUARD']='0'
           py=os.environ['BOARD_CI_PYTHON']
@@ -68,7 +70,10 @@ jobs:
         if: always()
         with:
           name: permitted-${{ matrix.os }}
-          path: permitted.xml
+          path: |
+            permitted.xml
+            guard-proof.json
+            hosted-provenance.json
   container:
     name: ci / container-nonroot
     runs-on: ubuntu-latest

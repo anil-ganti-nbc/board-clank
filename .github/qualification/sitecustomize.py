@@ -1,7 +1,11 @@
 """Owned Python network/attribution guard, including stripped-env children."""
 import ipaddress,os,socket,subprocess,sys,inspect,functools
 KEYS=('CLANKOPS_ACTOR','CLANKOPS_CLANK_ID','CLANKOPS_MISSION_ID','CLANKOPS_SESSION_ID')
-assert all(os.environ.get(k) for k in KEYS),'CI attribution missing'
+if os.environ.get('GITHUB_ACTIONS')=='true':
+ assert all(os.environ.get(k) for k in ('GITHUB_REPOSITORY','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_JOB')),'hosted run provenance missing'
+ assert not any(os.environ.get(k) for k in KEYS),'hosted CI must not impersonate a local ClankOps Session'
+else:
+ assert all(os.environ.get(k) for k in KEYS),'local ClankOps attribution missing'
 assert os.environ.get('BOARD_CI_GUARD')=='1','CI guard not enabled'
 os.environ['BOARD_SEAM_GUARD_ENTERED']='1'
 def allowed(h):
@@ -22,10 +26,27 @@ socket.getaddrinfo=dns
 _Popen=subprocess.Popen
 class Child(_Popen):
  def __init__(self,*a,**k):
-  if k.get('env') is not None:
-   e=dict(k['env']);e.pop('PYTHONHOME',None)
-   for field in (*KEYS,'BOARD_CI_GUARD','BOARD_REVIEW_FENCE_LOG'):e[field]=os.environ[field]
-   e['PYTHONPATH']=os.path.dirname(__file__)+os.pathsep+e.get('PYTHONPATH','');k['env']=e
+  command=a[0] if a else k.get('args')
+  # Only the direct Python form used by admitted runners is covered. Refuse
+  # isolation/startup bypasses before spawning, not after an unguarded import.
+  if k.get('shell') or not isinstance(command,(list,tuple)) or not command:
+   raise PermissionError('qualification requires direct guarded Python argv')
+  executable=k.get('executable') or command[0]
+  if os.path.normcase(os.path.abspath(executable))!=os.path.normcase(os.path.abspath(sys.executable)):
+   raise PermissionError('qualification child interpreter not admitted')
+  options=iter(command[1:])
+  for option in options:
+   if option in ('-c','-m') or not str(option).startswith('-'):break
+   if option in ('-B','-u'):continue
+   if option=='-X' and next(options,None)=='utf8':continue
+   raise PermissionError('qualification child startup option not supported')
+  e=dict(os.environ if k.get('env') is None else k['env']);e.pop('PYTHONHOME',None)
+  fields=(*KEYS,'BOARD_CI_GUARD','BOARD_REVIEW_FENCE_LOG','GITHUB_ACTIONS','GITHUB_REPOSITORY','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_JOB')
+  for field in fields:
+   if field in os.environ:e[field]=os.environ[field]
+   else:e.pop(field,None)
+  paths=[os.path.dirname(__file__),*os.environ.get('PYTHONPATH','').split(os.pathsep),*e.get('PYTHONPATH','').split(os.pathsep)]
+  e['PYTHONPATH']=os.pathsep.join(dict.fromkeys(p for p in paths if p));k['env']=e
   super().__init__(*a,**k)
 subprocess.Popen=Child
 # Replace functions before imports reach any test. A raised profile callback
@@ -52,9 +73,11 @@ class FenceLoader:
        return _original(self,experimental_live=experimental_live,corpus=corpus)
       setattr(value,key,metadata)
      else:setattr(value,key,refused)
+FENCED_MODULES=('board_clank.collectors.raspberry_pi','board_clank.collectors.odroid','board_clank.collectors.odroid_store')
+assert not any(name in sys.modules for name in FENCED_MODULES),'mothball fence installed too late'
 class Finder(importlib.abc.MetaPathFinder):
  def find_spec(self,fullname,path=None,target=None):
-  if fullname in ('board_clank.collectors.odroid','board_clank.collectors.odroid_store'):
+  if fullname in FENCED_MODULES:
    spec=importlib.machinery.PathFinder.find_spec(fullname,path)
    spec.loader=FenceLoader(spec.loader);return spec
 sys.meta_path.insert(0,Finder())
