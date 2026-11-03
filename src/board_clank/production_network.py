@@ -59,7 +59,8 @@ class LimitedResponse:
 
 
 class Guard:
-    def __init__(self,source,budget,ledger,root,*,clock=time.monotonic,sleep=time.sleep,capture_dir=None,wall_clock=time.time):
+    def __init__(self,source,budget,ledger,root,*,clock=time.monotonic,sleep=time.sleep,capture_dir=None,wall_clock=time.time,admission_check=None):
+        self.admission_check=admission_check
         self.source=source;self.budget=budget;self.ledger=ledger;self.root=root
         self.clock=clock;self.sleep=sleep;self.deadline=clock()+budget.cycle_timeout_seconds
         self.wall_clock=wall_clock
@@ -86,6 +87,8 @@ class Guard:
                 raise CollectorError('source total byte budget exhausted')
             if self.url_attempts.get(url,0)>=self.budget.retries+1:
                 raise CollectorError('source URL attempt budget exhausted')
+            if self.admission_check is not None:
+                self.admission_check()
             self.ledger.reserve(self.source,self.budget,hashlib.sha256(url.encode()).hexdigest(),now=self.wall_clock())
             self.url_attempts[url]=self.url_attempts.get(url,0)+1
             self.count+=1;self.last=self.clock()

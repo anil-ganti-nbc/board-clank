@@ -10,9 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
-SOURCES = ('raspberry-pi-product', 'orange-pi-product', 'radxa-product',
-           'banana-pi-product', 'pine64-product', 'friendlyelec-product',
-           'khadas-product', 'forlinx-product')
+from board_clank.source_profiles import EIGHT_SOURCES as SOURCES, EIGHT_PROFILE, ProfileId, source_scope
 MOTHBALLED = 'hardkernel-odroid-product'
 HOSTS = {
     SOURCES[0]: {'pip.raspberrypi.com', 'pip-assets.raspberrypi.com', 'www.raspberrypi.com'},
@@ -111,8 +109,34 @@ class Disposition(StrictModel):
     evidence: Evidence
 
 
+class Initialization(StrictModel):
+    """Separate one-use authority; never inferred from a caller's mode flag."""
+    format: StrictInt = Field(ge=1, le=1)
+    enabled: StrictBool
+    phase: str
+    attempt_id: str
+    root: str
+    revision: str
+    code_sha256: str
+    image_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    profile_id: ProfileId
+    sources: list[str]
+    expires_at: str
+    aggregate_reservations: StrictInt
+    predecessor_consumed: StrictInt
+    baseline_reservations: StrictInt
+    future_slots: StrictInt
+    predecessor_slot: str
+    charged_requests: StrictInt
+    reviewers: tuple[str, ...]
+    approved_by: str = Field(min_length=1)
+    decision_id: str = Field(min_length=1)
+    recovery_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
 class Approval(StrictModel):
     format: StrictInt = 1
+    profile_id: ProfileId = EIGHT_PROFILE
     revision: str = Field(pattern=r'^[a-f0-9]{40}$')
     code_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     approved_by: str = Field(min_length=1)
@@ -122,16 +146,26 @@ class Approval(StrictModel):
     source_budgets: dict[str, SourceBudget]
     gates: dict[str, Evidence]
     dispositions: tuple[Disposition, ...] = ()
+    campaign: Evidence | None = None
+    initialization: Evidence | None = None
+
+    @property
+    def sources(self):
+        return source_scope(self.profile_id)
 
     def validate_current(self, root: Path, revision: str, now: datetime | None = None):
         now = now or datetime.now(timezone.utc)
         if self.format != 1 or self.revision != revision or self.code_sha256 != code_digest():
             raise ValueError('candidate identity changed or unverified')
+        if self.campaign is not None:
+            from board_clank.campaign_acceptance import campaign_spec
+            campaign_spec(self, root)
         start, end = utc(self.approved_at), utc(self.expires_at)
         if not start <= now < end:
             raise ValueError('approval expired or future-dated')
-        if set(self.source_budgets) != set(SOURCES) or set(self.gates) != GATES:
-            raise ValueError('exact eight-source scope and all gates required')
+        sources = self.sources
+        if set(self.source_budgets) != set(sources) or set(self.gates) != GATES:
+            raise ValueError('exact versioned source scope and all gates required')
         if sum(b.cycle_timeout_seconds for b in self.source_budgets.values()) > 3300:
             raise ValueError('aggregate source deadlines exceed hourly envelope')
         for source, budget in self.source_budgets.items():
@@ -151,7 +185,7 @@ class Approval(StrictModel):
                     or not proof.get('reviewed_by') or not proof.get('evidence_references')):
                 raise ValueError('unverified production gate: '+gate)
         keys = [d.condition_key for d in self.dispositions]
-        if len(keys) != len(set(keys)) or any(d.source_key not in SOURCES for d in self.dispositions):
+        if len(keys) != len(set(keys)) or any(d.source_key not in sources for d in self.dispositions):
             raise ValueError('duplicate or out-of-scope diagnostic disposition')
         for d in self.dispositions:
             raw=d.evidence.read(root)
@@ -163,7 +197,7 @@ class Approval(StrictModel):
                     raise ValueError('fixed diagnostic lacks exact-candidate replay proof')
                 qualified=json.loads(Evidence.model_validate(fix['qualification_snapshot']).read(root))
                 last=qualified.get('source_last_runs',{}).get(d.source_key) or {}
-                if (qualified.get('read_only') is not True or qualified.get('sources')!=list(SOURCES)
+                if (qualified.get('read_only') is not True or qualified.get('sources')!=list(sources)
                         or last.get('status')!='accepted' or last.get('source_key')!=d.source_key
                         or not last.get('run_id') or 'fixture_scenario' not in last or last['fixture_scenario'] is not None
                         or any(row['condition_key']==d.condition_key and row['status']=='OPEN'
@@ -173,13 +207,13 @@ class Approval(StrictModel):
                 for capture in fix['source_captures']:Evidence.model_validate(capture).read(root)
         diagnostic_proof=json.loads(self.gates['diagnostics'].read(root))
         snapshot=json.loads(Evidence.model_validate(diagnostic_proof['diagnostic_snapshot']).read(root))
-        if snapshot.get('sources')!=list(SOURCES) or snapshot.get('read_only') is not True:
+        if snapshot.get('sources')!=list(sources) or snapshot.get('read_only') is not True:
             raise ValueError('diagnostic snapshot scope/provenance incomplete')
         condition_keys=[row['condition_key'] for row in snapshot['conditions']]
         if len(condition_keys)!=len(set(condition_keys)):raise ValueError('duplicate snapshot diagnostic condition')
         reviewed={d.condition_key:d for d in self.dispositions}
         for row in snapshot['conditions']:
-            if row['source_key'] not in SOURCES:raise ValueError('snapshot source scope widened')
+            if row['source_key'] not in sources:raise ValueError('snapshot source scope widened')
             if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown snapshot diagnostic state')
             if row['status']=='OPEN':
                 d=reviewed.get(row['condition_key'])
@@ -205,16 +239,108 @@ class Admission:
             raise ValueError('in-memory approval state changed')
         self.approval.validate_current(self.path.parent, self.revision)
 
+    @property
+    def sources(self):
+        return self.approval.sources
+
     def authorize(self, source: str):
         self.validate()
-        if source not in SOURCES:
+        if source not in self.sources:
             raise ValueError('source not approved; ODROID remains mothballed')
+        if self.approval.initialization is not None:
+            if not self.stage_active():
+                from board_clank.campaign_acceptance import baseline_seal, campaign_spec
+                campaign = campaign_spec(self.approval, self.path.parent)
+                baseline_seal(Path(campaign.root), self)
+
+    def initialization_spec(self, root):
+        self.validate()
+        if self.approval.initialization is None:
+            raise ValueError('separate initialization authority required')
+        spec = Initialization.model_validate_json(self.approval.initialization.read(self.path.parent))
+        from board_clank.campaign_acceptance import campaign_spec
+        campaign = campaign_spec(self.approval, self.path.parent)
+        target = json.loads(campaign.target.read(self.path.parent)) if campaign else {}
+        if (not spec.enabled or spec.phase != 'INITIALIZATION_ACQUISITION' or not campaign
+                or spec.profile_id != 'board-seven-production-v1'
+                or spec.profile_id != self.approval.profile_id or spec.sources != list(self.sources)
+                or spec.attempt_id != campaign.attempt_id or spec.root != campaign.root
+                or Path(spec.root).resolve() != Path(root).resolve()
+                or spec.revision != self.revision or spec.code_sha256 != self.approval.code_sha256
+                or spec.image_sha256 != target.get('image_sha256')
+                or spec.expires_at != self.approval.expires_at or not spec.reviewers
+                or (spec.aggregate_reservations, spec.predecessor_consumed,
+                    spec.baseline_reservations, spec.future_slots, spec.charged_requests) != (170, 1, 1, 168, 92)):
+            raise ValueError('initialization phase/identity/finite reservation authority mismatch')
+        return spec
+
+    def stage_active(self):
+        """Reauthenticate the durable one-use claim, not an in-memory boolean."""
+        context = getattr(self, '_initialization_context', None)
+        if context is None:
+            return False
+        root, slot = context
+        spec = self.initialization_spec(root)
+        from board_clank.production_ledger import Ledger, assert_running
+        assert_running(root)
+        from board_clank.campaign_acceptance import identity_for_root
+        initialized = json.loads((root/'initialization-complete.json').read_bytes())
+        if (initialized.get('approval') != self.raw_hash
+                or initialized.get('campaign') != identity_for_root(root, self)
+                or not self.recovery_matches(root, spec)
+                or (root/'baseline-seal.json').exists()):
+            raise ValueError('initialization custody/phase changed')
+        with Ledger(root/'operations.sqlite').connect() as db:
+            row = db.execute('SELECT * FROM initialization_claims WHERE attempt=?', (spec.attempt_id,)).fetchone()
+            cycle = db.execute('SELECT * FROM cycles WHERE slot=?', (slot,)).fetchone()
+            if (not row or row['approval'] != self.raw_hash or row['slot'] != slot
+                    or row['status'] != 'RUNNING' or not cycle or cycle['status'] != 'RUNNING'
+                    or cycle['approval'] != self.raw_hash
+                    or db.execute('SELECT COUNT(*) FROM cycles').fetchone()[0] > spec.aggregate_reservations):
+                raise ValueError('active one-use stage claim required')
+        return True
+
+    def recovery_matches(self, root, spec):
+        recovery = json.loads((Path(root)/'state-preserving-recovery.json').read_bytes())
+        return (recovery.get('input_manifest_sha256') == spec.recovery_sha256
+                and recovery.get('approval_sha256') == self.raw_hash
+                and recovery.get('status') == 'PREPARED_PAUSED'
+                and recovery.get('requests_retained') == spec.charged_requests
+                and recovery.get('quota_refund') == 0
+                and recovery.get('old_failed_slot_preserved') is True
+                and recovery.get('collection_invoked') is False
+                and recovery.get('t0') is None)
 
     def check_diagnostics(self, store):
         self.validate()
-        reviewed = {d.condition_key: d for d in self.approval.dispositions}
-        placeholders = ','.join('?' for _ in SOURCES)
-        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", SOURCES)
+        if self.stage_active():
+            # Only the native uncertainty types may remain pending review.
+            rows = store.all('SELECT * FROM diagnostic_conditions')
+            from board_clank.models import content_hash
+            for r in rows:
+                payload = json.loads(r['payload_json'])
+                key = content_hash({k: r[k] for k in ('source_key', 'plane', 'entity_key', 'diagnostic_type')})
+                if (r['source_key'] not in self.sources or r['status'] not in {'OPEN', 'RESOLVED'}
+                        or r['plane'] != 'PRODUCT'
+                        or r['diagnostic_type'] not in {'IDENTITY_ANOMALY', 'NOVELTY_UNRESOLVED'}
+                        or not isinstance(payload, dict) or payload.get('entity_key') != r['entity_key']
+                        or payload.get('diagnostic_type') != r['diagnostic_type']
+                        or not isinstance(payload.get('pages'), list) or not payload['pages']
+                        or key != r['condition_key'] or content_hash(payload) != r['state_hash']):
+                    raise ValueError('corrupt initialization diagnostic fact')
+            return
+        decisions = self.approval.dispositions
+        if self.approval.initialization is not None:
+            from board_clank.campaign_acceptance import baseline_seal, campaign_spec, read_json, InitializationReview
+            campaign = campaign_spec(self.approval, self.path.parent)
+            root = Path(campaign.root)
+            if (root/'baseline-seal.json').exists():
+                seal = baseline_seal(root, self)
+                review = InitializationReview.model_validate(read_json(seal['review'], root))
+                decisions = tuple(Disposition.model_validate(d) for d in review.dispositions)
+        reviewed = {d.condition_key: d for d in decisions}
+        placeholders = ','.join('?' for _ in self.sources)
+        rows = store.all(f"SELECT * FROM diagnostic_conditions WHERE source_key IN ({placeholders})", self.sources)
         for row in rows:
             if row['status'] not in {'OPEN','RESOLVED'}:raise ValueError('unknown current diagnostic state')
             if row['status']=='RESOLVED':continue
@@ -228,21 +354,25 @@ def validate_state(store, admission):
     """Refuse global state faults before acquisition or delivery."""
     if store.one('PRAGMA integrity_check')[0]!='ok' or store.all('PRAGMA foreign_key_check'):
         raise ValueError('production state integrity failure')
-    validate_registry(store)
+    validate_registry(store, admission.sources)
     admission.check_diagnostics(store)
 
 
-def validate_registry(store):
+def validate_registry(store, sources=SOURCES):
     """Shared durable scope/provenance check, including before acquisition."""
     from board_clank.sources import load_sources
     declared = {r.source_key: r for r in load_sources()}
     mothballed = store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (MOTHBALLED,))
     if not mothballed or mothballed['enabled'] or mothballed['promotion_state'] != 'MOTHBALLED':
         raise ValueError('ODROID mothball state drift')
+    if SOURCES[0] not in sources:
+        excluded = store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?', (SOURCES[0],))
+        if not excluded or excluded['enabled'] or excluded['promotion_state'] != 'MOTHBALLED':
+            raise ValueError('Raspberry Pi mothball state drift')
     enabled = store.all('SELECT source_key FROM sources WHERE enabled!=0')
-    if {row['source_key'] for row in enabled} != set(SOURCES):
+    if {row['source_key'] for row in enabled} != set(sources):
         raise ValueError('production source scope drift')
-    for source in SOURCES:
+    for source in sources:
         trusted = declared[source].model_copy(update={'enabled': True, 'promotion_state': 'PROMOTED'})
         row = store.one('SELECT * FROM sources WHERE source_key=?', (source,))
         if (trusted.registered_state != 'REGISTERED' or trusted.placeholder or trusted.out_of_scope
@@ -260,13 +390,15 @@ def promote_registry(store, admission: Admission):
     declared = {r.source_key: r for r in load_sources()}
     store.begin()
     try:
-        for source in SOURCES:
+        for source in admission.sources:
             trusted = declared[source]
             row = store.one('SELECT * FROM sources WHERE source_key=?', (source,))
             if not row or trusted.placeholder or trusted.out_of_scope or row['vendor'] != trusted.vendor:
                 raise ValueError('production registry identity mismatch')
             store.execute("UPDATE sources SET enabled=1,promotion_state='PROMOTED' WHERE source_key=?", (source,))
         store.execute("UPDATE sources SET enabled=0,promotion_state='MOTHBALLED' WHERE source_key=?", (MOTHBALLED,))
+        if SOURCES[0] not in admission.sources:
+            store.execute("UPDATE sources SET enabled=0,promotion_state='MOTHBALLED' WHERE source_key=?", (SOURCES[0],))
         store.commit()
     except Exception:
         store.rollback()

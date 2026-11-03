@@ -1,4 +1,6 @@
 {
+  "campaign_id": "board-eight-production-v1",
+  "campaign_manifest": "packaged:eight-source-campaign.v1.json",
   "status": "DRAFT_NOT_AN_APPROVAL",
   "enabled": false,
   "cadence_seconds": 3600,

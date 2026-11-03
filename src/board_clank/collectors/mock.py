@@ -48,12 +48,8 @@ ADAPTERS = {
 
 def get_adapter(source_key: str, **kwargs):
     if source_key in {"raspberry-pi-product", "raspberry-pi"}:
-        from board_clank.collectors.raspberry_pi import RaspberryPiProductAdapter
-
-        return RaspberryPiProductAdapter(
-            experimental_live=bool(kwargs.get("experimental_live")),
-            corpus=str(kwargs.get("corpus") or "baseline"),
-        )
+        from board_clank.collectors.base import CollectorError
+        raise CollectorError('Raspberry Pi mothballed by owner; adapter lookup disabled')
     if source_key in {"orange-pi-product", "orange-pi"}:
         from board_clank.collectors.orange_pi import OrangePiProductAdapter
 

@@ -1,104 +1,87 @@
-name: Foundation 0 CI
-
+name: Seven-source bounded locked CI
 on:
   pull_request:
   push:
-    branches: [main, foundation-0, foundation-1-rpi-product, foundation-2-orange-pi-product, foundation-2b-diagnostic-idempotency, foundation-3-radxa-product, foundation-4-banana-pi-product, foundation-5-odroid-product, foundation-6-pine64-product, production-readiness-1, production-readiness-1b-odroid-coverage, foundation-7-friendlyelec-product, foundation-8-khadas-product, foundation-9-forlinx-product, nas-alternate-product-paths]
+    branches: [hermes/board-seven-readiness-20261030]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: foundation0-ci-${{ github.workflow }}-${{ github.ref }}
+  group: board-seven-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  PYTHONDONTWRITEBYTECODE: "1"
-  NO_COLOR: "1"
-
 jobs:
   tests:
-    name: ci / hermetic-tests
-    runs-on: ubuntu-latest
+    name: ci / seven-causal-38 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      # Hosted runs are attributed by GitHub's immutable run/job/SHA fields,
+      # not by an ended local engineer's ClankOps Session.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: Install locked dependencies
+          python-version: '3.12'
+      - name: Install locked dependencies in isolated environment
+        shell: python
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.lock
-          python -m pip install -r requirements-dev.lock
-          python -m pip install --no-deps -e .
-          python -m pip check
-      - name: Prove lock pins
-        run: |
-          python - <<'PY'
-          import importlib.metadata as m
-          expected = {
-              "PyYAML": "6.0.2",
-              "pydantic": "2.13.4",
-              "pydantic-core": "2.46.4",
-              "pytest": "8.4.2",
-          }
-          for name, ver in expected.items():
-              got = m.version(name)
-              print(f"{name}={got}")
-              if got != ver:
-                  raise SystemExit(f"lock mismatch: {name} expected {ver} got {got}")
-          PY
-      - name: Compile
-        run: python -m compileall -q src
-      - name: Build and install wheel outside checkout
-        run: |
-          python -m pip wheel --no-deps --wheel-dir /tmp/board-wheel .
-          python -m pip install --no-deps --no-index --target /tmp/board-wheel-site /tmp/board-wheel/*.whl
-      - name: All nine adapters from installed wheel offline
+          import os, pathlib, subprocess, sys
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'board-locked-venv'
+          subprocess.run([sys.executable,'-m','venv',str(root)],check=True)
+          py=str(root/('Scripts/python.exe' if os.name=='nt' else 'bin/python'))
+          subprocess.run([py,'-m','pip','install','-r','requirements.lock','-r','requirements-dev.lock'],check=True)
+          subprocess.run([py,'-m','pip','install','--no-deps','-e','.'],check=True)
+          subprocess.run([py,'-m','pip','check'],check=True)
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as f:
+              f.write('BOARD_CI_PYTHON='+py+'\n')
+      - name: Exact portable selection, network denial and mothball fence
+        shell: python
         env:
-          NO_PROXY: ""
-          HTTP_PROXY: "http://127.0.0.1:9"
-          HTTPS_PROXY: "http://127.0.0.1:9"
-          ALL_PROXY: "http://127.0.0.1:9"
-        working-directory: /tmp
-        run: python -I "$GITHUB_WORKSPACE/scripts/offline_wheel_probe.py" --site /tmp/board-wheel-site --db /tmp/installed-wheel-probe.sqlite
-      - name: Tests with black-hole proxy
-        env:
-          NO_PROXY: "127.0.0.1,localhost,::1"
-          HTTP_PROXY: "http://127.0.0.1:9"
-          HTTPS_PROXY: "http://127.0.0.1:9"
-          ALL_PROXY: "http://127.0.0.1:9"
-        run: pytest -q
-      - name: Foundation roster freeze
-        run: board-clank sources --assert-foundation
-      - name: CLI smoke
+          BOARD_CI_GUARD: '1'
+          BOARD_REVIEW_FENCE_LOG: ${{ runner.temp }}/mothball-fence.log
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
         run: |
-          board-clank version
-          board-clank identity
-          board-clank health
-      - name: Production readiness gates
-        run: |
-          board-clank manifest
-          board-clank manifest-declared
-          rm -f /tmp/pr-ci.db /tmp/pr-ci-restored.db
-          board-clank --db /tmp/pr-ci.db collect --source orange-pi-product --run-id pr-ci
-          board-clank --db /tmp/pr-ci.db backup --out /tmp/pr-ci-backup
-          BACKUP_DB=$(ls /tmp/pr-ci-backup/*.board-clank-backup.db)
-          BACKUP_META=$(ls /tmp/pr-ci-backup/*.board-clank-backup.meta.json)
-          board-clank restore --backup-file "$BACKUP_DB" --metadata "$BACKUP_META" --target /tmp/pr-ci-restored.db --activate
-          board-clank --db /tmp/pr-ci-restored.db observe > /dev/null
-          echo "production-readiness gates passed: manifest + backup + restore + observe"
-
+          import os, pathlib, subprocess, sys, json
+          env=dict(os.environ)
+          assert env['GITHUB_ACTIONS']=='true'
+          fields=('GITHUB_REPOSITORY','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_SHA','GITHUB_JOB','RUNNER_OS')
+          pathlib.Path('hosted-provenance.json').write_text(json.dumps({k:env[k] for k in fields},indent=2))
+          env['BOARD_GUARD_PROOF']=str(pathlib.Path('guard-proof.json').resolve())
+          env['PYTHONPATH']=str(pathlib.Path('.github/qualification').resolve())
+          wrong=dict(env);wrong['BOARD_CI_GUARD']='0'
+          py=os.environ['BOARD_CI_PYTHON']
+          denied=subprocess.run([py,'-B','-c',"import os; assert os.environ.get('BOARD_SEAM_GUARD_ENTERED')=='1'"],env=wrong,capture_output=True)
+          assert denied.returncode!=0, 'wrong guard unexpectedly entered'
+          import json
+          selection=json.loads(pathlib.Path('.github/qualification/seven_selection.json').read_text())
+          prior=json.loads(pathlib.Path('.github/qualification/selection.json').read_text())
+          assert len(selection['selected'])==len(set(selection['selected']))==38
+          assert set(selection['prior_executed_nodes']) <= set(prior['allowed'])
+          assert not set(selection['selected']) & set(prior['NOT_RUN'])
+          subprocess.run([py,'-B','-m','pytest','-p','seven_guard','-p','no:cacheprovider','--tb=short','--junitxml=permitted.xml',*selection['selected']],env=env,check=True)
+          assert not pathlib.Path(env['BOARD_REVIEW_FENCE_LOG']).exists(), 'mothball fence attempted'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: permitted-${{ matrix.os }}
+          path: |
+            permitted.xml
+            guard-proof.json
+            hosted-provenance.json
   container:
     name: ci / container-nonroot
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      - name: Build locked installed artifact
         run: docker build --build-arg GIT_REVISION=${GITHUB_SHA} -t board-clank:ci .
-      - name: Health as non-root
+      - name: Source-disabled installed health
         run: |
-          docker run --rm --user 10001 board-clank:ci health
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user 10001 board-clank:ci health
           docker inspect --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' board-clank:ci
