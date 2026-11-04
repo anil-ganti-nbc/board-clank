@@ -1,6 +1,8 @@
 # Deterministic Foundation 0 dev lock.
 # Runtime pins live in requirements.lock; this file adds test tooling only.
+colorama==0.4.6; sys_platform == "win32"
 iniconfig==2.1.0
 packaging==25.0
 pluggy==1.6.0
+Pygments==2.21.0
 pytest==8.4.2

@@ -12,6 +12,8 @@ import pytest
 
 from board_clank.collectors import get_adapter
 from board_clank.collectors.base import CollectorError
+from board_clank.identity import UNKNOWN, VariantDimensions
+from board_clank.models import CollectorRunRequest, NormalizedSpec, ObservationDraft
 from board_clank.pipeline import Pipeline
 from board_clank.production_ledger import Ledger,exclusive_lock
 from board_clank.production_network import Guard,guarded_http
@@ -19,8 +21,40 @@ from board_clank.production_policy import Admission,Approval,SourceBudget,SOURCE
 from board_clank.production_runtime import initialize,run_once
 from board_clank.robots_policy import Robots
 from board_clank.store import Store
+from board_clank.taxonomy import BoardType, RevisionKind, SourcePlane
 
 REV='a'*40
+MOTHBALLED_ADAPTERS = {'raspberry-pi-product', 'raspberry-pi', MOTHBALLED, 'hardkernel-odroid', 'odroid-product'}
+
+
+def synthetic_retained_request(source, slot):
+    """Admitted synthetic PRODUCT receipt. Never looks up mothballed adapters."""
+    if source in MOTHBALLED_ADAPTERS and source != MOTHBALLED:
+        # raspberry-pi stays in eight-source admission but adapter lookup is disabled.
+        vendor = 'raspberry-pi'
+    else:
+        vendor = source.removesuffix('-product')
+    slug = 'synthetic-retained-' + vendor
+    observed = datetime.now(timezone.utc).isoformat()
+    draft = ObservationDraft(
+        source_key=source, plane=SourcePlane.PRODUCT, observed_at=observed,
+        vendor_key=vendor, vendor_name=vendor,
+        family_slug=slug, family_name='Synthetic retained ' + vendor,
+        board_slug=slug, marketing_name='Synthetic retained ' + vendor,
+        board_type=BoardType.SBC, revision_kind=RevisionKind.UNKNOWN, revision_token=UNKNOWN,
+        variant=VariantDimensions(ram='4GB'), soc_vendor='synthetic', soc_marketing_name='Synthetic SoC',
+        spec=NormalizedSpec(usb='2xUSB'), page_url='https://fixture.invalid/' + slug,
+        historical_known=True,
+    )
+    return CollectorRunRequest(
+        run_id=slot + '-' + source, source_key=source, collector_key=source,
+        started_at=observed, observations=[draft], ok=True, fixture_scenario=None,
+    )
+
+
+def synthetic_retained_collect(root, admission, source, slot, directory):
+    assert source not in {MOTHBALLED, 'hardkernel-odroid', 'odroid-product'}
+    return synthetic_retained_request(source, slot)
 
 
 @pytest.fixture(autouse=True)
@@ -95,12 +129,7 @@ def test_init_and_hourly_replay_keep_odroid_mothballed(approval_file,tmp_path):
     seen=[]
     def collect(root,a,source,slot,directory):
         seen.append(source)
-        request=get_adapter(source).collect(slot+'-'+source,datetime.now(timezone.utc).isoformat())
-        request.fixture_scenario=None
-        # Synthetic success path: one resolved fixture record per source. Full
-        # live catalogue completeness is a separate, still-unverified gate.
-        request.observations=[d for d in request.observations if not d.evidence_insufficient and not d.identity_conflict][:1]
-        return request
+        return synthetic_retained_collect(root,a,source,slot,directory)
     result=run_once(root,admission,collect=collect)
     assert result['status']=='COMPLETE',result
     assert seen==list(SOURCES) and MOTHBALLED not in seen
@@ -111,8 +140,7 @@ def test_init_and_hourly_replay_keep_odroid_mothballed(approval_file,tmp_path):
     assert store.one('SELECT enabled,promotion_state FROM sources WHERE source_key=?',(MOTHBALLED,))['promotion_state']=='MOTHBALLED'
     assert {r['source_key'] for r in store.all('SELECT source_key FROM sources WHERE enabled=1')}==set(SOURCES)
     assert not store.all('SELECT * FROM events WHERE baseline_silent=0')
-    request=get_adapter(MOTHBALLED).collect('inert-odroid',datetime.now(timezone.utc).isoformat())
-    request.fixture_scenario=None
+    request=synthetic_retained_request(MOTHBALLED,'inert-odroid')
     with pytest.raises(ValueError):Pipeline(store,production_admission=admission).accept_run(request)
     store.close()
     with pytest.raises(ValueError):initialize(root,admission)
@@ -214,15 +242,14 @@ def test_child_requires_parent_and_retains_own_acquisition_lock(approval_file,tm
     from types import SimpleNamespace
     from board_clank import production_runtime as runtime
     admission=load(approval_file);root=tmp_path/'runtime';initialize(root,admission)
-    source=SOURCES[0];slot='20261023T040000Z';directory=root/'runs'/slot;directory.mkdir(parents=True)
+    source=SOURCES[1];slot='20261023T040000Z';directory=root/'runs'/slot;directory.mkdir(parents=True)
     ledger=Ledger(root/'operations.sqlite');ledger.claim_cycle(slot,admission.raw_hash)
     token=ledger.issue_source(slot,source,admission.raw_hash)
     class Input:
         buffer=io.BytesIO(token.encode())
     monkeypatch.setattr(runtime.sys,'stdin',Input())
     monkeypatch.setattr(runtime.os,'getppid',runtime.os.getpid)
-    request=get_adapter(source).collect(slot+'-'+source,datetime.now(timezone.utc).isoformat())
-    request.fixture_scenario=None
+    request=synthetic_retained_request(source,slot)
     calls=[]
     def collect(*args):
         calls.append(1)
