@@ -14,11 +14,12 @@ import shutil
 from pathlib import Path
 import subprocess
 import sys
+import time as time_mod
 
 from board_clank._version import SOURCE_REVISION
 from board_clank.models import CollectorRunRequest
 from board_clank.pipeline import Pipeline
-from board_clank.production_ledger import Ledger, assert_running, exclusive_lock
+from board_clank.production_ledger import Ledger, assert_running, exclusive_lock, bounded_runtime_lock, LockDeferred
 from board_clank.production_network import Guard, guarded_http
 from board_clank.production_policy import Admission, SOURCES, MOTHBALLED, code_digest, validate_state
 from board_clank.sources import sync_sources_to_store
@@ -165,9 +166,11 @@ def run_stage(root, admission, *, collect=execute_child, now=None):
     return run_once(root, admission, collect=collect, now=now, initialization_stage=True)
 
 
-def run_once(root, admission, *, collect=execute_child, now=None, initialization_stage=False):
+def run_once(root, admission, *, collect=execute_child, now=None, initialization_stage=False, lock_deadline=None, clock=None, sleep=None):
     native_execution=collect is execute_child and now is None
-    now=now or datetime.now(timezone.utc)
+    clock=clock or (lambda: datetime.now(timezone.utc))
+    sleep=sleep or time_mod.sleep
+    now=now or clock()
     if now.tzinfo is None:raise ValueError('UTC-aware cycle time required')
     slot=now.astimezone(timezone.utc).strftime('%Y%m%dT%H0000Z')
     assert_running(root)
@@ -177,103 +180,110 @@ def run_once(root, admission, *, collect=execute_child, now=None, initialization
         from board_clank.campaign_acceptance import baseline_seal
         baseline_seal(root, admission)
     if not (root/'initialization-complete.json').exists():raise ValueError('production root not initialized')
-    with exclusive_lock(root/'runtime.lock'):
+    deadline=now if lock_deadline is None else lock_deadline
+    def recheck():
         assert_running(root)
         admission.validate()
-        if initialization_stage:
-            campaign=cycle_binding(root,admission,slot,native_execution=native_execution,stage=True)
-        else:
-            if getattr(admission, '_initialization_context', None) is not None:
-                raise ValueError('ordinary once cannot use staging context')
-            campaign=cycle_binding(root,admission,slot,native_execution=native_execution)
-            if admission.approval.initialization is not None:
-                from board_clank.campaign_acceptance import baseline_seal
-                from board_clank.production_policy import utc
-                seal = baseline_seal(root, admission)
-                due = utc(seal['sealed_utc'])+timedelta(hours=campaign['sequence'])
-                if not due <= now < due+timedelta(hours=1):
-                    raise ValueError('hourly work not yet due or stale; no catchup')
-        initialized=json.loads((root/'initialization-complete.json').read_bytes())
-        if initialized.get('campaign') != identity_for_root(root,admission) or initialized['approval'] != admission.raw_hash:
-            raise ValueError('attempt/admission differs from initialized root')
-        required=sum(b.max_total_response_bytes for b in admission.approval.source_budgets.values())+64_000_000
-        if shutil.disk_usage(root).free<required:raise ValueError('insufficient free space for bounded retained source evidence')
-        ledger=Ledger(root/'operations.sqlite')
-        if initialization_stage:
-            ledger.claim_initialization(slot, admission, root)
-            admission._initialization_context = (root, slot)
-            admission.stage_active()
-        elif not (ledger.claim_scheduled(slot, admission, root) if admission.approval.initialization is not None
-                  else ledger.claim_cycle(slot,admission.raw_hash)):
-            return {'status':'ALREADY_CLAIMED','slot':slot,'collection_invoked':False}
-        directory=root/'runs'/slot
-        directory.mkdir(parents=True,exist_ok=False)
-        receipt={'slot':slot,'started_utc':stamp(),'revision':SOURCE_REVISION,'approval_sha256':admission.raw_hash,
-                 'sources':{},'delivery_invoked':False,'campaign':campaign}
-        if initialization_stage:
-            from board_clank.campaign_acceptance import predecessor_custody
-            receipt.update(phase='INITIALIZATION_ACQUISITION', t0=None, natural_credit=0,
-                           stage_authority=admission.approval.initialization.model_dump(),
-                           recovery_sha256=stage_spec.recovery_sha256,
-                           predecessor_custody=predecessor_custody(root, stage_spec))
-        store=None
-        try:
-            store=Store(root/'board.sqlite',migrate=False)
-            validate_state(store,admission)
-            pipeline=Pipeline(store,production_admission=admission)
-            for source in admission.sources:
-                assert_running(root)
-                admission.authorize(source)
-                # Recheck global state outside per-source failure isolation.
+    try:
+        with bounded_runtime_lock(root/'runtime.lock', deadline, clock=clock, sleep=sleep, recheck=recheck):
+            assert_running(root)
+            admission.validate()
+            if initialization_stage:
+                campaign=cycle_binding(root,admission,slot,native_execution=native_execution,stage=True)
+            else:
+                if getattr(admission, '_initialization_context', None) is not None:
+                    raise ValueError('ordinary once cannot use staging context')
+                campaign=cycle_binding(root,admission,slot,native_execution=native_execution)
+                if admission.approval.initialization is not None:
+                    from board_clank.campaign_acceptance import baseline_seal
+                    from board_clank.production_policy import utc
+                    seal = baseline_seal(root, admission)
+                    due = utc(seal['sealed_utc'])+timedelta(hours=campaign['sequence'])
+                    if not due <= now < due+timedelta(hours=1):
+                        raise ValueError('hourly work not yet due or stale; no catchup')
+            initialized=json.loads((root/'initialization-complete.json').read_bytes())
+            if initialized.get('campaign') != identity_for_root(root,admission) or initialized['approval'] != admission.raw_hash:
+                raise ValueError('attempt/admission differs from initialized root')
+            required=sum(b.max_total_response_bytes for b in admission.approval.source_budgets.values())+64_000_000
+            if shutil.disk_usage(root).free<required:raise ValueError('insufficient free space for bounded retained source evidence')
+            ledger=Ledger(root/'operations.sqlite')
+            if initialization_stage:
+                ledger.claim_initialization(slot, admission, root)
+                admission._initialization_context = (root, slot)
+                admission.stage_active()
+            elif not (ledger.claim_scheduled(slot, admission, root) if admission.approval.initialization is not None
+                      else ledger.claim_cycle(slot,admission.raw_hash)):
+                return {'status':'ALREADY_CLAIMED','slot':slot,'collection_invoked':False}
+            directory=root/'runs'/slot
+            directory.mkdir(parents=True,exist_ok=False)
+            receipt={'slot':slot,'started_utc':stamp(),'revision':SOURCE_REVISION,'approval_sha256':admission.raw_hash,
+                     'sources':{},'delivery_invoked':False,'campaign':campaign}
+            if initialization_stage:
+                from board_clank.campaign_acceptance import predecessor_custody
+                receipt.update(phase='INITIALIZATION_ACQUISITION', t0=None, natural_credit=0,
+                               stage_authority=admission.approval.initialization.model_dump(),
+                               recovery_sha256=stage_spec.recovery_sha256,
+                               predecessor_custody=predecessor_custody(root, stage_spec))
+            store=None
+            try:
+                store=Store(root/'board.sqlite',migrate=False)
                 validate_state(store,admission)
-                try:
-                    request=collect(root,admission,source,slot,directory)
-                    if (request.run_id!=slot+'-'+source or request.source_key!=source
-                            or request.collector_key!=source or request.fixture_scenario is not None):
-                        raise ValueError('source receipt binding mismatch')
-                    result=pipeline.accept_run(request)
-                    status='ACCEPTED' if result.status in {'accepted','replayed'} else 'FAILED'
-                    receipt['sources'][source]={'status':status,'result':result.as_dict()}
-                    if result.status == 'accepted':
-                        request_path=directory/(source+'.accepted-request.json')
-                        immutable(request_path,request.model_dump(mode='json'))
-                        receipt['sources'][source].update(native=native_facts(store,request),
-                            request=file_ref(request_path,root))
-                        if native_execution:
-                            receipt['sources'][source]['captures']=captures(root,directory,source)
-                    # New/changed uncertain evidence remains in canonical diagnostics,
-                    # but prevents any delivery or further acceptance declaration.
-                    admission.check_diagnostics(store)
-                except Exception as exc:
-                    receipt['sources'][source]={'status':'FAILED','error_type':type(exc).__name__}
-                    immutable(directory/(source+'.failure.json'),{'at':stamp(),'error_type':type(exc).__name__,
-                        'reason':'source failure; inspect bounded public source receipts locally'})
-                with ledger.connect() as db:
-                    db.execute('INSERT INTO source_runs VALUES(?,?,?,?)',
-                        (slot,source,receipt['sources'][source]['status'],str(directory)))
-            receipt['status']='COMPLETE' if all(r['status']=='ACCEPTED' for r in receipt['sources'].values()) else 'DEGRADED'
-            if initialization_stage:
-                from board_clank.campaign_acceptance import store_fingerprint, condition_facts
-                receipt['status'] = 'STAGED_PENDING_REVIEW' if receipt['status']=='COMPLETE' else 'STAGE_FAILED'
-                receipt.update(store_sha256=store_fingerprint(store), conditions=condition_facts(store))
-            receipt['integrity']=store.one('PRAGMA integrity_check')[0]
-            receipt['foreign_key_errors']=len(store.all('PRAGMA foreign_key_check'))
-            if receipt['integrity']!='ok' or receipt['foreign_key_errors']:
-                raise ValueError('production state integrity failure')
-        except Exception as exc:
-            receipt.update(status='HUMAN_REQUIRED',error_type=type(exc).__name__)
-            if not (root/'HUMAN_REQUIRED.json').exists():
-                immutable(root/'HUMAN_REQUIRED.json',{'at':stamp(),'slot':slot,'reason':'runtime integrity/approval failure; inspect retained receipts'})
-            raise
-        finally:
-            if store:store.close()
-            receipt['finished_utc']=stamp()
-            immutable(directory/'cycle.json',receipt)
-            ledger.finish_cycle(slot,receipt.get('status','INTERRUPTED'))
-            if initialization_stage:
-                ledger.finish_initialization(stage_spec.attempt_id, receipt.get('status','INTERRUPTED'))
-                del admission._initialization_context
-        return receipt
+                pipeline=Pipeline(store,production_admission=admission)
+                for source in admission.sources:
+                    assert_running(root)
+                    admission.authorize(source)
+                    # Recheck global state outside per-source failure isolation.
+                    validate_state(store,admission)
+                    try:
+                        request=collect(root,admission,source,slot,directory)
+                        if (request.run_id!=slot+'-'+source or request.source_key!=source
+                                or request.collector_key!=source or request.fixture_scenario is not None):
+                            raise ValueError('source receipt binding mismatch')
+                        result=pipeline.accept_run(request)
+                        status='ACCEPTED' if result.status in {'accepted','replayed'} else 'FAILED'
+                        receipt['sources'][source]={'status':status,'result':result.as_dict()}
+                        if result.status == 'accepted':
+                            request_path=directory/(source+'.accepted-request.json')
+                            immutable(request_path,request.model_dump(mode='json'))
+                            receipt['sources'][source].update(native=native_facts(store,request),
+                                request=file_ref(request_path,root))
+                            if native_execution:
+                                receipt['sources'][source]['captures']=captures(root,directory,source)
+                        # New/changed uncertain evidence remains in canonical diagnostics,
+                        # but prevents any delivery or further acceptance declaration.
+                        admission.check_diagnostics(store)
+                    except Exception as exc:
+                        receipt['sources'][source]={'status':'FAILED','error_type':type(exc).__name__}
+                        immutable(directory/(source+'.failure.json'),{'at':stamp(),'error_type':type(exc).__name__,
+                            'reason':'source failure; inspect bounded public source receipts locally'})
+                    with ledger.connect() as db:
+                        db.execute('INSERT INTO source_runs VALUES(?,?,?,?)',
+                            (slot,source,receipt['sources'][source]['status'],str(directory)))
+                receipt['status']='COMPLETE' if all(r['status']=='ACCEPTED' for r in receipt['sources'].values()) else 'DEGRADED'
+                if initialization_stage:
+                    from board_clank.campaign_acceptance import store_fingerprint, condition_facts
+                    receipt['status'] = 'STAGED_PENDING_REVIEW' if receipt['status']=='COMPLETE' else 'STAGE_FAILED'
+                    receipt.update(store_sha256=store_fingerprint(store), conditions=condition_facts(store))
+                receipt['integrity']=store.one('PRAGMA integrity_check')[0]
+                receipt['foreign_key_errors']=len(store.all('PRAGMA foreign_key_check'))
+                if receipt['integrity']!='ok' or receipt['foreign_key_errors']:
+                    raise ValueError('production state integrity failure')
+            except Exception as exc:
+                receipt.update(status='HUMAN_REQUIRED',error_type=type(exc).__name__)
+                if not (root/'HUMAN_REQUIRED.json').exists():
+                    immutable(root/'HUMAN_REQUIRED.json',{'at':stamp(),'slot':slot,'reason':'runtime integrity/approval failure; inspect retained receipts'})
+                raise
+            finally:
+                if store:store.close()
+                receipt['finished_utc']=stamp()
+                immutable(directory/'cycle.json',receipt)
+                ledger.finish_cycle(slot,receipt.get('status','INTERRUPTED'))
+                if initialization_stage:
+                    ledger.finish_initialization(stage_spec.attempt_id, receipt.get('status','INTERRUPTED'))
+                    del admission._initialization_context
+            return receipt
+    except LockDeferred:
+        return {'status':'DEFERRED_LOCK','slot':slot,'collection_invoked':False}
 
 
 def main(argv=None):

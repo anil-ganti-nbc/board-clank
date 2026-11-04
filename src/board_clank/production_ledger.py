@@ -1,6 +1,7 @@
 """Separate operational ledger: budgets and durable scheduling/delivery claims."""
 from contextlib import contextmanager
 from pathlib import Path
+import errno
 import os
 import hashlib
 import secrets
@@ -164,7 +165,13 @@ def exclusive_lock(path):
         handle.seek(0)
         if os.name == 'nt':
             import msvcrt
-            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                # Translate only the nonblocking lock-busy syscall. open() errors stay as-is.
+                if exc.errno == errno.EACCES:
+                    raise BlockingIOError(errno.EAGAIN, 'runtime lock held') from exc
+                raise
         else:
             import fcntl
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -182,3 +189,53 @@ def assert_running(root):
     root = Path(root)
     if (root/'PAUSED').exists() or (root/'HUMAN_REQUIRED.json').exists():
         raise ValueError('runtime paused or human review required')
+
+
+class LockDeferred(Exception):
+    """Genuine nonblocking runtime.lock contention after the wait deadline."""
+
+
+def is_lock_contention(exc):
+    """True only for nonblocking exclusive lock busy. Not arbitrary OSError/EACCES."""
+    return isinstance(exc, BlockingIOError) and exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK)
+
+
+def _seconds_until(deadline, now):
+    remaining = deadline - now
+    if hasattr(remaining, 'total_seconds'):
+        return remaining.total_seconds()
+    return float(remaining)
+
+
+@contextmanager
+def bounded_runtime_lock(path, deadline, *, clock, sleep, recheck):
+    """Acquire exclusive_lock, retrying only genuine lock busy until deadline."""
+    cm = None
+    contended = False
+    while cm is None:
+        recheck()
+        # The first immediate attempt remains useful even for a zero-wait deadline.
+        if contended and clock() >= deadline:
+            raise LockDeferred()
+        try:
+            cm = exclusive_lock(path)
+            cm.__enter__()
+        except OSError as exc:
+            cm = None
+            if not is_lock_contention(exc):
+                raise
+            contended = True
+            now = clock()
+            if now >= deadline:
+                raise LockDeferred()
+            sleep(min(0.05, max(0.0, _seconds_until(deadline, now))))
+    try:
+        if contended:
+            # Acquisition/recheck can cross the boundary too. Refuse under ownership
+            # so cancellation or expiry always releases an already acquired lock.
+            recheck()
+            if clock() >= deadline:
+                raise LockDeferred()
+        yield
+    finally:
+        cm.__exit__(None, None, None)

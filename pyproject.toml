@@ -24,7 +24,7 @@ board-clank-discord = "board_clank.discord_delivery:main"
 board-clank-diagnostic-export = "board_clank.production_diagnostics:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
